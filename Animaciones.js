@@ -1323,22 +1323,19 @@ tarjetaForm.addEventListener("submit", e => {
   if (state.titulo) guardarEnviada(state);
 });
 
-// Asegúrate de que esta función se ejecute cuando pulses el botón de "Enviar"
 async function enviarComunicado() {
-    // 1. Obtener los emails (asumiendo que tienes un input con id="emails")
-    const emailsInput = document.getElementById('emails');
-    if (!emailsInput || !emailsInput.value) {
-        alert("Por favor, introduce al menos un email.");
+    const emailsInput = document.getElementById('emails'); // Asegúrate de tener un input con este ID
+    const listaEmails = emailsInput ? emailsInput.value.split(';').map(e => e.trim()).filter(e => e !== "") : [];
+
+    if (listaEmails.length === 0) {
+        alert("Introduce al menos un email de Ayesa.");
         return;
     }
 
-    const destinatarios = emailsInput.value.split(';').map(e => e.trim());
-
-    // 2. Obtener el JSON de la tarjeta (el que se muestra en tu previsualización)
-    // Asumo que tu objeto global de la tarjeta se llama 'card' o similar
+    // Usamos la variable 'card' que es donde tu script genera el JSON de la tarjeta
     const datos = {
-        destinatarios: destinatarios,
-        tarjeta: card // Cambia 'card' por la variable que contiene el JSON final
+        destinatarios: listaEmails,
+        tarjeta: card 
     };
 
     try {
@@ -1348,14 +1345,15 @@ async function enviarComunicado() {
             body: JSON.stringify(datos)
         });
 
+        const resultado = await response.json();
+        
         if (response.ok) {
-            alert("¡Envío procesado correctamente!");
+            alert("✅ ¡Envío masivo iniciado con éxito!");
         } else {
-            const error = await response.json();
-            alert("Error en el envío: " + error.message);
+            alert("❌ Error: " + resultado.error);
         }
     } catch (err) {
-        console.error("Error de conexión:", err);
-        alert("No se pudo conectar con el servidor.");
+        console.error("Error en la conexión:", err);
+        alert("No se pudo conectar con el servidor Node.js");
     }
 }
