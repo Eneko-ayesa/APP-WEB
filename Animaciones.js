@@ -1324,20 +1324,48 @@ tarjetaForm.addEventListener("submit", e => {
 });
 
 async function enviarComunicado() {
-    const emailsInput = document.getElementById('emails'); // Asegúrate de tener un input con este ID
-    const listaEmails = emailsInput ? emailsInput.value.split(';').map(e => e.trim()).filter(e => e !== "") : [];
+    console.log("🚀 Iniciando proceso de envío...");
 
+    // 1. Intentamos obtener datos de ambos campos (Outlook y Teams)
+    const campoEmails = document.getElementById('emails');
+    const campoTeams = document.getElementById('teamsRecipient');
+    
+    // Combinamos los textos de ambos campos
+    let textoDestinatarios = "";
+    if (campoEmails && campoEmails.value) textoDestinatarios += campoEmails.value + ";";
+    if (campoTeams && campoTeams.value) textoDestinatarios += campoTeams.value;
+
+    // Convertimos el texto en una lista limpia
+    const listaEmails = textoDestinatarios
+        .split(';')
+        .map(e => e.trim())
+        .filter(e => e !== "");
+
+    // 2. Verificación de destinatarios
     if (listaEmails.length === 0) {
-        alert("Introduce al menos un email de Ayesa.");
+        alert("⚠️ Por favor, introduce al menos un email de destinatario.");
         return;
     }
 
-    // Usamos la variable 'card' que es donde tu script genera el JSON de la tarjeta
+    // 3. Obtener el JSON de la tarjeta actual
+    // En tu script Animaciones.js, la función que genera el objeto es generateJSON()
+    let miTarjeta;
+    try {
+        miTarjeta = generateJSON(); 
+    } catch (e) {
+        console.error("Error al generar el JSON de la tarjeta:", e);
+        alert("Error al procesar el diseño de la tarjeta.");
+        return;
+    }
+
     const datos = {
         destinatarios: listaEmails,
-        tarjeta: card 
+        tarjeta: miTarjeta 
     };
 
+    console.log("Datos que se enviarán al servidor:", datos);
+
+    // 4. Petición al servidor Node.js
     try {
         const response = await fetch('/api/enviar-teams', {
             method: 'POST',
@@ -1345,15 +1373,14 @@ async function enviarComunicado() {
             body: JSON.stringify(datos)
         });
 
-        const resultado = await response.json();
-        
         if (response.ok) {
-            alert("✅ ¡Envío masivo iniciado con éxito!");
+            alert("✅ ¡Envío procesado! Revisa tu Microsoft Teams.");
         } else {
-            alert("❌ Error: " + resultado.error);
+            const resultado = await response.json();
+            alert("❌ Error en el servidor: " + (resultado.error || resultado.message));
         }
     } catch (err) {
-        console.error("Error en la conexión:", err);
-        alert("No se pudo conectar con el servidor Node.js");
+        console.error("Error de conexión:", err);
+        alert("No se pudo conectar con el servidor. ¿Está corriendo 'node server.js'?");
     }
 }
