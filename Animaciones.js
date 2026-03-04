@@ -492,6 +492,7 @@ function renderPreview() {
   const subtitulo = getFieldValue("subtitulo");
   const imagenUrl = getFieldValue("imagen").text;
   const emails    = getFieldValue("emails").text;
+  const teamsRecipient = document.getElementById("teamsRecipient")?.value?.trim() || "";
   const canal     = canalSelect.value;
 
   const blocks = [];
@@ -520,6 +521,24 @@ function renderPreview() {
   if (subEl) subEl.textContent = titulo.text || "—";
   const emEl = document.getElementById("previewEmails");
   if (emEl) emEl.textContent = emails || "—";
+
+  // Update Teams recipient preview
+  const teamsRecipientEl = document.getElementById("previewTeamsRecipient");
+  const teamsRecipientBar = document.getElementById("teamsRecipientBar");
+  if (teamsRecipientEl) {
+    teamsRecipientEl.textContent = teamsRecipient || "—";
+  }
+  // Show/hide recipient bar based on whether teams recipient has been filled
+  if (teamsRecipientBar) {
+    teamsRecipientBar.style.display = (canal === "teams" && teamsRecipient) ? "flex" : "none";
+  }
+  // Update sidebar channel name
+  const channelNameEl = document.getElementById("previewTeamsChannel");
+  if (channelNameEl && teamsRecipient) {
+    channelNameEl.textContent = teamsRecipient;
+  } else if (channelNameEl) {
+    channelNameEl.textContent = "General";
+  }
 }
 
 function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
@@ -625,8 +644,14 @@ function esc(s) {
 
 // ── CANAL / TABS ──────────────────────────────
 canalSelect.addEventListener("change", function () {
-  this.value === "outlook" ? emailField.classList.remove("hidden") : emailField.classList.add("hidden");
-  renderPreview(); syncTabToCanal(this.value);
+  const val = this.value;
+  // Outlook: show email field
+  val === "outlook" ? emailField.classList.remove("hidden") : emailField.classList.add("hidden");
+  // Teams: show teams recipient field
+  if (teamsRecipientField) {
+    val === "teams" ? teamsRecipientField.classList.remove("hidden") : teamsRecipientField.classList.add("hidden");
+  }
+  renderPreview(); syncTabToCanal(val);
 });
 function syncTabToCanal(val) {
   if (!val) return;
@@ -649,7 +674,7 @@ tarjetaForm.addEventListener("submit", e => { e.preventDefault(); alert("✅ ¡T
 initHeaderFields();
 
 // imagen y emails siguen siendo inputs normales — registrar eventos
-["imagen","emails"].forEach(id => {
+["imagen","emails","teamsRecipient"].forEach(id => {
   document.getElementById(id)?.addEventListener("input", renderPreview);
 });
 
