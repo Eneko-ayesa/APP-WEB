@@ -7,10 +7,12 @@ const app = express();
 app.use(express.json());
 
 // Estos datos los sacas de Entra ID y se quedan SEGUROS en el servidor
+require('dotenv').config(); // Carga el archivo .env
+
 const credential = new ClientSecretCredential(
-    "TU_TENANT_ID",
-    "TU_CLIENT_ID",
-    "TU_CLIENT_SECRET"
+    process.env.TENANT_ID,
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET
 );
 
 const authProvider = new TokenCredentialAuthenticationProvider(credential, {
