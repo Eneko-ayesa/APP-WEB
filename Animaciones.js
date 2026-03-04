@@ -1322,3 +1322,40 @@ tarjetaForm.addEventListener("submit", e => {
   const state = getCardState();
   if (state.titulo) guardarEnviada(state);
 });
+
+// Asegúrate de que esta función se ejecute cuando pulses el botón de "Enviar"
+async function enviarComunicado() {
+    // 1. Obtener los emails (asumiendo que tienes un input con id="emails")
+    const emailsInput = document.getElementById('emails');
+    if (!emailsInput || !emailsInput.value) {
+        alert("Por favor, introduce al menos un email.");
+        return;
+    }
+
+    const destinatarios = emailsInput.value.split(';').map(e => e.trim());
+
+    // 2. Obtener el JSON de la tarjeta (el que se muestra en tu previsualización)
+    // Asumo que tu objeto global de la tarjeta se llama 'card' o similar
+    const datos = {
+        destinatarios: destinatarios,
+        tarjeta: card // Cambia 'card' por la variable que contiene el JSON final
+    };
+
+    try {
+        const response = await fetch('/api/enviar-teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos)
+        });
+
+        if (response.ok) {
+            alert("¡Envío procesado correctamente!");
+        } else {
+            const error = await response.json();
+            alert("Error en el envío: " + error.message);
+        }
+    } catch (err) {
+        console.error("Error de conexión:", err);
+        alert("No se pudo conectar con el servidor.");
+    }
+}
