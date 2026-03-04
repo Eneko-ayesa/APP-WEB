@@ -1,11 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Creador de tarjetas adaptativas</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulario Tarjeta Adaptativa</title>
+<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+
 </head>
+
 <body>
-    <h1>Holassssssssss</h1>
+
+<div class="container">
+
+<h1>📢 Crear Tarjeta Adaptativa</h1>
+<p class="description">
+Envía una tarjeta a Teams o Outlook con el contenido que tú quieras. Usa formato estilo WhatsApp (negrita, listas, enlaces, emojis).
+</p>
+
+<div class="info-box">
+<strong>Formato rápido:</strong><br>
+**Negrita** | _Cursiva_ | # Títulos<br>
+- Listas con guion<br>
+1. Listas numeradas<br>
+[Texto](https://enlace.com)<br>
+Emojis funcionan normal 😊
+</div>
+
+<form id="tarjetaForm">
+
+<label>1. Imagen en cabecera (Opcional)</label>
+<input type="url" name="imagen" placeholder="https://ejemplo.com/imagen.jpg">
+
+<label>2. Título *</label>
+<input type="text" name="titulo" required placeholder="Ej: 🚀 Nuevo Lanzamiento">
+
+<label>3. Subtítulo (Opcional)</label>
+<input type="text" name="subtitulo" placeholder="Ej: Disponible hasta el 30 de junio">
+
+<label>4. Contenido del mensaje *</label>
+<textarea name="contenido" required placeholder="Escribe tu mensaje aquí...
+
+Puedes separar párrafos dejando una línea en blanco.
+Para listas:
+- Punto uno
+- Punto dos"></textarea>
+
+<label>5. Canal de envío *</label>
+<select id="canal" name="canal" required>
+    <option value="">Selecciona una opción</option>
+    <option value="teams">Microsoft Teams</option>
+    <option value="outlook">Outlook (Correo)</option>
+</select>
+
+<div id="emailField" class="hidden">
+    <label>6. Emails (separados por punto y coma)</label>
+    <input type="text" name="emails" placeholder="usuario1@empresa.com; usuario2@empresa.com">
+</div>
+
+<button type="submit">Enviar Tarjeta</button>
+
+</form>
+
+</div>
+
+<script>
+const canalSelect = document.getElementById("canal");
+const emailField = document.getElementById("emailField");
+
+canalSelect.addEventListener("change", function() {
+    if (this.value === "outlook") {
+        emailField.classList.remove("hidden");
+    } else {
+        emailField.classList.add("hidden");
+    }
+});
+
+document.getElementById("tarjetaForm").addEventListener("submit", function(e) {
+    const canal = canalSelect.value;
+    const emails = this.emails.value.trim();
+
+    if (canal === "outlook" && emails === "") {
+        e.preventDefault();
+        alert("Debes introducir al menos un email para envíos por Outlook.");
+    }
+});
+</script>
+
 </body>
 </html>
