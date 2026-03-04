@@ -5,6 +5,7 @@
 
 const canalSelect   = document.getElementById("canal");
 const emailField    = document.getElementById("emailField");
+const teamsRecipientField = document.getElementById("teamsRecipientField");
 const editor        = document.getElementById("editor");
 const tarjetaForm   = document.getElementById("tarjetaForm");
 const globalToolbar = document.getElementById("globalToolbar");
@@ -98,6 +99,26 @@ gtbInner.innerHTML = `
       ${I.pen}<span class="btb-cdot gtb-hl-cdot" style="background:#fef08a"></span>
     </button>
     <input class="btb-color-input gtb-hl-color" type="color" value="#fef08a">
+  </div>
+
+  <!-- Yako brand color palette -->
+  <div class="btb-sep"></div>
+  <div class="yako-palette" title="Paleta de colores Yako">
+    <button type="button" class="palette-swatch" data-color="#0000D0" title="Azul eléctrico" style="background:#0000D0"></button>
+    <button type="button" class="palette-swatch" data-color="#FF3184" title="Magenta" style="background:#FF3184"></button>
+    <button type="button" class="palette-swatch" data-color="#000000" title="Negro" style="background:#000000"></button>
+    <button type="button" class="palette-swatch" data-color="#FFFFFF" title="Blanco" style="background:#FFFFFF;border:1px solid #c8c6c4"></button>
+    <button type="button" class="palette-swatch" data-color="#323130" title="Gris oscuro" style="background:#323130"></button>
+    <button type="button" class="palette-swatch" data-color="#605e5c" title="Gris medio" style="background:#605e5c"></button>
+  </div>
+  <div class="btb-sep"></div>
+  <div class="yako-palette" id="yakoPalette">
+    <button type="button" class="palette-swatch" data-color="#0000D0" title="Azul eléctrico Yako" style="background:#0000D0"></button>
+    <button type="button" class="palette-swatch" data-color="#FF3184" title="Magenta Yako" style="background:#FF3184"></button>
+    <button type="button" class="palette-swatch" data-color="#000000" title="Negro" style="background:#000000"></button>
+    <button type="button" class="palette-swatch white-swatch" data-color="#FFFFFF" title="Blanco" style="background:#FFFFFF"></button>
+    <button type="button" class="palette-swatch" data-color="#323130" title="Gris oscuro" style="background:#323130"></button>
+    <button type="button" class="palette-swatch" data-color="#605e5c" title="Gris medio" style="background:#605e5c"></button>
   </div>
   <div class="btb-sep"></div>
   <button type="button" class="btb-btn" data-cmd="insertUnorderedList" title="Lista">${I.ul}</button>
@@ -247,6 +268,22 @@ hlInput.addEventListener("input", function () {
   if (activeEditor) { activeEditor.focus(); document.execCommand("hiliteColor", false, this.value); renderPreview(); }
 });
 
+
+// ── YAKO PALETTE CLICK HANDLERS ──────────────
+gtbInner.querySelectorAll(".palette-swatch").forEach(swatch => {
+  swatch.addEventListener("mousedown", e => {
+    e.preventDefault();
+    if (activeEditor) {
+      activeEditor.focus();
+      const color = swatch.dataset.color;
+      document.execCommand("foreColor", false, color);
+      // sync the color dot on the A button
+      tcDot.style.background = color;
+      renderPreview();
+    }
+  });
+});
+
 // link
 gtbInner.querySelector(".gtb-link-btn").addEventListener("click", openLinkDialog);
 document.getElementById("floatLinkBtn").addEventListener("click", openLinkDialog);
@@ -267,6 +304,22 @@ gtbInner.querySelector(".gtb-emoji-btn").addEventListener("click", e => {
 });
 document.addEventListener("click", e => {
   if (!gtbInner.querySelector(".btb-emoji-wrap").contains(e.target)) emojiPanel.classList.remove("open");
+});
+
+
+// ── YAKO PALETTE SWATCHES ─────────────────────
+gtbInner.querySelectorAll(".palette-swatch").forEach(swatch => {
+  swatch.addEventListener("mousedown", e => {
+    e.preventDefault();
+    if (activeEditor) {
+      activeEditor.focus();
+      document.execCommand("foreColor", false, swatch.dataset.color);
+      // update text color dot to show selected color
+      tcDot.style.background = swatch.dataset.color;
+      tcInput.value = swatch.dataset.color.replace('#','') < 'aaaaaa' ? swatch.dataset.color : swatch.dataset.color;
+      renderPreview();
+    }
+  });
 });
 
 // link dialog
@@ -473,8 +526,8 @@ function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
   const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text);
   if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Tu tarjeta aparecerá aquí mientras la diseñas</p></div>`;
 
-  const headerH = imgSizes.get("header") || null;
-  const hStyle = headerH ? `height:${headerH}px;` : "";
+  const headerPct = imgSizes.get("header") || 100;
+  const hStyle = `width:${headerPct}%;`;
   let html = imagenUrl
     ? `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
     : titulo.text ? `<div class="card-header-img-placeholder">${titulo.html || esc(titulo.text)}</div>` : "";
@@ -535,20 +588,25 @@ function initResizableImages(cardEl, blocks) {
     });
   });
 
-  // ── header image (vertical resize) ──
+  // ── header image (scale by width %) ──
   const headerWrap = cardEl.querySelector(".header-img-resize-wrap");
   if (headerWrap) {
     const hHandle = headerWrap.querySelector(".resize-handle-h");
     if (hHandle) {
       hHandle.addEventListener("mousedown", e => {
         e.preventDefault(); e.stopPropagation();
-        const startY = e.clientY;
-        const startH = headerWrap.offsetHeight || headerWrap.querySelector("img")?.naturalHeight || 200;
+        // dragging DOWN = bigger, UP = smaller
+        // we scale the img element's width as % of parent
+        const startY  = e.clientY;
+        const parentW = headerWrap.parentElement?.offsetWidth || headerWrap.offsetWidth || 400;
+        const startW  = parseFloat(imgSizes.get("header") || 100); // % of parent
 
         function onMove(ev) {
-          const newH = Math.max(60, startH + (ev.clientY - startY));
-          headerWrap.style.height = newH + "px";
-          imgSizes.set("header", newH);
+          const delta  = (ev.clientY - startY);          // px dragged
+          const pctDelta = (delta / parentW) * 100;      // convert to %
+          const newPct = Math.max(20, Math.min(100, startW + pctDelta));
+          headerWrap.style.width = newPct + "%";
+          imgSizes.set("header", newPct);
         }
         function onUp() {
           document.removeEventListener("mousemove", onMove);
