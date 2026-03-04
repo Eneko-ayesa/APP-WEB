@@ -668,7 +668,57 @@ document.querySelectorAll(".tab").forEach(tab => {
   });
 });
 
-tarjetaForm.addEventListener("submit", e => { e.preventDefault(); alert("✅ ¡Tarjeta enviada!"); });
+tarjetaForm.addEventListener("submit", async e => {
+  e.preventDefault();
+
+  // Recoger los bloques dinámicos del editor y serializarlos
+  const bloques = [];
+  editor.querySelectorAll(".block").forEach(block => {
+    const campoRich  = block.querySelector(".rich-editor-area");
+    const inputUrl   = block.querySelector("input[type='url']");
+
+    if (campoRich && campoRich.dataset.singleline) {
+      bloques.push({ tipo: "titulo",  html: campoRich.innerHTML, text: campoRich.innerText.trim() });
+    } else if (campoRich) {
+      bloques.push({ tipo: "parrafo", html: campoRich.innerHTML, text: campoRich.innerText.trim() });
+    } else if (inputUrl) {
+      bloques.push({ tipo: "imagen",  value: inputUrl.value.trim() });
+    }
+  });
+
+  // Construir el FormData con todos los campos del formulario
+  const datosEnvio = new FormData();
+  datosEnvio.append("titulo",    document.getElementById("titulo")?.innerText.trim()    ?? "");
+  datosEnvio.append("subtitulo", document.getElementById("subtitulo")?.innerText.trim() ?? "");
+  datosEnvio.append("imagen",    document.getElementById("imagen")?.value.trim()        ?? "");
+  datosEnvio.append("canal",     canalSelect.value);
+  datosEnvio.append("emails",    document.getElementById("emails")?.value.trim()        ?? "");
+  datosEnvio.append("bloques",   JSON.stringify(bloques));
+
+  // Feedback visual en el botón mientras se envía
+  const botonEnviar        = tarjetaForm.querySelector(".btn-submit");
+  const textoBotonOriginal = botonEnviar.querySelector("span").textContent;
+  botonEnviar.disabled = true;
+  botonEnviar.querySelector("span").textContent = "Enviando…";
+
+  try {
+    const respuesta = await fetch("formulario.php", { method: "POST", body: datosEnvio });
+    const resultado = await respuesta.json();
+
+    botonEnviar.querySelector("span").textContent = resultado.ok ? "✅ " + resultado.mensaje : "⚠️ " + resultado.mensaje;
+    botonEnviar.style.background = resultado.ok ? "#22c55e" : "#ef4444";
+  } catch (errorConexion) {
+    botonEnviar.querySelector("span").textContent = "❌ Error de conexión";
+    botonEnviar.style.background = "#ef4444";
+  }
+
+  // Restaurar el botón a su estado original tras 4 segundos
+  setTimeout(() => {
+    botonEnviar.disabled = false;
+    botonEnviar.querySelector("span").textContent = textoBotonOriginal;
+    botonEnviar.style.background = "";
+  }, 4000);
+});
 
 // ── INIT ──────────────────────────────────────
 initHeaderFields();
