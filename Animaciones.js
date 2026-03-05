@@ -814,7 +814,7 @@ function renderHistPanelInline() {
   });
 }
 
-tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarOutputPanel(); });
+tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarConfirmEnvio(); });
 
 // ═══════════════════════════════════════════════
 // CONFIRMACIÓN DE ENVÍO
@@ -829,58 +829,91 @@ function mostrarConfirmEnvio() {
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
   const canalIcon  = canal === "teams" ? "📤" : "📧";
 
+  // Build card preview
+  const subtitulo = getFieldValue("subtitulo");
+  const imagenUrl = getFieldValue("imagen").text;
+  const blocks = [];
+  document.getElementById("editor").querySelectorAll(".block").forEach(block => {
+    const rich = block.querySelector(".rich-editor-area");
+    const url  = block.querySelector("input[type='url']");
+    if (rich && rich.dataset.singleline) blocks.push({ tipo:"titulo",  html:rich.innerHTML, text:rich.innerText.trim() });
+    else if (rich)                        blocks.push({ tipo:"parrafo", html:rich.innerHTML, text:rich.innerText.trim() });
+    else if (url)                         blocks.push({ tipo:"imagen",  value:url.value.trim() });
+  });
+  const cardPreviewHTML = buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal });
+
   document.getElementById("confirmEnvioModal")?.remove();
 
   const modal = document.createElement("div");
   modal.id = "confirmEnvioModal";
   modal.style.cssText = `
     position:fixed;inset:0;z-index:2000;
-    background:rgba(0,0,0,.45);
+    background:rgba(0,0,0,.5);
     display:flex;align-items:center;justify-content:center;
     padding:24px;
   `;
-  modal.style.animation = "fadeIn .15s ease";
 
   modal.innerHTML = `
     <div style="
-      background:white;border-radius:16px;padding:32px 28px 24px;
-      max-width:360px;width:100%;
-      box-shadow:0 32px 80px rgba(0,0,0,.2),0 0 0 1px rgba(0,0,0,.06);
+      background:white;border-radius:16px;overflow:hidden;
+      max-width:440px;width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);
       font-family:var(--font,sans-serif);
       animation:msDropIn .2s cubic-bezier(.22,1,.36,1);
     ">
-      <div style="font-size:36px;margin-bottom:14px;text-align:center">${canalIcon}</div>
-      <div style="font-size:18px;font-weight:700;color:#0f0f12;margin-bottom:8px;text-align:center;letter-spacing:-.01em">
-        ¿Enviar la tarjeta?
+      <!-- Header -->
+      <div style="
+        padding:18px 22px 14px;
+        border-bottom:1px solid #f0f0f0;
+        display:flex;align-items:center;gap:10px;
+      ">
+        <span style="font-size:24px;line-height:1">${canalIcon}</span>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#0f0f12;letter-spacing:-.01em">¿Enviar la tarjeta?</div>
+          <div style="font-size:11px;color:#aaa;margin-top:2px">
+            Vía <strong style="color:#0000D0">${canalLabel}</strong> · Esta acción no se puede deshacer
+          </div>
+        </div>
       </div>
-      <p style="font-size:13px;color:#888;text-align:center;line-height:1.6;margin-bottom:24px">
-        Se enviará <strong style="color:#0f0f12">"${titulo.text.slice(0,50)}${titulo.text.length>50?'…':''}"</strong>
-        a través de <strong style="color:#0000D0">${canalLabel}</strong>.
-        Esta acción no se puede deshacer.
-      </p>
-      <div style="display:flex;gap:10px">
+
+      <!-- Card preview -->
+      <div style="padding:14px 16px;background:#f5f4f0;border-bottom:1px solid #e8e8e8;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:8px;">
+          Vista previa
+        </div>
+        <div style="
+          background:white;border-radius:8px;overflow:hidden;
+          box-shadow:0 1px 4px rgba(0,0,0,.08);
+          font-family:'Segoe UI',sans-serif;
+          max-height:240px;overflow-y:auto;
+          font-size:13px;
+        ">
+          ${cardPreviewHTML}
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="padding:14px 18px;display:flex;gap:10px;">
         <button id="confirmEnvioCancel" style="
-          flex:1;height:42px;border-radius:9px;
+          flex:1;height:40px;border-radius:8px;
           border:1.5px solid #e0e0e0;background:white;
           font-family:inherit;font-size:13px;font-weight:600;
-          color:#666;cursor:pointer;transition:background .15s;
+          color:#666;cursor:pointer;
         ">Cancelar</button>
         <button id="confirmEnvioOk" style="
-          flex:1;height:42px;border-radius:9px;border:none;
+          flex:2;height:40px;border-radius:8px;border:none;
           background:#0000D0;color:white;
           font-family:inherit;font-size:13px;font-weight:700;
-          cursor:pointer;transition:background .15s,box-shadow .15s;
+          cursor:pointer;
           box-shadow:0 2px 10px rgba(0,0,208,.3);
-        ">Sí, enviar</button>
+        ">${canalIcon} Sí, enviar</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
   modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
-
   document.getElementById("confirmEnvioCancel").addEventListener("click", () => modal.remove());
-
   document.getElementById("confirmEnvioOk").addEventListener("click", () => {
     modal.remove();
     ejecutarEnvio();
