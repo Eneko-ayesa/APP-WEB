@@ -808,7 +808,240 @@ function renderHistPanelInline() {
   });
 }
 
-tarjetaForm.addEventListener("submit", e => { e.preventDefault(); alert("✅ ¡Tarjeta enviada!"); });
+tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarOutputPanel(); });
+
+// ═══════════════════════════════════════════════
+// OUTPUT PANEL — JSON para Teams, HTML para Outlook
+// ═══════════════════════════════════════════════
+function mostrarOutputPanel() {
+  const canal = canalSelect.value;
+  if (!canal) { showToast("⚠️ Selecciona un canal antes de enviar", "error"); return; }
+
+  const titulo    = getFieldValue("titulo");
+  const subtitulo = getFieldValue("subtitulo");
+  const imagenUrl = getFieldValue("imagen").text;
+  const blocks    = [];
+  document.getElementById("editor").querySelectorAll(".block").forEach(block => {
+    const rich = block.querySelector(".rich-editor-area");
+    const url  = block.querySelector("input[type='url']");
+    if (rich && rich.dataset.singleline) blocks.push({ tipo: "titulo",  html: rich.innerHTML, text: rich.innerText.trim() });
+    else if (rich)                        blocks.push({ tipo: "parrafo", html: rich.innerHTML, text: rich.innerText.trim() });
+    else if (url)                         blocks.push({ tipo: "imagen",  value: url.value.trim() });
+  });
+
+  const isTeams = canal === "teams";
+  const outputStr = isTeams
+    ? JSON.stringify(buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }), null, 2)
+    : buildOutlookHTML({ titulo, subtitulo, imagenUrl, blocks });
+
+  // Save to sent history
+  const state = getCardState();
+  if (state.titulo) guardarEnviada(state);
+  mostrarModalOutput(isTeams, outputStr);
+}
+
+function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
+  // Microsoft Adaptive Card schema v1.4
+  const body = [];
+
+  // Header image
+  if (imagenUrl) {
+    body.push({
+      type: "Image",
+      url: imagenUrl,
+      size: "stretch",
+      altText: titulo.text || "Imagen de cabecera"
+    });
+  }
+
+  // Title container with accent color bar
+  if (titulo.text) {
+    body.push({
+      type: "TextBlock",
+      text: titulo.text,
+      weight: "Bolder",
+      size: "Large",
+      wrap: true,
+      color: "Default"
+    });
+  }
+
+  // Subtitle
+  if (subtitulo.text) {
+    body.push({
+      type: "TextBlock",
+      text: subtitulo.text,
+      size: "Small",
+      isSubtle: true,
+      wrap: true
+    });
+  }
+
+  // Separator before body blocks
+  if (titulo.text && blocks.some(b => b.text || b.value)) {
+    body.push({ type: "Container", style: "emphasis", bleed: false, items: [], spacing: "Small" });
+  }
+
+  // Content blocks
+  blocks.forEach(b => {
+    if (b.tipo === "titulo" && b.text) {
+      body.push({
+        type: "TextBlock",
+        text: b.text,
+        weight: "Bolder",
+        size: "Medium",
+        wrap: true,
+        spacing: "Medium"
+      });
+    } else if (b.tipo === "parrafo" && b.text) {
+      // Strip HTML tags for plain text in AC
+      const plain = b.text;
+      body.push({
+        type: "TextBlock",
+        text: plain,
+        wrap: true,
+        spacing: "Small",
+        color: "Default"
+      });
+    } else if (b.tipo === "imagen" && b.value) {
+      body.push({
+        type: "Image",
+        url: b.value,
+        size: "stretch",
+        spacing: "Small"
+      });
+    }
+  });
+
+  return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        contentUrl: null,
+        content: {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          type: "AdaptiveCard",
+          version: "1.4",
+          body
+        }
+      }
+    ]
+  };
+}
+
+function buildOutlookHTML({ titulo, subtitulo, imagenUrl, blocks }) {
+  // Clean, table-based HTML safe for Outlook rendering engine
+  let html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { margin:0; padding:0; background:#f3f2f1; font-family:'Segoe UI',Arial,sans-serif; }
+  .wrapper { max-width:600px; margin:0 auto; background:#ffffff; border-radius:4px; overflow:hidden; }
+  .header  { background:#0000D0; color:white; padding:20px 24px; font-size:18px; font-weight:700; line-height:1.3; }
+  .header-img { width:100%; display:block; }
+  .body    { padding:20px 24px; }
+  .subtitle{ font-size:13px; color:#605e5c; margin-bottom:16px; }
+  .block-title { font-size:14px; font-weight:700; color:#201f1e; margin:16px 0 4px; }
+  .block-text  { font-size:14px; color:#323130; line-height:1.6; margin:0 0 10px; }
+  .block-img   { width:100%; display:block; margin:10px 0; border-radius:2px; }
+  .footer  { padding:12px 24px; background:#f3f2f1; font-size:11px; color:#a19f9d; border-top:1px solid #edebe9; }
+</style>
+</head>
+<body>
+<div class="wrapper">`;
+
+  if (imagenUrl) {
+    html += `<img class="header-img" src="${esc(imagenUrl)}" alt="">`;
+  } else if (titulo.text) {
+    html += `<div class="header">${titulo.text}</div>`;
+  }
+
+  html += `<div class="body">`;
+  if (titulo.text && imagenUrl) html += `<h1 style="font-size:18px;font-weight:700;margin:0 0 8px;color:#0000D0">${titulo.text}</h1>`;
+  if (subtitulo.text) html += `<p class="subtitle">${subtitulo.text}</p>`;
+
+  blocks.forEach(b => {
+    if (b.tipo === "titulo" && b.text)
+      html += `<div class="block-title">${b.html || b.text}</div>`;
+    else if (b.tipo === "parrafo" && b.text)
+      html += `<div class="block-text">${b.html || b.text}</div>`;
+    else if (b.tipo === "imagen" && b.value)
+      html += `<img class="block-img" src="${esc(b.value)}" alt="">`;
+  });
+
+  html += `</div>
+<div class="footer">Enviado con Yako Card Builder</div>
+</div>
+</body>
+</html>`;
+  return html;
+}
+
+function mostrarModalOutput(isTeams, outputStr) {
+  // Remove existing if any
+  document.getElementById("outputModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "outputModal";
+  modal.className = "modal-overlay";
+  modal.style.cssText = "position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s ease";
+
+  modal.innerHTML = `
+    <div class="modal-box modal-box--wide" style="max-width:680px;display:flex;flex-direction:column;max-height:85vh">
+      <div class="modal-header">
+        <span class="modal-title">${isTeams ? "📤 JSON — Microsoft Teams" : "📧 HTML — Outlook"}</span>
+        <button class="modal-close" id="cerrarOutputModal">✕</button>
+      </div>
+      <div style="padding:12px 24px 8px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <p style="font-size:12px;color:#888;flex:1;font-style:italic">
+          ${isTeams
+            ? "Envía este JSON a tu webhook de Teams (Power Automate, Bot Framework, etc.)"
+            : "Copia este HTML para usarlo en el cuerpo del correo de Outlook"}
+        </p>
+        <button id="copyOutputBtn" style="
+          padding:8px 18px;border-radius:8px;border:1.5px solid #0000D0;
+          background:#f0f0ff;color:#0000D0;font-family:var(--font,sans-serif);
+          font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;
+          transition:background .15s
+        ">📋 Copiar</button>
+      </div>
+      <div style="padding:0 24px 24px;flex:1;overflow:auto;min-height:0">
+        <pre id="outputCode" style="
+          background:#0f0f18;color:#e2e8f0;padding:20px;border-radius:10px;
+          font-family:'Cascadia Code','DM Mono',monospace;font-size:12px;
+          line-height:1.7;overflow:auto;white-space:pre-wrap;word-break:break-all;
+          margin:0;border:1px solid #1e1e2e
+        ">${outputStr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("cerrarOutputModal").addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById("copyOutputBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(outputStr);
+      const btn = document.getElementById("copyOutputBtn");
+      btn.textContent = "✅ Copiado";
+      btn.style.background = "#e8f5e8";
+      btn.style.borderColor = "#107c10";
+      btn.style.color = "#107c10";
+      setTimeout(() => {
+        btn.textContent = "📋 Copiar";
+        btn.style.background = "#f0f0ff";
+        btn.style.borderColor = "#0000D0";
+        btn.style.color = "#0000D0";
+      }, 2000);
+    } catch(e) {
+      showToast("❌ No se pudo copiar al portapapeles", "error");
+    }
+  });
+}
 
 // ── INIT ──────────────────────────────────────
 initHeaderFields();
@@ -1316,12 +1549,7 @@ document.querySelectorAll(".hist-tab").forEach(tab => {
 // Save draft button
 document.getElementById("btnGuardarBorrador")?.addEventListener("click", guardarBorrador);
 
-// Override form submit to also save to history
-const origSubmit = tarjetaForm.onsubmit;
-tarjetaForm.addEventListener("submit", e => {
-  const state = getCardState();
-  if (state.titulo) guardarEnviada(state);
-});
+// History save is now handled inside mostrarOutputPanel()
 
 // ═══════════════════════════════════════════════
 // UX IMPROVEMENTS v3
@@ -1352,23 +1580,7 @@ setTimeout(() => {
   addCharCounter("subtitulo", 140, "Subtítulo");
 }, 200);
 
-// ── SEND BUTTON FEEDBACK ──────────────────────
-tarjetaForm.addEventListener("submit", e => {
-  const btn = tarjetaForm.querySelector(".btn-submit");
-  const orig = btn.innerHTML;
-  btn.classList.add("sending");
-  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .7s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Enviando…`;
-
-  setTimeout(() => {
-    btn.classList.remove("sending");
-    btn.classList.add("sent");
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Enviada!`;
-    setTimeout(() => {
-      btn.classList.remove("sent");
-      btn.innerHTML = orig;
-    }, 2200);
-  }, 900);
-});
+// ── SEND BUTTON FEEDBACK (handled in mostrarOutputPanel) ──────────────────────
 
 // Spin keyframe via JS (inject once)
 if (!document.getElementById("spinStyle")) {
