@@ -543,7 +543,7 @@ function renderPreview() {
 
 function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
   const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text);
-  if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Tu tarjeta aparecerá aquí mientras la diseñas</p></div>`;
+  if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Empieza a escribir en el panel izquierdo y tu tarjeta tomará forma aquí</p></div>`;
 
   const headerPct = imgSizes.get("header") || 100;
   const hStyle = `width:${headerPct}%;`;
@@ -1322,3 +1322,127 @@ tarjetaForm.addEventListener("submit", e => {
   const state = getCardState();
   if (state.titulo) guardarEnviada(state);
 });
+
+// ═══════════════════════════════════════════════
+// UX IMPROVEMENTS v3
+// ═══════════════════════════════════════════════
+
+// ── CHAR COUNTERS ─────────────────────────────
+function addCharCounter(fieldId, max, label) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const counter = document.createElement("div");
+  counter.className = "char-counter";
+  counter.dataset.fieldId = fieldId;
+  el.parentNode.insertBefore(counter, el.nextSibling);
+
+  function update() {
+    const len = (el.innerText || el.value || "").trim().length;
+    const pct = len / max;
+    counter.textContent = `${len} / ${max}`;
+    counter.className = "char-counter" + (pct >= 1 ? " limit" : pct >= .8 ? " warn" : "");
+  }
+  el.addEventListener("input", update);
+  update();
+}
+
+// Wait until header fields are converted to contenteditable
+setTimeout(() => {
+  addCharCounter("titulo",    80, "Título");
+  addCharCounter("subtitulo", 140, "Subtítulo");
+}, 200);
+
+// ── SEND BUTTON FEEDBACK ──────────────────────
+tarjetaForm.addEventListener("submit", e => {
+  const btn = tarjetaForm.querySelector(".btn-submit");
+  const orig = btn.innerHTML;
+  btn.classList.add("sending");
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .7s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Enviando…`;
+
+  setTimeout(() => {
+    btn.classList.remove("sending");
+    btn.classList.add("sent");
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Enviada!`;
+    setTimeout(() => {
+      btn.classList.remove("sent");
+      btn.innerHTML = orig;
+    }, 2200);
+  }, 900);
+});
+
+// Spin keyframe via JS (inject once)
+if (!document.getElementById("spinStyle")) {
+  const s = document.createElement("style");
+  s.id = "spinStyle";
+  s.textContent = "@keyframes spin { to { transform: rotate(360deg); } }";
+  document.head.appendChild(s);
+}
+
+// ── DRAFT SAVED TOAST ─────────────────────────
+function showToast(msg, type = "success") {
+  const existing = document.querySelector(".yako-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "yako-toast";
+  toast.innerHTML = msg;
+  toast.style.cssText = `
+    position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: ${type === "success" ? "#0f0f12" : "#d13438"};
+    color: white; padding: 10px 20px; border-radius: 100px;
+    font-family: var(--font, sans-serif); font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 9999;
+    opacity: 0; transition: opacity .2s, transform .2s;
+    letter-spacing: .01em; white-space: nowrap;
+  `;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateX(-50%) translateY(0)";
+  });
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(-50%) translateY(8px)";
+    setTimeout(() => toast.remove(), 220);
+  }, 2500);
+}
+
+// Override guardarBorrador to use toast instead of alert
+const _origGuardarBorrador = guardarBorrador;
+window.guardarBorrador = function() {
+  const state = getCardState();
+  if (!state.titulo) { showToast("Añade un título antes de guardar", "error"); return; }
+  const borradores = getStorage("yako_borradores");
+  const nuevo = { id: Date.now(), fecha: new Date().toLocaleString("es-ES"), tipo: "borrador", state };
+  borradores.unshift(nuevo);
+  setStorage("yako_borradores", borradores.slice(0, 20));
+  showToast("✓ Borrador guardado");
+};
+document.getElementById("btnGuardarBorrador").removeEventListener("click", guardarBorrador);
+document.getElementById("btnGuardarBorrador").addEventListener("click", () => window.guardarBorrador());
+
+// ── KEYBOARD SHORTCUT: Ctrl+S → save draft ────
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    e.preventDefault();
+    window.guardarBorrador();
+  }
+});
+
+// ── PLACEHOLDER COPY — rotate helpful tips ────
+const TIPS = [
+  "Tu tarjeta aparecerá aquí en tiempo real",
+  "Escribe un título para empezar",
+  "Prueba una plantilla para comenzar rápido",
+  "Pulsa ✨ para generar con IA",
+];
+let tipIdx = 0;
+setInterval(() => {
+  const ph = document.querySelector(".card-placeholder p");
+  if (!ph) return;
+  tipIdx = (tipIdx + 1) % TIPS.length;
+  ph.style.opacity = "0";
+  setTimeout(() => { ph.textContent = TIPS[tipIdx]; ph.style.opacity = "1"; }, 300);
+}, 4000);
+const phEl = document.querySelector(".card-placeholder p");
+if (phEl) phEl.style.transition = "opacity .3s";
