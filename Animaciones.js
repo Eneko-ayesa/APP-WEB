@@ -808,7 +808,59 @@ function renderHistPanelInline() {
   });
 }
 
-tarjetaForm.addEventListener("submit", e => { e.preventDefault(); alert("✅ ¡Tarjeta enviada!"); });
+tarjetaForm.addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const bloques = [];
+  editor.querySelectorAll(".block").forEach(block => {
+    const campoRich = block.querySelector(".rich-editor-area");
+    const inputUrl  = block.querySelector("input[type='url']");
+    if (campoRich && campoRich.dataset.singleline) {
+      bloques.push({ tipo: "titulo",  html: campoRich.innerHTML, text: campoRich.innerText.trim() });
+    } else if (campoRich) {
+      bloques.push({ tipo: "parrafo", html: campoRich.innerHTML, text: campoRich.innerText.trim() });
+    } else if (inputUrl) {
+      bloques.push({ tipo: "imagen",  value: inputUrl.value.trim() });
+    }
+  });
+
+  const datosEnvio = new FormData();
+  datosEnvio.append("titulo",         document.getElementById("titulo")?.innerText.trim()         ?? "");
+  datosEnvio.append("subtitulo",      document.getElementById("subtitulo")?.innerText.trim()      ?? "");
+  datosEnvio.append("imagen",         document.getElementById("imagen")?.value.trim()             ?? "");
+  datosEnvio.append("canal",          canalSelect.value);
+  datosEnvio.append("emails",         document.getElementById("emails")?.value.trim()             ?? "");
+  datosEnvio.append("teamsRecipient", document.getElementById("teamsRecipient")?.value.trim()     ?? "");
+  datosEnvio.append("bloques",        JSON.stringify(bloques));
+
+  const botonEnviar = tarjetaForm.querySelector(".btn-submit");
+  const spanBtn = botonEnviar.querySelector("span");
+  const textoOriginal = spanBtn.textContent;
+  botonEnviar.disabled = true;
+  spanBtn.textContent = "Enviando…";
+
+  try {
+    const respuesta = await fetch("formulario.php", { method: "POST", body: datosEnvio });
+    const resultado = await respuesta.json();
+
+    spanBtn.textContent      = resultado.ok ? "✅ " + resultado.mensaje : "⚠️ " + resultado.mensaje;
+    botonEnviar.style.background = resultado.ok ? "#22c55e" : "#ef4444";
+
+    if (resultado.ok) {
+      const state = getCardState();
+      if (state.titulo) guardarEnviada(state);
+    }
+  } catch (err) {
+    spanBtn.textContent      = "❌ Error de conexión";
+    botonEnviar.style.background = "#ef4444";
+  }
+
+  setTimeout(() => {
+    botonEnviar.disabled         = false;
+    spanBtn.textContent          = textoOriginal;
+    botonEnviar.style.background = "";
+  }, 4000);
+});
 
 // ── INIT ──────────────────────────────────────
 initHeaderFields();
