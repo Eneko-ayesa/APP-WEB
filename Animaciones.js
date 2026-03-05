@@ -71,6 +71,7 @@ function initHeaderFields() {
 // ═══════════════════════════════════════════════
 gtbInner.innerHTML = `
   <select class="btb-select gtb-font" title="Tipografía">
+    <option value="'Metropolis','DM Sans',sans-serif">Metropolis</option>
     <option value="'DM Sans',sans-serif">DM Sans</option>
     <option value="'Lora',serif">Lora</option>
     <option value="'Syne',sans-serif">Syne</option>
