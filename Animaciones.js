@@ -1322,65 +1322,85 @@ tarjetaForm.addEventListener("submit", e => {
   const state = getCardState();
   if (state.titulo) guardarEnviada(state);
 });
-
 async function enviarComunicado() {
-    console.log("🚀 Iniciando proceso de envío...");
+    console.log("🚀 Iniciando envío desde Animaciones.js...");
 
-    // 1. Intentamos obtener datos de ambos campos (Outlook y Teams)
-    const campoEmails = document.getElementById('emails');
-    const campoTeams = document.getElementById('teamsRecipient');
+    // 1. Recoger destinatarios (Combinamos ambos campos como en tu HTML)
+    const emailsInput = document.getElementById('emails');
+    const teamsInput = document.getElementById('teamsRecipient');
     
-    // Combinamos los textos de ambos campos
-    let textoDestinatarios = "";
-    if (campoEmails && campoEmails.value) textoDestinatarios += campoEmails.value + ";";
-    if (campoTeams && campoTeams.value) textoDestinatarios += campoTeams.value;
+    let combined = "";
+    if (emailsInput) combined += emailsInput.value + ";";
+    if (teamsInput) combined += teamsInput.value;
 
-    // Convertimos el texto en una lista limpia
-    const listaEmails = textoDestinatarios
-        .split(';')
-        .map(e => e.trim())
-        .filter(e => e !== "");
+    const listaEmails = combined.split(';').map(e => e.trim()).filter(e => e !== "");
 
-    // 2. Verificación de destinatarios
     if (listaEmails.length === 0) {
-        alert("⚠️ Por favor, introduce al menos un email de destinatario.");
+        alert("⚠️ Introduce al menos un email de destino.");
         return;
     }
 
-    // 3. Obtener el JSON de la tarjeta actual
-    // En tu script Animaciones.js, la función que genera el objeto es generateJSON()
-    let miTarjeta;
-    try {
-        miTarjeta = generateJSON(); 
-    } catch (e) {
-        console.error("Error al generar el JSON de la tarjeta:", e);
-        alert("Error al procesar el diseño de la tarjeta.");
-        return;
-    }
+    // 2. Obtener los datos usando la función nueva
+    const datosTarjeta = obtenerDatosTarjeta();
 
-    const datos = {
+    const bodyEnvio = {
         destinatarios: listaEmails,
-        tarjeta: miTarjeta 
+        tarjeta: datosTarjeta 
     };
 
-    console.log("Datos que se enviarán al servidor:", datos);
+    console.log("Datos preparados para el servidor:", bodyEnvio);
 
-    // 4. Petición al servidor Node.js
+    // 3. FETCH al servidor Node.js
     try {
         const response = await fetch('/api/enviar-teams', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(datos)
+            body: JSON.stringify(bodyEnvio)
         });
 
         if (response.ok) {
-            alert("✅ ¡Envío procesado! Revisa tu Microsoft Teams.");
+            alert("✅ ¡Tarjeta enviada correctamente!");
         } else {
-            const resultado = await response.json();
-            alert("❌ Error en el servidor: " + (resultado.error || resultado.message));
+            const error = await response.json();
+            alert("❌ Error: " + (error.error || "Error en el servidor"));
         }
     } catch (err) {
-        console.error("Error de conexión:", err);
-        alert("No se pudo conectar con el servidor. ¿Está corriendo 'node server.js'?");
+        console.error("Error conexión:", err);
+        alert("No se pudo conectar con el servidor de Node.js");
     }
+}
+
+// Esta función extrae los datos del editor siguiendo tu lógica de renderPreview
+function obtenerDatosTarjeta() {
+    const titulo = getFieldValue("titulo");
+    const subtitulo = getFieldValue("subtitulo");
+    const imagenCabecera = getFieldValue("imagen").text;
+    const canal = canalSelect.value;
+
+    const bloques = [];
+    editor.querySelectorAll(".block").forEach(block => {
+        const rich = block.querySelector(".rich-editor-area");
+        const urlInput = block.querySelector("input[type='url']");
+        
+        if (rich) {
+            bloques.push({
+                tipo: rich.dataset.singleline ? "titulo" : "parrafo",
+                text: rich.innerText.trim(),
+                html: rich.innerHTML
+            });
+        } else if (urlInput) {
+            bloques.push({
+                tipo: "imagen",
+                value: urlInput.value.trim()
+            });
+        }
+    });
+
+    return {
+        titulo: titulo,
+        subtitulo: subtitulo,
+        imagenUrl: imagenCabecera,
+        bloques: bloques,
+        canal: canal
+    };
 }
