@@ -697,6 +697,11 @@ document.querySelectorAll(".tab").forEach(tab => {
       ensurePreviewPanel("historial");
       return;
     }
+    if (val === "imagenes") {
+      document.getElementById("channelSubtabs")?.classList.add("hidden");
+      ensurePreviewPanel("imagenes");
+      return;
+    }
     // "teams" tab = Vista previa — restore chrome
     showPreviewChrome(activeChannel);
   });
@@ -809,36 +814,95 @@ function renderHistPanelInline() {
   });
 }
 
-tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarOutputPanel(); });
+tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarConfirmEnvio(); });
 
 // ═══════════════════════════════════════════════
-// OUTPUT PANEL — JSON para Teams, HTML para Outlook
+// CONFIRMACIÓN DE ENVÍO
 // ═══════════════════════════════════════════════
-function mostrarOutputPanel() {
+function mostrarConfirmEnvio() {
   const canal = canalSelect.value;
   if (!canal) { showToast("⚠️ Selecciona un canal antes de enviar", "error"); return; }
 
-  const titulo    = getFieldValue("titulo");
-  const subtitulo = getFieldValue("subtitulo");
-  const imagenUrl = getFieldValue("imagen").text;
-  const blocks    = [];
-  document.getElementById("editor").querySelectorAll(".block").forEach(block => {
-    const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) blocks.push({ tipo: "titulo",  html: rich.innerHTML, text: rich.innerText.trim() });
-    else if (rich)                        blocks.push({ tipo: "parrafo", html: rich.innerHTML, text: rich.innerText.trim() });
-    else if (url)                         blocks.push({ tipo: "imagen",  value: url.value.trim() });
+  const titulo = getFieldValue("titulo");
+  if (!titulo.text) { showToast("⚠️ Añade un título antes de enviar", "error"); return; }
+
+  const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
+  const canalIcon  = canal === "teams" ? "📤" : "📧";
+
+  document.getElementById("confirmEnvioModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "confirmEnvioModal";
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:2000;
+    background:rgba(0,0,0,.45);
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+  `;
+  modal.style.animation = "fadeIn .15s ease";
+
+  modal.innerHTML = `
+    <div style="
+      background:white;border-radius:16px;padding:32px 28px 24px;
+      max-width:360px;width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.2),0 0 0 1px rgba(0,0,0,.06);
+      font-family:var(--font,sans-serif);
+      animation:msDropIn .2s cubic-bezier(.22,1,.36,1);
+    ">
+      <div style="font-size:36px;margin-bottom:14px;text-align:center">${canalIcon}</div>
+      <div style="font-size:18px;font-weight:700;color:#0f0f12;margin-bottom:8px;text-align:center;letter-spacing:-.01em">
+        ¿Enviar la tarjeta?
+      </div>
+      <p style="font-size:13px;color:#888;text-align:center;line-height:1.6;margin-bottom:24px">
+        Se enviará <strong style="color:#0f0f12">"${titulo.text.slice(0,50)}${titulo.text.length>50?'…':''}"</strong>
+        a través de <strong style="color:#0000D0">${canalLabel}</strong>.
+        Esta acción no se puede deshacer.
+      </p>
+      <div style="display:flex;gap:10px">
+        <button id="confirmEnvioCancel" style="
+          flex:1;height:42px;border-radius:9px;
+          border:1.5px solid #e0e0e0;background:white;
+          font-family:inherit;font-size:13px;font-weight:600;
+          color:#666;cursor:pointer;transition:background .15s;
+        ">Cancelar</button>
+        <button id="confirmEnvioOk" style="
+          flex:1;height:42px;border-radius:9px;border:none;
+          background:#0000D0;color:white;
+          font-family:inherit;font-size:13px;font-weight:700;
+          cursor:pointer;transition:background .15s,box-shadow .15s;
+          box-shadow:0 2px 10px rgba(0,0,208,.3);
+        ">Sí, enviar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById("confirmEnvioCancel").addEventListener("click", () => modal.remove());
+
+  document.getElementById("confirmEnvioOk").addEventListener("click", () => {
+    modal.remove();
+    ejecutarEnvio();
   });
+}
 
-  const isTeams = canal === "teams";
-  const outputStr = isTeams
-    ? JSON.stringify(buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }), null, 2)
-    : buildOutlookHTML({ titulo, subtitulo, imagenUrl, blocks });
-
-  // Save to sent history
+function ejecutarEnvio() {
   const state = getCardState();
   if (state.titulo) guardarEnviada(state);
-  mostrarModalOutput(isTeams, outputStr);
+
+  // Visual feedback on button
+  const btn = tarjetaForm.querySelector(".btn-submit");
+  if (btn) {
+    const orig = btn.innerHTML;
+    btn.style.background = "#107c10";
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Enviada!`;
+    setTimeout(() => {
+      btn.style.background = "";
+      btn.innerHTML = orig;
+    }, 2500);
+  }
+  showToast("✅ Tarjeta enviada correctamente");
 }
 
 function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
@@ -1659,3 +1723,283 @@ setInterval(() => {
 }, 4000);
 const phEl = document.querySelector(".card-placeholder p");
 if (phEl) phEl.style.transition = "opacity .3s";
+
+// ═══════════════════════════════════════════════
+// FEATURE: BIBLIOTECA DE IMÁGENES
+// ═══════════════════════════════════════════════
+
+// ── CORPORATE IMAGE LIBRARY ───────────────────
+const IMG_LIBRARY = [
+  {
+    cat: "Equipo",
+    items: [
+      { id: "eq1", label: "Reunión de equipo",    url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80" },
+      { id: "eq2", label: "Colaboración",         url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&q=80" },
+      { id: "eq3", label: "Presentación",         url: "https://images.unsplash.com/photo-1560439514-4e9645039924?w=800&q=80" },
+      { id: "eq4", label: "Trabajo en equipo",    url: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80" },
+    ]
+  },
+  {
+    cat: "Oficina",
+    items: [
+      { id: "of1", label: "Espacio de trabajo",   url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
+      { id: "of2", label: "Sala de reuniones",    url: "https://images.unsplash.com/photo-1497366754035-f200968a6e23?w=800&q=80" },
+      { id: "of3", label: "Escritorio moderno",   url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80" },
+      { id: "of4", label: "Zona colaborativa",    url: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80" },
+    ]
+  },
+  {
+    cat: "Tecnología",
+    items: [
+      { id: "te1", label: "Laptop y datos",       url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80" },
+      { id: "te2", label: "Código",               url: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&q=80" },
+      { id: "te3", label: "Dashboard",            url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" },
+      { id: "te4", label: "Conectividad",         url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80" },
+    ]
+  },
+  {
+    cat: "Abstracto",
+    items: [
+      { id: "ab1", label: "Gradiente azul",       url: "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=800&q=80" },
+      { id: "ab2", label: "Geometría",            url: "https://images.unsplash.com/photo-1550684376-efcbd6e3f031?w=800&q=80" },
+      { id: "ab3", label: "Minimalista",          url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80" },
+      { id: "ab4", label: "Textura clara",        url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80" },
+    ]
+  }
+];
+
+// ── UPLOADED IMAGES (base64, session only) ─────
+let uploadedImages = [];
+try {
+  const saved = localStorage.getItem("yako_uploaded_imgs");
+  if (saved) uploadedImages = JSON.parse(saved);
+} catch(e) {}
+
+function saveUploadedImages() {
+  try { localStorage.setItem("yako_uploaded_imgs", JSON.stringify(uploadedImages.slice(0, 20))); } catch(e) {}
+}
+
+// ── INSERT IMAGE DIALOG ────────────────────────
+function mostrarInsertDialog(imgUrl, imgLabel) {
+  document.getElementById("insertImgDialog")?.remove();
+
+  const dialog = document.createElement("div");
+  dialog.id = "insertImgDialog";
+  dialog.style.cssText = `
+    position:fixed; inset:0; z-index:2000;
+    background:rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px; animation:fadeIn .15s ease;
+  `;
+  dialog.innerHTML = `
+    <div style="
+      background:white; border-radius:16px; padding:28px;
+      max-width:380px; width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.2);
+      font-family:var(--font,sans-serif);
+    ">
+      <div style="font-family:var(--display,'DM Serif Display',serif);font-size:17px;font-style:italic;color:#0f0f12;margin-bottom:6px">
+        Insertar imagen
+      </div>
+      <div style="font-size:12px;color:#999;margin-bottom:18px">${imgLabel}</div>
+      <img src="${imgUrl}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:20px;border:1px solid #eee">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button id="insertToHeader" style="
+          padding:11px 16px;border-radius:8px;border:none;cursor:pointer;
+          background:#0000D0;color:white;font-family:inherit;font-size:13px;font-weight:600;
+          display:flex;align-items:center;gap:8px;
+          transition:background .15s;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+          Usar como imagen de cabecera
+        </button>
+        <button id="insertToBlock" style="
+          padding:11px 16px;border-radius:8px;cursor:pointer;
+          background:white;color:#0000D0;font-family:inherit;font-size:13px;font-weight:600;
+          border:1.5px solid rgba(0,0,208,.3);
+          display:flex;align-items:center;gap:8px;
+          transition:background .15s;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Insertar como bloque de imagen
+        </button>
+        <button id="insertCancel" style="
+          padding:9px 16px;border-radius:8px;border:none;cursor:pointer;
+          background:transparent;color:#aaa;font-family:inherit;font-size:13px;
+          margin-top:2px;
+        ">Cancelar</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(dialog);
+
+  // Insert as header
+  document.getElementById("insertToHeader").addEventListener("click", () => {
+    const imgEl = document.getElementById("imagen");
+    if (imgEl) { imgEl.value = imgUrl; imgEl.dispatchEvent(new Event("input")); }
+    dialog.remove();
+    // Switch back to preview tab
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+    document.getElementById("channelSubtabs")?.classList.remove("hidden");
+    showPreviewChrome(activeChannel);
+    showToast("✅ Imagen de cabecera actualizada");
+  });
+
+  // Insert as block
+  document.getElementById("insertToBlock").addEventListener("click", () => {
+    const editorEl = document.getElementById("editor");
+    crearBloque("imagen");
+    const lastBlock = editorEl.lastElementChild;
+    if (lastBlock) {
+      const inp = lastBlock.querySelector("input[type='url']");
+      if (inp) { inp.value = imgUrl; inp.dispatchEvent(new Event("input")); }
+    }
+    dialog.remove();
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+    document.getElementById("channelSubtabs")?.classList.remove("hidden");
+    showPreviewChrome(activeChannel);
+    showToast("✅ Bloque de imagen añadido");
+  });
+
+  document.getElementById("insertCancel").addEventListener("click", () => dialog.remove());
+  dialog.addEventListener("click", e => { if (e.target === dialog) dialog.remove(); });
+}
+
+// ── RENDER IMAGES PANEL ────────────────────────
+function renderImagenesPanel(panel) {
+  panel.innerHTML = `
+    <div class="panel-section-hdr">
+      <h2>🖼️ Biblioteca de imágenes</h2>
+      <p>Imágenes corporativas o sube las tuyas propias</p>
+    </div>
+
+    <!-- Upload area -->
+    <div class="img-upload-zone" id="imgUploadZone">
+      <input type="file" id="imgFileInput" accept="image/*" multiple style="display:none">
+      <div class="img-upload-inner" id="imgUploadInner">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Arrastra imágenes aquí o <label for="imgFileInput" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">selecciona archivos</label></span>
+        <span style="font-size:11px;color:#bbb">PNG, JPG, WebP · Máx. 5MB por imagen</span>
+      </div>
+    </div>
+
+    <!-- Uploaded images -->
+    <div id="uploadedImgsSection" style="${uploadedImages.length ? '' : 'display:none'}">
+      <div class="img-cat-header">
+        <span>Mis imágenes</span>
+        <button class="img-clear-btn" id="clearUploaded">Borrar todas</button>
+      </div>
+      <div class="img-grid" id="uploadedImgsGrid"></div>
+    </div>
+
+    <!-- Corporate library -->
+    ${IMG_LIBRARY.map(cat => `
+      <div class="img-cat-header"><span>${cat.cat}</span></div>
+      <div class="img-grid">
+        ${cat.items.map(img => `
+          <div class="img-thumb" data-url="${img.url}" data-label="${img.label}" title="${img.label}">
+            <img src="${img.url}" alt="${img.label}" loading="lazy">
+            <div class="img-thumb-overlay"><span>${img.label}</span></div>
+          </div>
+        `).join("")}
+      </div>
+    `).join("")}
+  `;
+
+  // Render uploaded images
+  renderUploadedGrid(panel);
+
+  // Wire library thumbs
+  panel.querySelectorAll(".img-thumb[data-url]").forEach(thumb => {
+    thumb.addEventListener("click", () => {
+      mostrarInsertDialog(thumb.dataset.url, thumb.dataset.label);
+    });
+  });
+
+  // File input change
+  const fileInput = panel.querySelector("#imgFileInput");
+  fileInput.addEventListener("change", e => handleFiles(e.target.files, panel));
+
+  // Drag & drop
+  const zone = panel.querySelector("#imgUploadZone");
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault(); zone.classList.remove("drag-over");
+    handleFiles(e.dataTransfer.files, panel);
+  });
+
+  // Clear uploaded
+  panel.querySelector("#clearUploaded")?.addEventListener("click", () => {
+    uploadedImages = [];
+    saveUploadedImages();
+    renderUploadedGrid(panel);
+  });
+}
+
+function renderUploadedGrid(panel) {
+  const section = panel.querySelector("#uploadedImgsSection");
+  const grid    = panel.querySelector("#uploadedImgsGrid");
+  if (!section || !grid) return;
+
+  if (!uploadedImages.length) { section.style.display = "none"; return; }
+  section.style.display = "";
+
+  grid.innerHTML = uploadedImages.map((img, i) => `
+    <div class="img-thumb" data-url="${img.url}" data-label="${img.label}" title="${img.label}" style="position:relative">
+      <img src="${img.url}" alt="${img.label}">
+      <div class="img-thumb-overlay"><span>${img.label}</span></div>
+      <button class="img-del-btn" data-i="${i}" title="Eliminar">✕</button>
+    </div>
+  `).join("");
+
+  grid.querySelectorAll(".img-thumb").forEach(thumb => {
+    thumb.addEventListener("click", e => {
+      if (e.target.closest(".img-del-btn")) return;
+      mostrarInsertDialog(thumb.dataset.url, thumb.dataset.label);
+    });
+  });
+
+  grid.querySelectorAll(".img-del-btn").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      uploadedImages.splice(+btn.dataset.i, 1);
+      saveUploadedImages();
+      renderUploadedGrid(panel);
+    });
+  });
+}
+
+function handleFiles(files, panel) {
+  const MAX = 5 * 1024 * 1024;
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+    if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      uploadedImages.unshift({ url: e.target.result, label: file.name.replace(/\.[^.]+$/, "") });
+      saveUploadedImages();
+      renderUploadedGrid(panel);
+      showToast(`✅ ${file.name} subida`);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── PATCH ensurePreviewPanel for "imagenes" ────
+const _origEnsure = ensurePreviewPanel;
+ensurePreviewPanel = function(type) {
+  if (type !== "imagenes") { _origEnsure(type); return; }
+
+  const screen = document.getElementById("previewScreen");
+  screen.querySelectorAll(".app-chrome").forEach(c => c.classList.add("hidden"));
+  let panel = screen.querySelector(".preview-side-panel");
+  if (panel) panel.remove();
+  panel = document.createElement("div");
+  panel.className = "preview-side-panel active";
+  screen.appendChild(panel);
+  renderImagenesPanel(panel);
+};

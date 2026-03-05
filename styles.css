@@ -2039,3 +2039,171 @@ input:not(:placeholder-shown):not(:focus) {
   min-width: 0; /* allow shrinking */
   overflow-x: auto;
 }
+
+/* ═══════════════════════════════════════════════
+   IMAGE LIBRARY PANEL
+   ═══════════════════════════════════════════════ */
+
+/* Upload zone */
+.img-upload-zone {
+  border: 2px dashed var(--paper-rule);
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  margin-bottom: 28px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  background: white;
+}
+.img-upload-zone:hover,
+.img-upload-zone.drag-over {
+  border-color: var(--ms-blue);
+  background: rgba(0,0,208,.03);
+}
+.img-upload-zone.drag-over { border-style: solid; }
+
+.img-upload-inner {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  pointer-events: none;
+  color: #aaa; font-size: 13px;
+}
+.img-upload-inner svg { color: #ccc; margin-bottom: 4px; }
+.img-upload-inner label { pointer-events: all; }
+
+/* Category header */
+.img-cat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 0 10px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: #aaa;
+}
+.img-clear-btn {
+  background: none; border: none;
+  font-size: 11px; color: #ccc; cursor: pointer;
+  font-family: var(--font); padding: 2px 6px;
+  border-radius: 4px; transition: color .15s, background .15s;
+}
+.img-clear-btn:hover { color: #e53e3e; background: #fff0f0; }
+
+/* Grid */
+.img-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+/* Thumbnail */
+.img-thumb {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 16/9;
+  background: var(--paper-2);
+  border: 1.5px solid var(--paper-rule);
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.img-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  border-color: var(--ms-blue);
+}
+.img-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .2s;
+}
+.img-thumb:hover img { transform: scale(1.04); }
+
+/* Hover overlay */
+.img-thumb-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.6) 0%, transparent 55%);
+  opacity: 0;
+  transition: opacity .15s;
+  display: flex; align-items: flex-end;
+  padding: 8px;
+}
+.img-thumb:hover .img-thumb-overlay { opacity: 1; }
+.img-thumb-overlay span {
+  font-size: 11px; font-weight: 600; color: white;
+  line-height: 1.2; font-family: var(--font);
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+
+/* Delete button on uploaded images */
+.img-del-btn {
+  position: absolute; top: 5px; right: 5px;
+  width: 20px; height: 20px;
+  border-radius: 50%; border: none;
+  background: rgba(0,0,0,.55); color: white;
+  font-size: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s, background .15s;
+  z-index: 2;
+}
+.img-thumb:hover .img-del-btn { opacity: 1; }
+.img-del-btn:hover { background: #e53e3e; }
+
+/* ── Hide sidebar overflow text ─── */
+.ts-header-text { display: none !important; }
+.ts-header { padding: 0 !important; }
+
+/* ═══════════════════════════════════════════════
+   GLOBAL TOP BAR
+   ═══════════════════════════════════════════════ */
+.global-topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--ms-blue, #0000D0);
+  height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.global-topbar-inner {
+  width: 100%;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+}
+
+.global-topbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  color: white;
+}
+
+.global-topbar .brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+  letter-spacing: .02em;
+}
+
+.global-topbar .brand-logo-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: white;
+  padding: 2px;
+}
+
+.global-topbar span {
+  color: rgba(255,255,255,.7) !important;
+}
+
+/* Push app-layout below topbar */
+.app-layout {
+  margin-top: 48px !important;
+}
