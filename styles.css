@@ -1622,3 +1622,420 @@ input::placeholder, textarea::placeholder { color: #bbb; font-style: italic; fon
 .card-header-img-placeholder {
   border-radius: 10px 10px 0 0 !important;
 }
+
+/* ═══════════════════════════════════════════════
+   MEJORAS UX — v3
+   ═══════════════════════════════════════════════ */
+
+/* ── STAGGERED LOAD ANIMATION ───────────────────── */
+@keyframes fieldIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.field-group {
+  animation: fieldIn .35s ease both;
+}
+.field-group:nth-child(1) { animation-delay: .05s; }
+.field-group:nth-child(2) { animation-delay: .10s; }
+.field-group:nth-child(3) { animation-delay: .15s; }
+.field-group:nth-child(4) { animation-delay: .20s; }
+.field-group:nth-child(5) { animation-delay: .25s; }
+.field-group:nth-child(6) { animation-delay: .30s; }
+.form-actions-row         { animation: fieldIn .35s ease .35s both; }
+.btn-translate            { animation: fieldIn .35s ease .40s both; }
+
+/* ── CHAR COUNTER ────────────────────────────────── */
+.char-counter {
+  font-size: 10px;
+  color: var(--ms-ink-4);
+  text-align: right;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  transition: color .15s;
+}
+.char-counter.warn  { color: var(--ms-orange); }
+.char-counter.limit { color: var(--ms-red); font-weight: 700; }
+
+/* ── FIELD FOCUS GLOW — blue, not pink ──────────── */
+input:focus, textarea:focus, select:focus,
+div.rich-field:focus, .rich-editor-area:focus {
+  border-color: var(--ms-blue) !important;
+  box-shadow: 0 0 0 3px rgba(0,0,208,.07) !important;
+}
+
+/* ── CARD PLACEHOLDER — better empty state ──────── */
+.card-placeholder {
+  padding: 48px 28px;
+  text-align: center;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(0,0,0,.018) 8px,
+    rgba(0,0,0,.018) 9px
+  );
+}
+.ph-icon {
+  font-size: 28px;
+  opacity: .18;
+  margin-bottom: 12px;
+  display: block;
+  animation: phPulse 3s ease-in-out infinite;
+}
+@keyframes phPulse {
+  0%, 100% { transform: scale(1);    opacity: .18; }
+  50%       { transform: scale(1.12); opacity: .28; }
+}
+.card-placeholder p {
+  font-size: 12px;
+  color: var(--ms-ink-5);
+  line-height: 1.6;
+  max-width: 160px;
+  margin: 0 auto;
+  font-style: italic;
+}
+
+/* ── CARD HEADER PLACEHOLDER — gradient ─────────── */
+.card-header-img-placeholder {
+  background: linear-gradient(135deg, #0000D0 0%, #4040e8 60%, #6060f0 100%) !important;
+  padding: 20px 18px !important;
+  font-family: var(--font);
+  letter-spacing: -.01em;
+  min-height: 64px;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* ── PREVIEW TAB TRANSITION ──────────────────────── */
+.preview-screen .app-chrome {
+  animation: chromeIn .2s ease;
+}
+@keyframes chromeIn {
+  from { opacity: 0; transform: scale(.99) translateY(4px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+.preview-side-panel {
+  animation: panelIn .2s ease;
+}
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SCROLL FADE on form panel ───────────────────── */
+.form-panel {
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 40px), transparent 100%);
+          mask-image: linear-gradient(to bottom, black calc(100% - 40px), transparent 100%);
+}
+
+/* ── RICH EDITOR FOCUS RING ──────────────────────── */
+.rich-editor-area:focus {
+  outline: none;
+}
+.block:focus-within {
+  border-color: var(--ms-blue) !important;
+  box-shadow: 0 0 0 3px rgba(0,0,208,.06), 0 2px 8px rgba(0,0,0,.06) !important;
+}
+
+/* ── TOOLBAR HINT — active field name ───────────── */
+.gtb-hint {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ms-ink-4);
+  padding: 0 14px 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── GLOBAL TOOLBAR — softer when idle ─────────── */
+.global-toolbar.tb-idle {
+  opacity: .45;
+  pointer-events: none;
+}
+.global-toolbar:not(.tb-idle) {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity .2s;
+}
+
+/* ── SEND BUTTON — loading state ────────────────── */
+.btn-submit.sending {
+  background: var(--ms-blue-hover) !important;
+  pointer-events: none;
+}
+.btn-submit.sent {
+  background: var(--ms-green) !important;
+}
+
+/* ── BLOCK LABEL visible on hover ───────────────── */
+.block label {
+  opacity: 0;
+  transition: opacity .15s;
+}
+.block:hover label,
+.block:focus-within label {
+  opacity: 1;
+}
+
+/* ── INPUT VALID MICRO-FEEDBACK ─────────────────── */
+input:not(:placeholder-shown):not(:focus) {
+  border-color: var(--paper-rule);
+  background: white;
+}
+
+/* ═══════════════════════════════════════════════
+   POLISH PASS — high-impact improvements
+   ═══════════════════════════════════════════════ */
+
+/* ── 1. PREVIEW BACKGROUND — dot grid, professional ── */
+.preview-screen {
+  background:
+    radial-gradient(circle, #c8c6c0 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+  background-color: #f0efe9 !important;
+}
+
+/* Chrome gets elevation + breathing room */
+.preview-screen .app-chrome {
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.07),
+    0 4px 12px rgba(0,0,0,.1),
+    0 16px 48px rgba(0,0,0,.12) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+/* ── 2. STAGGERED FORM ENTRY ANIMATION ────────── */
+@keyframes fieldIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.field-group {
+  animation: fieldIn .4s ease both;
+}
+.field-group:nth-child(1) { animation-delay: .05s; }
+.field-group:nth-child(2) { animation-delay: .1s; }
+.field-group:nth-child(3) { animation-delay: .15s; }
+.field-group:nth-child(4) { animation-delay: .2s; }
+.field-group:nth-child(5) { animation-delay: .25s; }
+.field-group:nth-child(6) { animation-delay: .3s; }
+.form-actions-row { animation: fieldIn .4s .35s ease both; }
+.btn-translate    { animation: fieldIn .4s .4s ease both; }
+
+@keyframes titleIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.form-title { animation: titleIn .5s .02s ease both; }
+
+/* ── 3. EMPTY STATE — editorial feel ─────────── */
+.card-placeholder {
+  padding: 48px 32px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(0,0,208,.04) 0%, transparent 70%);
+}
+.ph-icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+  opacity: 1;
+  display: block;
+  animation: phFloat 3s ease-in-out infinite;
+}
+@keyframes phFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
+}
+.card-placeholder p {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.7;
+  max-width: 160px;
+  margin: 0 auto;
+  font-style: italic;
+}
+
+/* ── 4. TOOLBAR — flat pill style, not Word ────── */
+.global-toolbar {
+  background: white !important;
+  border-top: 1px solid var(--paper-rule) !important;
+  padding: 8px 16px 10px !important;
+}
+
+/* Group toolbar buttons visually into clusters */
+.gtb-inner {
+  gap: 1px !important;
+  padding: 3px 4px;
+  background: var(--paper-2);
+  border: 1px solid var(--paper-rule);
+  border-radius: 10px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.btb-btn {
+  border-radius: 6px !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+.btb-btn svg { width: 13px !important; height: 13px !important; }
+.btb-btn:hover  { background: var(--paper-rule) !important; color: var(--ink-deep) !important; }
+.btb-btn.active { background: var(--ms-blue) !important; color: white !important; }
+
+.btb-sep {
+  background: var(--paper-rule) !important;
+  margin: 0 4px !important;
+}
+
+.btb-select {
+  height: 26px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  background: white !important;
+  border-color: var(--paper-rule) !important;
+}
+.btb-size { border-radius: 6px !important; height: 26px !important; background: white !important; }
+.btb-size-wrap { gap: 1px !important; }
+.btb-fs { color: var(--ms-ink-3) !important; }
+.btb-color-btn { width: 28px !important; height: 28px !important; border-radius: 6px !important; }
+.btb-color-btn:hover { background: var(--paper-rule) !important; }
+
+.gtb-hint {
+  font-size: 10px !important;
+  color: #bbb !important;
+  margin-top: 6px !important;
+  letter-spacing: .01em;
+  font-style: italic;
+}
+
+/* ── 5. SIDEBAR TEAMS — softer purple ─────────── */
+.teams-sidebar {
+  background: #3d3d6b !important;
+  width: 44px !important;
+}
+.ts-icon { border-radius: 8px !important; background: rgba(255,255,255,.1) !important; }
+.ts-icon.active { background: rgba(255,255,255,.9) !important; }
+
+/* Teams header inside sidebar */
+.ts-header {
+  margin-top: auto;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255,255,255,.1);
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.ts-avatar {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--accent); color: white;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── 6. BLOCK EDITOR — warmer feel ─────────────── */
+.block {
+  background: white !important;
+  border-color: #ebebeb !important;
+  transition: border-color .15s, box-shadow .15s, transform .1s !important;
+}
+.block:hover { transform: translateY(-1px) !important; }
+.block:focus-within {
+  border-color: var(--ms-blue) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── 7. SCROLLBAR — minimal ──────────────────── */
+.form-panel::-webkit-scrollbar { width: 4px; }
+.form-panel::-webkit-scrollbar-track { background: transparent; }
+.form-panel::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+.form-panel::-webkit-scrollbar-thumb:hover { background: #bbb; }
+
+/* ── 8. CARD PREVIEW — more polished card ──────── */
+.adaptive-card {
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08) !important;
+  overflow: hidden;
+}
+.card-header-img-placeholder {
+  background: linear-gradient(135deg, var(--ms-blue) 0%, #1a1aff 100%) !important;
+  padding: 22px 18px !important;
+  font-size: 16px !important;
+  letter-spacing: -.01em !important;
+}
+.card-body {
+  padding: 14px 18px 16px !important;
+}
+.card-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.01em !important;
+  line-height: 1.3 !important;
+}
+.card-subtitle {
+  font-size: 11px !important;
+  color: #aaa !important;
+  margin-bottom: 12px !important;
+}
+.card-block-text { line-height: 1.6 !important; color: #555 !important; }
+
+/* ── 9. CHANNEL BADGE — cleaner pill ───────────── */
+.card-channel-badge {
+  border-radius: 20px !important;
+  font-size: 10px !important;
+  padding: 3px 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: .03em !important;
+}
+
+/* ── 10. FORM ACTIONS ROW — proper spacing ─────── */
+.form-actions-row {
+  gap: 10px;
+  margin-top: 0;
+}
+.btn-submit {
+  margin-top: 0 !important;
+}
+
+/* Preview side panels spacing */
+.preview-side-panel {
+  padding: 32px 36px !important;
+}
+.panel-section-hdr { margin-bottom: 24px !important; }
+
+
+/* ── IA BUTTON — inline en toolbar (no fixed) ─ */
+
+/* Anula el position:fixed de todas las definiciones anteriores */
+.ia-fab {
+  position: static !important;
+  bottom: auto !important;
+  right: auto !important;
+  flex-shrink: 0;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 2px 10px rgba(255,49,132,.3) !important;
+  gap: 7px !important;
+}
+.ia-fab::before { display: none !important; } /* sin pulse ring inline */
+.ia-fab:hover {
+  transform: translateY(-1px) scale(1.02) !important;
+  box-shadow: 0 4px 16px rgba(255,49,132,.4) !important;
+}
+.ia-fab svg { width: 15px !important; height: 15px !important; }
+
+/* Fila superior del toolbar: controles + botón IA */
+.gtb-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.gtb-top-row .gtb-inner {
+  flex: 1;
+  min-width: 0; /* allow shrinking */
+  overflow-x: auto;
+}
