@@ -814,7 +814,7 @@ function renderHistPanelInline() {
   });
 }
 
-tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarConfirmEnvio(); });
+tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarOutputPanel(); });
 
 // ═══════════════════════════════════════════════
 // CONFIRMACIÓN DE ENVÍO

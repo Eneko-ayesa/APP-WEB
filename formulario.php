@@ -1,135 +1,157 @@
 <?php
-// Recoger datos del formulario
-$imagen    = $_POST['imagen']    ?? '';
-$titulo    = $_POST['titulo']    ?? '';
-$subtitulo = $_POST['subtitulo'] ?? '';
-$bloques   = json_decode($_POST['bloques'] ?? '[]', true) ?: [];
-$canal     = $_POST['canal']     ?? '';
-$emails    = $_POST['emails']    ?? '';
+// ═══════════════════════════════════════════════════════════
+//  Yako Card Builder — formulario.php
+//  Recibe el formulario del navegador y llama al server.js
+//  que es quien habla con Azure / Microsoft Graph
+// ═══════════════════════════════════════════════════════════
 
-// Validación básica
+// Puerto donde escucha server.js (debe coincidir con PORT en .env, por defecto 3000)
+define('NODE_URL', 'http://localhost:3000');
+
+header('Content-Type: application/json; charset=UTF-8');
+
+// ── 1. Recoger datos ──────────────────────────
+$imagen         = trim($_POST['imagen']         ?? '');
+$titulo         = trim($_POST['titulo']         ?? '');
+$subtitulo      = trim($_POST['subtitulo']      ?? '');
+$bloques        = json_decode($_POST['bloques'] ?? '[]', true) ?: [];
+$canal          = trim($_POST['canal']          ?? '');
+$emails         = trim($_POST['emails']         ?? '');
+$teamsRecipient = trim($_POST['teamsRecipient'] ?? '');
+
 if (empty($titulo) || empty($canal)) {
-    header('Content-Type: application/json');
     echo json_encode(['ok' => false, 'mensaje' => 'El título y el canal son obligatorios.']);
     exit;
 }
 
-// Construir cuerpo de la tarjeta
+// ── 2. Construir Adaptive Card ────────────────
 $body = [];
 
-// Imagen si existe
 if (!empty($imagen)) {
-    $body[] = [
-        "type" => "Image",
-        "url"  => $imagen,
-        "size" => "Stretch"
-    ];
+    $body[] = ['type' => 'Image', 'url' => $imagen, 'size' => 'Stretch'];
 }
 
-// Título
 $body[] = [
-    "type"   => "TextBlock",
-    "text"   => $titulo,
-    "weight" => "Bolder",
-    "size"   => "Medium",
-    "wrap"   => true
+    'type'   => 'TextBlock',
+    'text'   => $titulo,
+    'weight' => 'Bolder',
+    'size'   => 'Medium',
+    'wrap'   => true,
 ];
 
-// Subtítulo si existe
 if (!empty($subtitulo)) {
-    $body[] = [
-        "type"     => "TextBlock",
-        "text"     => $subtitulo,
-        "isSubtle" => true,
-        "wrap"     => true
-    ];
+    $body[] = ['type' => 'TextBlock', 'text' => $subtitulo, 'isSubtle' => true, 'wrap' => true];
 }
 
-// Bloques de contenido dinámicos (párrafos, títulos e imágenes del editor)
 foreach ($bloques as $bloque) {
-    $tipoBLoque   = $bloque['tipo']  ?? '';
-    $textoBloque  = strip_tags($bloque['html'] ?? $bloque['text'] ?? '');
-    $urlBloque    = $bloque['value'] ?? '';
+    $tipo  = $bloque['tipo']  ?? '';
+    $texto = strip_tags($bloque['html'] ?? $bloque['text'] ?? '');
+    $url   = $bloque['value'] ?? '';
 
-    if ($tipoBLoque === 'parrafo' && !empty($textoBloque)) {
-        $body[] = [
-            "type" => "TextBlock",
-            "text" => $textoBloque,
-            "wrap" => true
-        ];
-    } elseif ($tipoBLoque === 'titulo' && !empty($textoBloque)) {
-        $body[] = [
-            "type"   => "TextBlock",
-            "text"   => $textoBloque,
-            "weight" => "Bolder",
-            "wrap"   => true
-        ];
-    } elseif ($tipoBLoque === 'imagen' && !empty($urlBloque)) {
-        $body[] = [
-            "type" => "Image",
-            "url"  => $urlBloque,
-            "size" => "Stretch"
-        ];
+    if ($tipo === 'parrafo' && $texto !== '') {
+        $body[] = ['type' => 'TextBlock', 'text' => $texto, 'wrap' => true];
+    } elseif ($tipo === 'titulo' && $texto !== '') {
+        $body[] = ['type' => 'TextBlock', 'text' => $texto, 'weight' => 'Bolder', 'wrap' => true];
+    } elseif ($tipo === 'imagen' && $url !== '') {
+        $body[] = ['type' => 'Image', 'url' => $url, 'size' => 'Stretch'];
     }
 }
 
-// Construcción completa de la Adaptive Card
 $adaptiveCard = [
-    "\$schema" => "http://adaptivecards.io/schemas/adaptive-card.json",
-    "type"     => "AdaptiveCard",
-    "version"  => "1.5",
-    "body"     => $body
+    '$schema' => 'http://adaptivecards.io/schemas/adaptive-card.json',
+    'type'    => 'AdaptiveCard',
+    'version' => '1.5',
+    'body'    => $body,
 ];
 
-// Convertir a JSON
-$jsonCard = json_encode($adaptiveCard, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+// ── 3. Helper: llamar al server.js ────────────
+function llamarNode(string $ruta, array $datos): array {
+    $ch = curl_init(NODE_URL . $ruta);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($datos, JSON_UNESCAPED_UNICODE),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 300,
+    ]);
 
-// Enviar según canal
+    $respuesta = curl_exec($ch);
+    $errCurl   = curl_error($ch);
+    $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    if ($errCurl) {
+        return [
+            'ok'      => false,
+            'mensaje' => 'No se pudo conectar con el servidor Node.js. Asegurate de que esta arrancado con "node server.js". Error: ' . $errCurl,
+        ];
+    }
+
+    $json = json_decode($respuesta, true);
+    return $json ?? ['ok' => false, 'mensaje' => 'Respuesta inesperada del servidor (HTTP ' . $httpCode . ').'];
+}
+
+// ── 4. Enrutar segun canal ────────────────────
+
 if ($canal === 'teams') {
 
-    $webhookUrl = 'https://outlook.office.com/webhook/TU_WEBHOOK_AQUI';
+    // teamsRecipient puede ser: email, varios separados por , o ;, o vacio
+    // Si esta vacio, server.js usara TEAM_ID + CHANNEL_ID del .env
+    $destinatarios = [];
+    if ($teamsRecipient !== '') {
+        $destinatarios = array_values(array_filter(
+            array_map('trim', preg_split('/[;,]/', $teamsRecipient))
+        ));
+    }
 
-    // Teams requiere este formato de payload para recibir Adaptive Cards
-    $payloadTeams = json_encode([
-        "type"        => "message",
-        "attachments" => [[
-            "contentType" => "application/vnd.microsoft.card.adaptive",
-            "contentUrl"  => null,
-            "content"     => $adaptiveCard
-        ]]
-    ], JSON_UNESCAPED_UNICODE);
+    $resultado = llamarNode('/api/enviar-teams', [
+        'destinatarios' => $destinatarios,
+        'tarjeta'       => $adaptiveCard,
+    ]);
 
-    // Enviar al webhook via cURL
-    $curl = curl_init($webhookUrl);
-    curl_setopt($curl, CURLOPT_POST,           true);
-    curl_setopt($curl, CURLOPT_POSTFIELDS,     $payloadTeams);
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($curl, CURLOPT_HTTPHEADER,     ['Content-Type: application/json']);
-    $respuestaTeams  = curl_exec($curl);
-    $httpStatusTeams = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-    // Teams devuelve "1" y HTTP 200 cuando el envío es correcto
-    $enviado = ($httpStatusTeams === 200 && trim($respuestaTeams) === '1');
-    header('Content-Type: application/json');
-    echo json_encode(['ok' => $enviado, 'mensaje' => $enviado ? '¡Tarjeta enviada a Teams!' : 'Error al enviar a Teams.']);
+    echo json_encode($resultado);
 
 } elseif ($canal === 'outlook') {
 
-    // Separar y limpiar los emails (admite coma o punto y coma como separador)
-    $listaEmails  = implode(', ', array_filter(array_map('trim', preg_split('/[;,]/', $emails))));
-    $asunto       = $titulo;
-    $cuerpoCorreo = "<html><body><script type=\"application/adaptivecard+json\">{$jsonCard}</script><p>{$titulo}</p></body></html>";
-    $cabeceras    = "From: noreply@tuempresa.com\r\nContent-Type: text/html; charset=UTF-8";
+    if ($emails === '') {
+        echo json_encode(['ok' => false, 'mensaje' => 'Introduce al menos un destinatario de correo.']);
+        exit;
+    }
 
-    $enviado = mail($listaEmails, $asunto, $cuerpoCorreo, $cabeceras);
-    header('Content-Type: application/json');
-    echo json_encode(['ok' => $enviado, 'mensaje' => $enviado ? '¡Correo enviado!' : 'Error al enviar el correo.']);
+    $htmlBlocks = '';
+    foreach ($body as $bloque) {
+        if (($bloque['type'] ?? '') === 'TextBlock') {
+            $negrita = ($bloque['weight'] ?? '') === 'Bolder' ? 'bold' : 'normal';
+            $sutil   = !empty($bloque['isSubtle']) ? 'color:#666;font-size:13px;' : '';
+            $htmlBlocks .= '<p style="font-weight:' . $negrita . ';' . $sutil . 'margin:6px 0">'
+                            . htmlspecialchars($bloque['text']) . '</p>';
+        } elseif (($bloque['type'] ?? '') === 'Image') {
+            $htmlBlocks .= '<img src="' . htmlspecialchars($bloque['url'])
+                            . '" style="max-width:100%;display:block;margin:10px 0" alt="">';
+        }
+    }
+
+    $htmlCorreo = "<html><body style=\"font-family:Segoe UI,Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px\">"
+                . "<div style=\"border:1px solid #e0e0e0;border-radius:8px;padding:24px;background:#fff\">"
+                . $htmlBlocks
+                . "</div>"
+                . "<p style=\"font-size:11px;color:#aaa;text-align:center;margin-top:14px\">Enviado con Yako Card Builder</p>"
+                . "</body></html>";
+
+    $destinatarios = array_values(array_filter(
+        array_map('trim', preg_split('/[;,]/', $emails))
+    ));
+
+    $resultado = llamarNode('/api/enviar-outlook', [
+        'destinatarios' => $destinatarios,
+        'asunto'        => $titulo,
+        'htmlBody'      => $htmlCorreo,
+    ]);
+
+    echo json_encode($resultado);
 
 } else {
-
-    // Fallback: devolver el JSON de la tarjeta (para pruebas)
-    header('Content-Type: application/json');
-    echo $jsonCard;
-
+    // Sin canal valido: devolver la card en JSON (para depuracion)
+    echo json_encode($adaptiveCard, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 }
 ?>
