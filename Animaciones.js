@@ -208,7 +208,7 @@ function registrarCampoEditable(area) {
 
   area.addEventListener("keyup", updateActiveStates);
   area.addEventListener("mouseup", updateActiveStates);
-  area.addEventListener("input", renderPreview);
+  area.addEventListener("input", () => { renderPreview(); actualizarBotonEnviar(); });
 }
 
 // ═══════════════════════════════════════════════
@@ -654,7 +654,7 @@ canalSelect.addEventListener("change", function () {
   if (teamsRecipientField) {
     val === "teams" ? teamsRecipientField.classList.remove("hidden") : teamsRecipientField.classList.add("hidden");
   }
-  renderPreview(); syncTabToCanal(val);
+  renderPreview(); syncTabToCanal(val); actualizarBotonEnviar();
 });
 // Current active channel (teams or outlook)
 let activeChannel = "teams";
@@ -1353,6 +1353,20 @@ initHeaderFields();
 });
 
 crearBloque("parrafo");
+
+// ── VALIDACIÓN DEL BOTÓN ENVIAR ───────────────
+function actualizarBotonEnviar() {
+  const btnEnviar = document.querySelector(".btn-submit");
+  if (!btnEnviar) return;
+  const tituloEl = document.getElementById("titulo");
+  const canalEl  = document.getElementById("canal");
+  const tituloOk = tituloEl && tituloEl.textContent.trim().length > 0;
+  const canalOk  = canalEl  && canalEl.value.trim().length > 0;
+  btnEnviar.disabled = !(tituloOk && canalOk);
+}
+
+// Estado inicial: botón desactivado
+setTimeout(actualizarBotonEnviar, 250);
 // ═══════════════════════════════════════════════
 // FEATURE: DEVICE TOGGLE (móvil / escritorio)
 // ═══════════════════════════════════════════════
@@ -1521,6 +1535,7 @@ function aplicarPlantilla(p) {
   const block = crearBloqueConTexto("parrafo", p.cuerpo);
   editorEl.appendChild(block);
   renderPreview();
+  actualizarBotonEnviar();
 }
 
 function crearBloqueConTexto(tipo, texto) {
@@ -1643,6 +1658,7 @@ function cargarEstado(state) {
   });
 
   renderPreview();
+  actualizarBotonEnviar();
   // panel is inline, no modal to close
 }
 
@@ -2219,6 +2235,7 @@ document.getElementById("btnLimpiar").addEventListener("click", () => {
     document.getElementById("canal").value = "";
 
     renderPreview();
+    actualizarBotonEnviar();
   });
 });
 
