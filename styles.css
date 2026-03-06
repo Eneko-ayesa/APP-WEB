@@ -3219,3 +3219,314 @@ input:not(:placeholder-shown):not(:focus) {
   color: white !important;
   transform: translateY(-3px);
 }
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE — Mobile & Tablet
+   ═══════════════════════════════════════════════ */
+
+/* ── TABLET (≤ 1100px): Reducir panel izquierdo ── */
+@media (max-width: 1100px) {
+  .app-layout {
+    grid-template-columns: 420px 1fr;
+  }
+
+  .form-panel-inner {
+    padding: 24px 28px 60px;
+  }
+
+  .form-title {
+    font-size: 26px;
+    margin-bottom: 28px;
+    margin-top: 18px;
+  }
+
+  .preview-side-panel .tpl-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── MOBILE (≤ 768px): Layout en columna, tabs de navegación ── */
+@media (max-width: 768px) {
+  /* Body scrollable en móvil */
+  body {
+    overflow: auto;
+    height: auto;
+  }
+
+  /* Layout vertical */
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    height: auto;
+    margin-top: 48px;
+  }
+
+  /* Panel del formulario: altura auto */
+  .form-panel {
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--paper-rule);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .form-panel-inner {
+    padding: 20px 18px 40px;
+  }
+
+  .form-title {
+    font-size: 24px;
+    margin-top: 14px;
+    margin-bottom: 24px;
+  }
+
+  /* Panel de preview: altura fija razonable */
+  .preview-panel {
+    height: 70vh;
+    min-height: 400px;
+  }
+
+  /* Preview header: scroll horizontal si hace falta */
+  .preview-header {
+    padding: 0 12px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .preview-tabs {
+    flex-shrink: 0;
+  }
+
+  .tab {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .preview-header-right {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Ocultar texto en channel-tabs en móvil pequeño */
+  .channel-tab {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  /* App chrome ocupa el 100% */
+  .app-chrome {
+    max-width: 100%;
+    max-height: none;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .preview-screen {
+    padding: 0 !important;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  /* Teams sidebar más estrecha */
+  .teams-sidebar {
+    width: 36px !important;
+  }
+  .ts-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Formulario actions en columna */
+  .form-actions-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn-save-draft {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Dropdown de usuario */
+  .topbar-user-btn span#topbarUserName {
+    display: none;
+  }
+
+  .topbar-user-btn {
+    padding: 4px 8px 4px 5px;
+  }
+
+  /* Topbar brand: ocultar Card Builder en pantallas muy pequeñas */
+  .global-topbar-inner > .brand > span {
+    display: none;
+  }
+
+  /* Toolbar global: scroll horizontal */
+  .gtb-inner {
+    overflow-x: auto;
+    max-width: calc(100vw - 32px);
+  }
+
+  /* Modal full width */
+  .modal-box {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  /* Template grid: 2 columnas */
+  .preview-side-panel .tpl-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Historial items: ocultar acciones secundarias */
+  .hist-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* ── BOTÓN ENVIAR — estado desactivado ── */
+.btn-submit:disabled,
+.btn-submit[disabled] {
+  background: #c8c6c4 !important;
+  color: #a19f9d !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════ */
+
+/* ── PORTÁTIL GRANDE (≤ 1280px) ── */
+@media (max-width: 1280px) {
+  .app-layout {
+    grid-template-columns: 520px 1fr;
+  }
+  .form-panel-inner {
+    padding: 28px 36px 60px;
+  }
+  .form-title {
+    font-size: 30px;
+  }
+}
+
+/* ── PORTÁTIL PEQUEÑO / TABLET LANDSCAPE (≤ 1100px) ──
+   DOS COLUMNAS: formulario estrecho + preview grande    */
+@media (max-width: 1100px) {
+  .app-layout {
+    grid-template-columns: 320px 1fr;
+  }
+  .form-panel-inner {
+    padding: 20px 22px 50px;
+  }
+  .form-title {
+    font-size: 24px;
+    margin-top: 14px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .channel-tab {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .preview-side-panel .tpl-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── TABLET PORTRAIT (≤ 768px) ──
+   Columna única: form arriba, preview abajo            */
+@media (max-width: 768px) {
+  body {
+    overflow: auto;
+    height: auto;
+  }
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    height: auto;
+    margin-top: 48px;
+  }
+  .form-panel {
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--paper-rule);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .form-panel-inner {
+    padding: 20px 24px 40px;
+  }
+  .form-title {
+    font-size: 24px;
+    margin-top: 16px;
+    margin-bottom: 24px;
+  }
+  .preview-panel {
+    height: 75vh;
+    min-height: 480px;
+  }
+  .app-chrome {
+    max-width: 100%;
+    max-height: none;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .preview-screen {
+    padding: 0 !important;
+    align-items: stretch;
+    overflow: hidden;
+  }
+  .preview-header {
+    padding: 0 12px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .preview-tabs { flex-shrink: 0; }
+  .tab { padding: 0 10px; font-size: 12px; }
+  .preview-header-right { gap: 6px; flex-shrink: 0; }
+  .channel-tab { padding: 4px 8px; font-size: 11px; }
+  .teams-sidebar { width: 36px !important; }
+  .ts-icon { width: 24px; height: 24px; }
+  .form-actions-row { flex-direction: column; gap: 8px; }
+  .btn-save-draft { width: 100%; justify-content: center; }
+  .topbar-user-btn span#topbarUserName { display: none; }
+  .topbar-user-btn { padding: 4px 8px 4px 5px; }
+  .global-topbar-inner > .brand > span { display: none; }
+  .gtb-inner { overflow-x: auto; max-width: calc(100vw - 32px); }
+  .modal-box { max-width: 100%; border-radius: 12px; }
+  .preview-side-panel .tpl-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .hist-actions { flex-wrap: wrap; }
+}
+
+/* ── MÓVIL (≤ 480px) ── */
+@media (max-width: 480px) {
+  .form-panel-inner {
+    padding: 16px 14px 36px;
+  }
+  .form-title {
+    font-size: 22px;
+  }
+  .preview-panel {
+    height: 60vh;
+    min-height: 350px;
+  }
+  .preview-side-panel .tpl-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .tab svg { margin-right: 0 !important; }
+  .tab { padding: 0 8px; font-size: 0; }
+  .tab svg { font-size: 14px; width: 16px; height: 16px; }
+  .channel-tab { font-size: 0; padding: 4px 6px; }
+  .channel-tab svg { width: 14px; height: 14px; }
+  .btn-submit, .btn-save-draft { height: 52px; font-size: 15px; }
+  .device-btn { width: 34px; height: 30px; }
+}
