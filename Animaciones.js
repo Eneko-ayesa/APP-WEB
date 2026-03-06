@@ -3,13 +3,13 @@
    Toolbar global — funciona en todos los campos
    ═══════════════════════════════════════════════ */
 
-const canalSelect   = document.getElementById("canal");
-const emailField    = document.getElementById("emailField");
+const canalSelect = document.getElementById("canal");
+const emailField = document.getElementById("emailField");
 const teamsRecipientField = document.getElementById("teamsRecipientField");
-const editor        = document.getElementById("editor");
-const tarjetaForm   = document.getElementById("tarjetaForm");
+const editor = document.getElementById("editor");
+const tarjetaForm = document.getElementById("tarjetaForm");
 const globalToolbar = document.getElementById("globalToolbar");
-const gtbInner      = document.getElementById("gtbInner");
+const gtbInner = document.getElementById("gtbInner");
 
 // ── IMAGE SIZE STORE ──────────────────────────
 // maps block element → { width, headerHeight }
@@ -17,27 +17,27 @@ const imgSizes = new WeakMap();
 
 // ── SVG ICONS ─────────────────────────────────
 const I = {
-  bold:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6zm0 8h9a4 4 0 0 1 0 8H6z"/></svg>`,
-  italic:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
+  bold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6zm0 8h9a4 4 0 0 1 0 8H6z"/></svg>`,
+  italic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
   underline: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 12 0V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>`,
-  strike:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><path d="M16 6c-.5-1.5-2-2.5-4-2.5-2.8 0-4 1.5-4 3 0 1 .4 1.8 1.2 2.3M8 18c.6 1.2 2 2 4 2 3 0 4.5-1.5 4.5-3"/></svg>`,
-  ul:        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>`,
-  ol:        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1V3L3.5 4M3 14h2v.5H3.5v1H5V17H3M4 21l1-1.5H3" stroke-width="1.5"/></svg>`,
-  quote:     `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>`,
-  alignL:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>`,
-  alignC:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>`,
-  alignR:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>`,
-  link:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
-  emoji:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="3"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="3"/></svg>`,
-  undo:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
-  redo:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.95"/></svg>`,
-  colorA:    `<svg viewBox="0 0 24 24"><text x="4" y="18" font-size="15" font-weight="800" font-family="sans-serif" fill="currentColor">A</text></svg>`,
-  pen:       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
+  strike: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><path d="M16 6c-.5-1.5-2-2.5-4-2.5-2.8 0-4 1.5-4 3 0 1 .4 1.8 1.2 2.3M8 18c.6 1.2 2 2 4 2 3 0 4.5-1.5 4.5-3"/></svg>`,
+  ul: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  ol: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1V3L3.5 4M3 14h2v.5H3.5v1H5V17H3M4 21l1-1.5H3" stroke-width="1.5"/></svg>`,
+  quote: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>`,
+  alignL: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>`,
+  alignC: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>`,
+  alignR: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>`,
+  link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  emoji: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="3"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="3"/></svg>`,
+  undo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
+  redo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.95"/></svg>`,
+  colorA: `<svg viewBox="0 0 24 24"><text x="4" y="18" font-size="15" font-weight="800" font-family="sans-serif" fill="currentColor">A</text></svg>`,
+  pen: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
 };
 
-const EMOJIS = ["😊","😂","🔥","✨","👍","❤️","🚀","🎉","💡","⚠️","✅","❌",
-  "📢","📌","📎","🔗","💬","🗓️","📊","📈","🎯","🏆","💪","👏",
-  "🌟","💎","⚡","🔒","📧","📱","💻","🛠️","⚙️","📝","🖼️","🔔"];
+const EMOJIS = ["😊", "😂", "🔥", "✨", "👍", "❤️", "🚀", "🎉", "💡", "⚠️", "✅", "❌",
+  "📢", "📌", "📎", "🔗", "💬", "🗓️", "📊", "📈", "🎯", "🏆", "💪", "👏",
+  "🌟", "💎", "⚡", "🔒", "📧", "📱", "💻", "🛠️", "⚙️", "📝", "🖼️", "🔔"];
 
 // ═══════════════════════════════════════════════
 // CONVERT HEADER INPUTS → CONTENTEDITABLE
@@ -50,7 +50,7 @@ function convertirInputAEditable(inputEl, claseExtra = "") {
   div.dataset.name = inputEl.name || inputEl.id || "";
   div.id = inputEl.id;
   div.className = inputEl.className + " rich-field " + claseExtra;
-  div.setAttribute("spellcheck","true");
+  div.setAttribute("spellcheck", "true");
   // copy inline styles / data attrs if any
   inputEl.parentNode.replaceChild(div, inputEl);
   registrarCampoEditable(div);
@@ -60,7 +60,7 @@ function convertirInputAEditable(inputEl, claseExtra = "") {
 // ── CONVERT HEADER FIELDS ON LOAD ─────────────
 // We wait for DOM then replace them
 function initHeaderFields() {
-  ["titulo","subtitulo"].forEach(id => {
+  ["titulo", "subtitulo"].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.tagName === "INPUT") convertirInputAEditable(el);
   });
@@ -171,7 +171,7 @@ floatTb.innerHTML = `
 document.body.appendChild(floatTb);
 
 let activeEditor = null;
-let savedRange   = null;
+let savedRange = null;
 
 // ═══════════════════════════════════════════════
 // REGISTER ANY CONTENTEDITABLE AS EDITABLE FIELD
@@ -197,8 +197,8 @@ function registrarCampoEditable(area) {
 
   area.addEventListener("keydown", e => {
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === "b") { e.preventDefault(); document.execCommand("bold");      updateActiveStates(); }
-      if (e.key === "i") { e.preventDefault(); document.execCommand("italic");    updateActiveStates(); }
+      if (e.key === "b") { e.preventDefault(); document.execCommand("bold"); updateActiveStates(); }
+      if (e.key === "i") { e.preventDefault(); document.execCommand("italic"); updateActiveStates(); }
       if (e.key === "u") { e.preventDefault(); document.execCommand("underline"); updateActiveStates(); }
       if (e.key === "k") { e.preventDefault(); openLinkDialog(); }
     }
@@ -206,9 +206,9 @@ function registrarCampoEditable(area) {
     if (e.key === "Enter" && area.dataset.singleline) e.preventDefault();
   });
 
-  area.addEventListener("keyup",   updateActiveStates);
+  area.addEventListener("keyup", updateActiveStates);
   area.addEventListener("mouseup", updateActiveStates);
-  area.addEventListener("input",   renderPreview);
+  area.addEventListener("input", renderPreview);
 }
 
 // ═══════════════════════════════════════════════
@@ -217,7 +217,7 @@ function registrarCampoEditable(area) {
 
 // Prevent losing selection on toolbar click
 gtbInner.addEventListener("mousedown", e => {
-  if (!["INPUT","SELECT"].includes(e.target.tagName)) e.preventDefault();
+  if (!["INPUT", "SELECT"].includes(e.target.tagName)) e.preventDefault();
 });
 
 // execCommand buttons
@@ -245,17 +245,17 @@ function applySize(s) {
       const span = document.createElement("span");
       span.style.fontSize = s + "px";
       sel.getRangeAt(0).surroundContents(span);
-    } catch(e) {}
+    } catch (e) { }
   }
   renderPreview();
 }
-gtbInner.querySelector(".gtb-fs-up").addEventListener("click",   () => { if(activeEditor) activeEditor.focus(); applySize(+sizeInput.value + 2); });
-gtbInner.querySelector(".gtb-fs-down").addEventListener("click", () => { if(activeEditor) activeEditor.focus(); applySize(+sizeInput.value - 2); });
-sizeInput.addEventListener("change", () => { if(activeEditor) activeEditor.focus(); applySize(+sizeInput.value); });
+gtbInner.querySelector(".gtb-fs-up").addEventListener("click", () => { if (activeEditor) activeEditor.focus(); applySize(+sizeInput.value + 2); });
+gtbInner.querySelector(".gtb-fs-down").addEventListener("click", () => { if (activeEditor) activeEditor.focus(); applySize(+sizeInput.value - 2); });
+sizeInput.addEventListener("change", () => { if (activeEditor) activeEditor.focus(); applySize(+sizeInput.value); });
 
 // text color
 const tcInput = gtbInner.querySelector(".gtb-text-color");
-const tcDot   = gtbInner.querySelector(".gtb-text-cdot");
+const tcDot = gtbInner.querySelector(".gtb-text-cdot");
 tcInput.addEventListener("input", function () {
   tcDot.style.background = this.value;
   if (activeEditor) { activeEditor.focus(); document.execCommand("foreColor", false, this.value); renderPreview(); }
@@ -263,7 +263,7 @@ tcInput.addEventListener("input", function () {
 
 // highlight
 const hlInput = gtbInner.querySelector(".gtb-hl-color");
-const hlDot   = gtbInner.querySelector(".gtb-hl-cdot");
+const hlDot = gtbInner.querySelector(".gtb-hl-cdot");
 hlInput.addEventListener("input", function () {
   hlDot.style.background = this.value;
   if (activeEditor) { activeEditor.focus(); document.execCommand("hiliteColor", false, this.value); renderPreview(); }
@@ -317,7 +317,7 @@ gtbInner.querySelectorAll(".palette-swatch").forEach(swatch => {
       document.execCommand("foreColor", false, swatch.dataset.color);
       // update text color dot to show selected color
       tcDot.style.background = swatch.dataset.color;
-      tcInput.value = swatch.dataset.color.replace('#','') < 'aaaaaa' ? swatch.dataset.color : swatch.dataset.color;
+      tcInput.value = swatch.dataset.color.replace('#', '') < 'aaaaaa' ? swatch.dataset.color : swatch.dataset.color;
       renderPreview();
     }
   });
@@ -327,7 +327,7 @@ gtbInner.querySelectorAll(".palette-swatch").forEach(swatch => {
 document.getElementById("globalLinkOk").addEventListener("click", confirmLink);
 document.getElementById("globalLinkCancel").addEventListener("click", () => linkDialog.classList.remove("open"));
 document.getElementById("globalLinkInput").addEventListener("keydown", e => {
-  if (e.key === "Enter")  confirmLink();
+  if (e.key === "Enter") confirmLink();
   if (e.key === "Escape") linkDialog.classList.remove("open");
 });
 function openLinkDialog() {
@@ -356,8 +356,8 @@ floatTb.querySelectorAll(".btb-btn[data-cmd]").forEach(btn => {
   });
 });
 
-document.addEventListener("mouseup",  () => setTimeout(checkFloatShow, 15));
-document.addEventListener("keyup",    () => setTimeout(checkFloatShow, 15));
+document.addEventListener("mouseup", () => setTimeout(checkFloatShow, 15));
+document.addEventListener("keyup", () => setTimeout(checkFloatShow, 15));
 function checkFloatShow() {
   const sel = window.getSelection();
   if (!sel || sel.isCollapsed || !activeEditor || !activeEditor.contains(sel.anchorNode)) {
@@ -367,18 +367,18 @@ function checkFloatShow() {
   floatTb.classList.add("visible");
   const tbW = floatTb.offsetWidth || 200, tbH = floatTb.offsetHeight || 36;
   let left = rect.left + rect.width / 2 - tbW / 2;
-  let top  = rect.top  - tbH - 8 + window.scrollY;
+  let top = rect.top - tbH - 8 + window.scrollY;
   left = Math.max(8, Math.min(left, window.innerWidth - tbW - 8));
   if (top < window.scrollY + 8) top = rect.bottom + 8 + window.scrollY;
   floatTb.style.left = left + "px";
-  floatTb.style.top  = top  + "px";
+  floatTb.style.top = top + "px";
 }
 document.addEventListener("mousedown", e => {
   if (!floatTb.contains(e.target)) floatTb.classList.remove("visible");
 });
 
 function updateActiveStates() {
-  ["bold","italic","underline","strikeThrough"].forEach(cmd => {
+  ["bold", "italic", "underline", "strikeThrough"].forEach(cmd => {
     const on = document.queryCommandState(cmd);
     document.querySelectorAll(`[data-cmd="${cmd}"]`).forEach(b => b.classList.toggle("active", on));
   });
@@ -489,17 +489,17 @@ function getFieldValue(id) {
 }
 
 function renderPreview() {
-  const titulo    = getFieldValue("titulo");
+  const titulo = getFieldValue("titulo");
   const subtitulo = getFieldValue("subtitulo");
   const imagenUrl = getFieldValue("imagen").text;
-  const emails    = getFieldValue("emails").text;
+  const emails = getFieldValue("emails").text;
   const teamsRecipient = document.getElementById("teamsRecipient")?.value?.trim() || "";
-  const canal     = canalSelect.value;
+  const canal = canalSelect.value;
 
   const blocks = [];
   editor.querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
+    const url = block.querySelector("input[type='url']");
     if (rich && rich.dataset.singleline) {
       blocks.push({ tipo: "titulo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (rich) {
@@ -511,7 +511,7 @@ function renderPreview() {
   });
 
   const cardHTML = buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal });
-  ["previewCard","previewCardOutlook"].forEach(id => {
+  ["previewCard", "previewCardOutlook"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.innerHTML = cardHTML;
@@ -553,7 +553,7 @@ function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
     : titulo.text ? `<div class="card-header-img-placeholder">${titulo.html || esc(titulo.text)}</div>` : "";
 
   html += `<div class="card-body">`;
-  if (titulo.html)    html += `<div class="card-title">${titulo.html}</div>`;
+  if (titulo.html) html += `<div class="card-title">${titulo.html}</div>`;
   if (subtitulo.html) html += `<div class="card-subtitle">${subtitulo.html}</div>`;
 
   blocks.forEach(b => {
@@ -567,7 +567,7 @@ function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
   });
 
   if (canal) {
-    const cls   = canal === "teams" ? "badge-teams" : "badge-outlook";
+    const cls = canal === "teams" ? "badge-teams" : "badge-outlook";
     const label = canal === "teams" ? "📤 Microsoft Teams" : "📧 Outlook";
     html += `<span class="card-channel-badge ${cls}">${label}</span>`;
   }
@@ -582,29 +582,29 @@ function initResizableImages(cardEl, blocks) {
   // ── block images ──
   cardEl.querySelectorAll(".img-resize-wrap").forEach((wrap, i) => {
     const handle = wrap.querySelector(".resize-handle");
-    const label  = wrap.querySelector(".resize-label");
+    const label = wrap.querySelector(".resize-label");
     if (!handle) return;
 
     handle.addEventListener("mousedown", e => {
       e.preventDefault(); e.stopPropagation();
       wrap.classList.add("resizing");
-      const startX   = e.clientX;
-      const startW   = wrap.offsetWidth;
-      const blockEl  = blocks[i]?.blockEl;
+      const startX = e.clientX;
+      const startW = wrap.offsetWidth;
+      const blockEl = blocks[i]?.blockEl;
 
       function onMove(ev) {
         const newW = Math.max(60, Math.min(startW + (ev.clientX - startX), wrap.parentElement.offsetWidth));
         wrap.style.width = newW + "px";
         if (label) label.textContent = Math.round(newW) + "px";
-        if (blockEl) imgSizes.set(blockEl, { ...(imgSizes.get(blockEl)||{}), width: Math.round(newW) });
+        if (blockEl) imgSizes.set(blockEl, { ...(imgSizes.get(blockEl) || {}), width: Math.round(newW) });
       }
       function onUp() {
         wrap.classList.remove("resizing");
         document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup",   onUp);
+        document.removeEventListener("mouseup", onUp);
       }
       document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup",   onUp);
+      document.addEventListener("mouseup", onUp);
     });
   });
 
@@ -617,12 +617,12 @@ function initResizableImages(cardEl, blocks) {
         e.preventDefault(); e.stopPropagation();
         // dragging DOWN = bigger, UP = smaller
         // we scale the img element's width as % of parent
-        const startY  = e.clientY;
+        const startY = e.clientY;
         const parentW = headerWrap.parentElement?.offsetWidth || headerWrap.offsetWidth || 400;
-        const startW  = parseFloat(imgSizes.get("header") || 100); // % of parent
+        const startW = parseFloat(imgSizes.get("header") || 100); // % of parent
 
         function onMove(ev) {
-          const delta  = (ev.clientY - startY);          // px dragged
+          const delta = (ev.clientY - startY);          // px dragged
           const pctDelta = (delta / parentW) * 100;      // convert to %
           const newPct = Math.max(20, Math.min(100, startW + pctDelta));
           headerWrap.style.width = newPct + "%";
@@ -630,17 +630,17 @@ function initResizableImages(cardEl, blocks) {
         }
         function onUp() {
           document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup",   onUp);
+          document.removeEventListener("mouseup", onUp);
         }
         document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup",   onUp);
+        document.addEventListener("mouseup", onUp);
       });
     }
   }
 }
 
 function esc(s) {
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // ── CANAL / TABS ──────────────────────────────
@@ -669,12 +669,12 @@ function syncTabToCanal(val) {
 }
 
 function showPreviewChrome(val) {
-  const teamsEl   = document.getElementById("teamsChrome");
+  const teamsEl = document.getElementById("teamsChrome");
   const outlookEl = document.getElementById("outlookChrome");
-  const screen    = document.getElementById("previewScreen");
+  const screen = document.getElementById("previewScreen");
   // Hide any side panels
   screen?.querySelectorAll(".preview-side-panel").forEach(p => p.remove());
-  if (teamsEl)   teamsEl.classList.toggle("hidden", val === "outlook");
+  if (teamsEl) teamsEl.classList.toggle("hidden", val === "outlook");
   if (outlookEl) outlookEl.classList.toggle("hidden", val !== "outlook");
   // Show channel subtabs
   document.getElementById("channelSubtabs")?.classList.remove("hidden");
@@ -776,7 +776,7 @@ function ensurePreviewPanel(type) {
 function renderHistPanelInline() {
   const panel = document.getElementById("histPanelInline");
   if (!panel) return;
-  const key   = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
+  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
   if (!items.length) {
     panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
@@ -827,7 +827,7 @@ function mostrarConfirmEnvio() {
   if (!titulo.text) { showToast("⚠️ Añade un título antes de enviar", "error"); return; }
 
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
-  const canalIcon  = canal === "teams" ? "📤" : "📧";
+  const canalIcon = canal === "teams" ? "📤" : "📧";
   const canalBadgeClass = canal === "teams" ? "badge-teams" : "badge-outlook";
 
   // Captura el HTML de la tarjeta actual
@@ -1095,8 +1095,8 @@ function mostrarModalOutput(isTeams, outputStr) {
       <div style="padding:12px 24px 8px;display:flex;align-items:center;gap:10px;flex-shrink:0">
         <p style="font-size:12px;color:#888;flex:1;font-style:italic">
           ${isTeams
-            ? "Envía este JSON a tu webhook de Teams (Power Automate, Bot Framework, etc.)"
-            : "Copia este HTML para usarlo en el cuerpo del correo de Outlook"}
+      ? "Envía este JSON a tu webhook de Teams (Power Automate, Bot Framework, etc.)"
+      : "Copia este HTML para usarlo en el cuerpo del correo de Outlook"}
         </p>
         <button id="copyOutputBtn" style="
           padding:8px 18px;border-radius:8px;border:1.5px solid #0000D0;
@@ -1111,7 +1111,7 @@ function mostrarModalOutput(isTeams, outputStr) {
           font-family:'Cascadia Code','DM Mono',monospace;font-size:12px;
           line-height:1.7;overflow:auto;white-space:pre-wrap;word-break:break-all;
           margin:0;border:1px solid #1e1e2e
-        ">${outputStr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+        ">${outputStr.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
       </div>
     </div>
   `;
@@ -1135,7 +1135,7 @@ function mostrarModalOutput(isTeams, outputStr) {
         btn.style.borderColor = "#0000D0";
         btn.style.color = "#0000D0";
       }, 2000);
-    } catch(e) {
+    } catch (e) {
       showToast("❌ No se pudo copiar al portapapeles", "error");
     }
   });
@@ -1145,7 +1145,7 @@ function mostrarModalOutput(isTeams, outputStr) {
 initHeaderFields();
 
 // imagen y emails siguen siendo inputs normales — registrar eventos
-["imagen","emails","teamsRecipient"].forEach(id => {
+["imagen", "emails", "teamsRecipient"].forEach(id => {
   document.getElementById(id)?.addEventListener("input", renderPreview);
 });
 
@@ -1260,10 +1260,10 @@ const PLANTILLAS = [
     cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
     imagen: ""
   },
-    {
+  {
     icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
     titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
-    cuerpo: "#UnaiPagame 😘",
+    cuerpo: "#UnaiPaganos 😘",
     imagen: ""
   },
   {
@@ -1353,36 +1353,36 @@ function crearBloqueConTexto(tipo, texto) {
 let currentHistTab = "borradores";
 
 function getStorage(key) {
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; }
 }
 function setStorage(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { }
 }
 
 function getCardState() {
   const tituloEl = document.getElementById("titulo");
-  const subEl    = document.getElementById("subtitulo");
-  const imgEl    = document.getElementById("imagen");
-  const canalEl  = document.getElementById("canal");
+  const subEl = document.getElementById("subtitulo");
+  const imgEl = document.getElementById("imagen");
+  const canalEl = document.getElementById("canal");
   const emailsEl = document.getElementById("emails");
-  const teamsEl  = document.getElementById("teamsRecipient");
+  const teamsEl = document.getElementById("teamsRecipient");
 
   const blocks = [];
   document.getElementById("editor").querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) blocks.push({ tipo: "titulo",   html: rich.innerHTML });
-    else if (rich)                         blocks.push({ tipo: "parrafo", html: rich.innerHTML });
-    else if (url)                          blocks.push({ tipo: "imagen",  value: url.value });
+    const url = block.querySelector("input[type='url']");
+    if (rich && rich.dataset.singleline) blocks.push({ tipo: "titulo", html: rich.innerHTML });
+    else if (rich) blocks.push({ tipo: "parrafo", html: rich.innerHTML });
+    else if (url) blocks.push({ tipo: "imagen", value: url.value });
   });
 
   return {
-    titulo:    tituloEl?.innerText?.trim() || "",
-    subtitulo: subEl?.innerText?.trim()    || "",
-    imagen:    imgEl?.value?.trim()        || "",
-    canal:     canalEl?.value              || "",
-    emails:    emailsEl?.value             || "",
-    teamsRecipient: teamsEl?.value         || "",
+    titulo: tituloEl?.innerText?.trim() || "",
+    subtitulo: subEl?.innerText?.trim() || "",
+    imagen: imgEl?.value?.trim() || "",
+    canal: canalEl?.value || "",
+    emails: emailsEl?.value || "",
+    teamsRecipient: teamsEl?.value || "",
     blocks
   };
 }
@@ -1405,18 +1405,18 @@ function guardarEnviada(state) {
 
 function cargarEstado(state) {
   const tituloEl = document.getElementById("titulo");
-  const subEl    = document.getElementById("subtitulo");
-  const imgEl    = document.getElementById("imagen");
-  const canalEl  = document.getElementById("canal");
+  const subEl = document.getElementById("subtitulo");
+  const imgEl = document.getElementById("imagen");
+  const canalEl = document.getElementById("canal");
   const emailsEl = document.getElementById("emails");
-  const teamsEl  = document.getElementById("teamsRecipient");
+  const teamsEl = document.getElementById("teamsRecipient");
 
   if (tituloEl) tituloEl.innerHTML = state.titulo || "";
-  if (subEl)    subEl.innerHTML    = state.subtitulo || "";
-  if (imgEl)    imgEl.value        = state.imagen || "";
-  if (canalEl)  { canalEl.value = state.canal || ""; canalEl.dispatchEvent(new Event("change")); }
-  if (emailsEl) emailsEl.value     = state.emails || "";
-  if (teamsEl)  teamsEl.value      = state.teamsRecipient || "";
+  if (subEl) subEl.innerHTML = state.subtitulo || "";
+  if (imgEl) imgEl.value = state.imagen || "";
+  if (canalEl) { canalEl.value = state.canal || ""; canalEl.dispatchEvent(new Event("change")); }
+  if (emailsEl) emailsEl.value = state.emails || "";
+  if (teamsEl) teamsEl.value = state.teamsRecipient || "";
 
   // Rebuild blocks
   const editorEl = document.getElementById("editor");
@@ -1445,7 +1445,7 @@ function cargarEstado(state) {
 
 function renderHistPanel() {
   const panel = document.getElementById("histPanel");
-  const key   = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
+  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
 
   if (!items.length) {
@@ -1469,7 +1469,7 @@ function renderHistPanel() {
 
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const idx    = +btn.dataset.i;
+      const idx = +btn.dataset.i;
       const items2 = getStorage(key);
       if (btn.dataset.action === "borrar") {
         items2.splice(idx, 1);
@@ -1496,7 +1496,7 @@ function cerrarModal(id) {
 
 // Wire close buttons
 document.getElementById("cerrarModalPlantillas")?.addEventListener("click", () => cerrarModal("modalPlantillas"));
-document.getElementById("cerrarModalHistorial")?.addEventListener("click",  () => cerrarModal("modalHistorial"));
+document.getElementById("cerrarModalHistorial")?.addEventListener("click", () => cerrarModal("modalHistorial"));
 
 // Close on overlay click
 document.querySelectorAll(".modal-overlay").forEach(overlay => {
@@ -1545,7 +1545,7 @@ function addCharCounter(fieldId, max, label) {
 
 // Wait until header fields are converted to contenteditable
 setTimeout(() => {
-  addCharCounter("titulo",    80, "Título");
+  addCharCounter("titulo", 80, "Título");
   addCharCounter("subtitulo", 140, "Subtítulo");
 }, 200);
 
@@ -1590,7 +1590,7 @@ function showToast(msg, type = "success") {
 
 // Override guardarBorrador to use toast instead of alert
 const _origGuardarBorrador = guardarBorrador;
-window.guardarBorrador = function() {
+window.guardarBorrador = function () {
   const state = getCardState();
   if (!state.titulo) { showToast("Añade un título antes de guardar", "error"); return; }
   const borradores = getStorage("yako_borradores");
@@ -1642,38 +1642,38 @@ const IMG_LIBRARY = [
   {
     cat: "Cabeceras",
     items: [
-      { id: "eq1", label: "Cabecera 1",    url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v1.png?csf=1&web=1&e=nd33p6" },
-      { id: "eq2", label: "Cabecera 2",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v2.jpg?csf=1&web=1&e=b9Yt8O" },
-      { id: "eq3", label: "Cabecera 3",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v3.jpg?csf=1&web=1&e=518p6f" },
+      { id: "eq1", label: "Cabecera 1", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v1.png?csf=1&web=1&e=nd33p6" },
+      { id: "eq2", label: "Cabecera 2", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v2.jpg?csf=1&web=1&e=b9Yt8O" },
+      { id: "eq3", label: "Cabecera 3", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v3.jpg?csf=1&web=1&e=518p6f" },
     ]
   },
   {
     cat: "Generecias",
     items: [
-      { id: "of1", label: "Generica 1",   url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_1.jpg?csf=1&web=1&e=BbXRcr" },
-      { id: "of2", label: "Generica 2",    url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_2.jpg?csf=1&web=1&e=gv57hg" },
-      { id: "of3", label: "Generica 3",   url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_3.jpg?csf=1&web=1&e=mLUcxY" },
+      { id: "of1", label: "Generica 1", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_1.jpg?csf=1&web=1&e=BbXRcr" },
+      { id: "of2", label: "Generica 2", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_2.jpg?csf=1&web=1&e=gv57hg" },
+      { id: "of3", label: "Generica 3", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_3.jpg?csf=1&web=1&e=mLUcxY" },
     ]
   },
   {
     cat: "Proyectos",
     items: [
-      { id: "te1", label: "Puente",       url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_1.jpg?csf=1&web=1&e=wzJ44M" },
-      { id: "te2", label: "Edificio",               url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_2.jpg?csf=1&web=1&e=5Aw8jg" },
-      { id: "te3", label: "Bernabeu",            url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_3.jpg?csf=1&web=1&e=IPLZ51" },
-      { id: "te4", label: "Tren",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_4.jpg?csf=1&web=1&e=kuGihb" },
-      { id: "te5", label: "Torre",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_5.jpg?csf=1&web=1&e=6l0RJL" },
+      { id: "te1", label: "Puente", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_1.jpg?csf=1&web=1&e=wzJ44M" },
+      { id: "te2", label: "Edificio", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_2.jpg?csf=1&web=1&e=5Aw8jg" },
+      { id: "te3", label: "Bernabeu", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_3.jpg?csf=1&web=1&e=IPLZ51" },
+      { id: "te4", label: "Tren", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_4.jpg?csf=1&web=1&e=kuGihb" },
+      { id: "te5", label: "Torre", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_5.jpg?csf=1&web=1&e=6l0RJL" },
     ]
   },
   {
     cat: "Fondos",
     items: [
-      { id: "ab1", label: "Gradiente azul",       url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams10.jpg?csf=1&web=1&e=gQ1rmF" },
-      { id: "ab2", label: "Geometría",            url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams11.jpg?csf=1&web=1&e=BVLL8u" },
-      { id: "ab3", label: "Minimalista",          url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams12.jpg?csf=1&web=1&e=Sh5f46" },
-      { id: "ab4", label: "Textura clara",        url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams2.jpg?csf=1&web=1&e=UgvRnc" },
-      { id: "ab5", label: "Textura clara",        url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams4.jpg?csf=1&web=1&e=Pog9j3" },
-      { id: "ab6", label: "Textura clara",        url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams5.jpg?csf=1&web=1&e=ZOrlMj" },
+      { id: "ab1", label: "Gradiente azul", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams10.jpg?csf=1&web=1&e=gQ1rmF" },
+      { id: "ab2", label: "Geometría", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams11.jpg?csf=1&web=1&e=BVLL8u" },
+      { id: "ab3", label: "Minimalista", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams12.jpg?csf=1&web=1&e=Sh5f46" },
+      { id: "ab4", label: "Textura clara", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams2.jpg?csf=1&web=1&e=UgvRnc" },
+      { id: "ab5", label: "Textura clara", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams4.jpg?csf=1&web=1&e=Pog9j3" },
+      { id: "ab6", label: "Textura clara", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams5.jpg?csf=1&web=1&e=ZOrlMj" },
     ]
   }
 ];
@@ -1683,10 +1683,10 @@ let uploadedImages = [];
 try {
   const saved = localStorage.getItem("yako_uploaded_imgs");
   if (saved) uploadedImages = JSON.parse(saved);
-} catch(e) {}
+} catch (e) { }
 
 function saveUploadedImages() {
-  try { localStorage.setItem("yako_uploaded_imgs", JSON.stringify(uploadedImages.slice(0, 20))); } catch(e) {}
+  try { localStorage.setItem("yako_uploaded_imgs", JSON.stringify(uploadedImages.slice(0, 20))); } catch (e) { }
 }
 
 // ── INSERT IMAGE DIALOG ────────────────────────
@@ -1852,7 +1852,7 @@ function renderImagenesPanel(panel) {
 
 function renderUploadedGrid(panel) {
   const section = panel.querySelector("#uploadedImgsSection");
-  const grid    = panel.querySelector("#uploadedImgsGrid");
+  const grid = panel.querySelector("#uploadedImgsGrid");
   if (!section || !grid) return;
 
   if (!uploadedImages.length) { section.style.display = "none"; return; }
@@ -1901,7 +1901,7 @@ function handleFiles(files, panel) {
 
 // ── PATCH ensurePreviewPanel for "imagenes" ────
 const _origEnsure = ensurePreviewPanel;
-ensurePreviewPanel = function(type) {
+ensurePreviewPanel = function (type) {
   if (type !== "imagenes") { _origEnsure(type); return; }
 
   const screen = document.getElementById("previewScreen");
@@ -1917,21 +1917,21 @@ ensurePreviewPanel = function(type) {
 // TOPBAR USER MENU
 // ═══════════════════════════════════════════════
 (function initUserMenu() {
-  const rawName     = sessionStorage.getItem("yako_user") || "Usuario";
+  const rawName = sessionStorage.getItem("yako_user") || "Usuario";
   const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-  const initials    = rawName.slice(0, 2).toUpperCase();
+  const initials = rawName.slice(0, 2).toUpperCase();
 
-  const nameEl    = document.getElementById("topbarUserName");
-  const avatarEl  = document.getElementById("topbarAvatar");
-  const dNameEl   = document.getElementById("topbarDName");
-  const dEmailEl  = document.getElementById("topbarDEmail");
-  const btn       = document.getElementById("topbarUserBtn");
-  const dropdown  = document.getElementById("topbarDropdown");
+  const nameEl = document.getElementById("topbarUserName");
+  const avatarEl = document.getElementById("topbarAvatar");
+  const dNameEl = document.getElementById("topbarDName");
+  const dEmailEl = document.getElementById("topbarDEmail");
+  const btn = document.getElementById("topbarUserBtn");
+  const dropdown = document.getElementById("topbarDropdown");
   const logoutBtn = document.getElementById("topbarLogout");
 
-  if (nameEl)   nameEl.textContent   = displayName;
+  if (nameEl) nameEl.textContent = displayName;
   if (avatarEl) avatarEl.textContent = initials;
-  if (dNameEl)  dNameEl.textContent  = displayName;
+  if (dNameEl) dNameEl.textContent = displayName;
   if (dEmailEl) dEmailEl.textContent = rawName.includes("@") ? rawName : rawName + "@ayesa.com";
 
   if (btn && dropdown) {
@@ -1957,3 +1957,64 @@ ensurePreviewPanel = function(type) {
     });
   }
 })();
+
+document.getElementById("btnLimpiar").addEventListener("click", () => {
+  const modal = document.createElement("div");
+  modal.style.cssText = `
+    position:fixed; inset:0; z-index:2000;
+    background:rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center;
+  `;
+
+  modal.innerHTML = `
+  <div style="
+  background:white; border-radius:16px; padding:32px 28px 24px;
+  max-width:340px; width:100%;
+  box-shadow: 0 32px 80px rgba(0,0,0,.2);
+  font-family:var(--font, sans-serif);
+  text-align:center;
+  ">
+  <div style="font-size:36px; margin-bottom:14px">🗑️</div>
+  <div style="font-size:17px; font-weight:700; color:#0f0f12; margin-bottom:10px">
+    ¿Limpiar formualario?
+  </div>
+  <p style="font-size:13px; color:#888; line-height:1.6; margin-bottom:24px">
+    Se borrarán todos los campos. Esta acción no se puede deshacer.
+  </p>
+  <div style="display:flex; gap:10px;">
+        <button id="limpiarCancel" style="
+          flex:1; height:42px; border-radius:9px;
+          border:1.5px solid #e0e0e0; background:white;
+          font-family:inherit; font-size:13px; font-weight:600;
+          color:#666; cursor:pointer;
+          ">Cancelar</button>
+        <button id="limpiarOK" style="
+          flex:1; height:42px; border-radius:9px; border:none;
+          background:#d13438; color:white;
+          font-family:inherit; font-size:13px; font-weight:700;
+          cursor:pointer;
+          ">Sí, limpiar</button>
+        </div>
+      </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("limpiarCancel").addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById("limpiarOK").addEventListener("click", () => {
+    modal.remove();
+
+    document.getElementById("titulo").textContent = "";
+    document.getElementById("subtitulo").textContent = "";
+    document.getElementById("canal").value = "";
+
+    const editor = document.getElementById("editor") = "";
+    editor.innerHTML = "";
+    crearBloque("parrafo");
+    document.getElementById("canal").value = "";
+
+    renderPreview();
+  });
+});
