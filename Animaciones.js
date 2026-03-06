@@ -542,14 +542,16 @@ function renderPreview() {
   }
 }
 
-function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
+function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal, forModal = false }) {
   const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text);
   if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Empieza a escribir en el panel izquierdo y tu tarjeta tomará forma aquí</p></div>`;
 
   const headerPct = imgSizes.get("header") || 100;
   const hStyle = `width:${headerPct}%;`;
   let html = imagenUrl
-    ? `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
+    ? forModal
+      ? `<img src="${esc(imagenUrl)}" style="width:100%;display:block;object-fit:cover;max-height:180px;" alt="">`
+      : `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
     : titulo.text ? `<div class="card-header-img-placeholder">${titulo.html || esc(titulo.text)}</div>` : "";
 
   html += `<div class="card-body">`;
@@ -820,7 +822,7 @@ function renderHistPanelInline() {
         mostrarPreviewPlantilla({
           titulo:    estado.titulo    || "",
           subtitulo: estado.subtitulo || "",
-          imagenUrl: estado.imagenUrl || "",
+          imagenUrl: estado.imagen || estado.imagenUrl || "",
           blocks:    estado.blocks    || [],
           canal:     estado.canal     || "",
           badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
@@ -1375,127 +1377,127 @@ const PLANTILLAS = [
     icon: "📢", name: "Anuncio", desc: "Comunicado general",
     titulo: "📢 Anuncio importante", subtitulo: "Por favor lee con atención",
     cuerpo: "Querido equipo, queremos informarte sobre una novedad importante que afecta a toda la organización. A partir del próximo lunes se implementará el nuevo proceso.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "✅", name: "Aprobación", desc: "Solicitud de visto bueno",
     titulo: "✅ Solicitud de aprobación", subtitulo: "Tu validación es necesaria",
     cuerpo: "Se requiere tu aprobación para continuar con el proceso. Por favor revisa la información adjunta y confirma tu decisión antes del viernes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📊", name: "Reporte", desc: "Resumen de resultados",
     titulo: "📊 Reporte semanal", subtitulo: "Resultados del equipo — Semana 12",
     cuerpo: "A continuación el resumen de los indicadores clave de esta semana. Los resultados muestran una tendencia positiva en los principales KPIs del departamento.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🎉", name: "Evento", desc: "Invitación o convocatoria",
     titulo: "🎉 Estás invitado", subtitulo: "No te lo pierdas",
     cuerpo: "Te invitamos a participar en nuestro próximo evento. Será una oportunidad única para conectar con el equipo y conocer los planes de la empresa para el próximo trimestre.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "⚠️", name: "Alerta", desc: "Aviso urgente",
     titulo: "⚠️ Aviso urgente", subtitulo: "Requiere atención inmediata",
     cuerpo: "Se ha detectado una situación que requiere tu atención inmediata. Por favor toma las medidas necesarias y confirma la recepción de este mensaje.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🏆", name: "Reconocimiento", desc: "Felicitación de logro",
     titulo: "🏆 ¡Felicitaciones!", subtitulo: "Has alcanzado un hito importante",
     cuerpo: "Nos complace reconocer tu excelente trabajo y dedicación. Tu contribución ha sido fundamental para el éxito del equipo. ¡Sigue así!",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📅", name: "Recordatorio", desc: "Aviso de fecha / tarea",
     titulo: "📅 Recordatorio", subtitulo: "No olvides esta fecha",
     cuerpo: "Te recordamos que el próximo miércoles vence el plazo para entregar los informes trimestrales. Asegúrate de tener todo listo con antelación.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🚀", name: "Lanzamiento", desc: "Nuevo producto o feature",
     titulo: "🚀 Nuevo lanzamiento", subtitulo: "Ya disponible para todos",
     cuerpo: "Con mucho orgullo anunciamos el lanzamiento de nuestra nueva funcionalidad. Está disponible desde hoy para todos los usuarios. ¡Esperamos que la disfrutes!",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1517976487492-5750f3195933?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📋", name: "Acta de reunión", desc: "Resumen y acuerdos",
     titulo: "📋 Acta de reunión", subtitulo: "Resumen de acuerdos y próximos pasos",
     cuerpo: "A continuación se detallan los principales acuerdos alcanzados durante la reunión de hoy. Por favor revisa los puntos asignados y confirma tu disponibilidad para los próximos pasos.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🎓", name: "Formación", desc: "Convocatoria formativa",
     titulo: "🎓 Nueva formación disponible", subtitulo: "Inscríbete antes de que se agoten las plazas",
     cuerpo: "Hemos habilitado un nuevo curso de formación para el equipo. La participación es voluntaria pero muy recomendada. Las plazas son limitadas, así que inscríbete cuanto antes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "💡", name: "Propuesta", desc: "Idea o iniciativa nueva",
     titulo: "💡 Nueva propuesta", subtitulo: "Tu opinión nos importa",
     cuerpo: "Queremos compartir contigo una nueva propuesta que estamos valorando. Nos gustaría conocer tu opinión antes de tomar una decisión final. Puedes enviarnos tu feedback antes del viernes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🔧", name: "Mantenimiento", desc: "Aviso de interrupción",
     titulo: "🔧 Mantenimiento programado", subtitulo: "Interrupción del servicio",
     cuerpo: "Te informamos de que el próximo domingo realizaremos tareas de mantenimiento en los sistemas. El servicio estará interrumpido entre las 2:00 y las 6:00 h. Disculpa las molestias.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1581092921461-39b9d08e47ce?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🤝", name: "Bienvenida", desc: "Incorporación al equipo",
     titulo: "🤝 ¡Bienvenido/a al equipo!", subtitulo: "Nos alegra tenerte con nosotros",
     cuerpo: "Es un placer darte la bienvenida a nuestra organización. En los próximos días recibirás toda la información necesaria para comenzar. No dudes en preguntar cualquier cosa al equipo.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📈", name: "Resultados", desc: "Informe de desempeño",
     titulo: "📈 Resultados del trimestre", subtitulo: "Balance y objetivos alcanzados",
     cuerpo: "Cerramos el trimestre con resultados muy positivos. Hemos superado los objetivos marcados en las principales áreas de negocio. Gracias a todo el equipo por el esfuerzo y dedicación.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🗳️", name: "Encuesta", desc: "Solicitud de feedback",
     titulo: "🗳️ Tu opinión importa", subtitulo: "Encuesta interna — 5 minutos",
     cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
     titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
     cuerpo: "#UnaiPaganos 😘",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
     cuerpo: "Como parte de nuestro compromiso medioambiental, lanzamos una nueva iniciativa para reducir nuestra huella de carbono. Te invitamos a participar y a compartir tus ideas con el equipo.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🔒", name: "Seguridad", desc: "Aviso de ciberseguridad",
     titulo: "🔒 Aviso de seguridad", subtitulo: "Acción requerida por tu parte",
     cuerpo: "Hemos detectado actividad inusual en algunos accesos. Te pedimos que actualices tu contraseña y actives la verificación en dos pasos antes del próximo lunes. Gracias por tu colaboración.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "💰", name: "Presupuesto", desc: "Aprobación de gastos",
     titulo: "💰 Revisión presupuestaria", subtitulo: "Cierre del ejercicio — acción necesaria",
     cuerpo: "Nos acercamos al cierre del ejercicio y necesitamos que revises y valides los presupuestos pendientes de tu área. Por favor envía tu confirmación antes del día 25 del mes en curso.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🏅", name: "Reto mensual", desc: "Desafío del equipo",
     titulo: "🏅 Reto del mes", subtitulo: "¿Aceptas el desafío?",
     cuerpo: "Este mes os lanzamos un nuevo reto para el equipo. El objetivo es mejorar nuestros tiempos de respuesta al cliente en un 15%. El equipo ganador recibirá un reconocimiento especial.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📣", name: "Cambio org.", desc: "Reestructuración interna",
     titulo: "📣 Cambio organizativo", subtitulo: "Nueva estructura a partir del 1 de enero",
     cuerpo: "Queremos comunicarte un cambio en la estructura organizativa de nuestra área. A partir del próximo mes entrarán en vigor los nuevos organigramas. Recibirás más información en los próximos días.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&h=300&fit=crop&auto=format"
   },
 
 ];
@@ -2228,7 +2230,8 @@ function mostrarPreviewPlantilla({titulo, subtitulo, imagenUrl, blocks, canal, b
     subtitulo: {text: subtitulo, html: subtitulo},
     imagenUrl: imagenUrl || "",
     blocks: blocks || [],
-    canal: canal || ""
+    canal: canal || "",
+    forModal: true
   });
 
   const modal = document.createElement("div");
