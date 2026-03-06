@@ -542,14 +542,16 @@ function renderPreview() {
   }
 }
 
-function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
+function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal, forModal = false }) {
   const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text);
   if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Empieza a escribir en el panel izquierdo y tu tarjeta tomará forma aquí</p></div>`;
 
   const headerPct = imgSizes.get("header") || 100;
   const hStyle = `width:${headerPct}%;`;
   let html = imagenUrl
-    ? `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
+    ? forModal
+      ? `<img src="${esc(imagenUrl)}" style="width:100%;display:block;object-fit:cover;max-height:180px;" alt="">`
+      : `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
     : titulo.text ? `<div class="card-header-img-placeholder">${titulo.html || esc(titulo.text)}</div>` : "";
 
   html += `<div class="card-body">`;
@@ -742,11 +744,22 @@ function ensurePreviewPanel(type) {
       card.className = "tpl-card";
       card.innerHTML = `<span class="tpl-icon">${p.icon}</span><div class="tpl-name">${p.name}</div><div class="tpl-desc">${p.desc}</div>`;
       card.addEventListener("click", () => {
-        aplicarPlantilla(p);
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-        document.getElementById("channelSubtabs")?.classList.remove("hidden");
-        showPreviewChrome(activeChannel);
+        mostrarPreviewPlantilla({
+          titulo:    p.titulo,
+          subtitulo: p.subtitulo,
+          imagenUrl: p.imagen || "",
+          blocks:    [{ tipo: "parrafo", html: p.cuerpo, text: p.cuerpo }],
+          canal:     "",
+          badge:     p.icon + " " + p.name,
+          btnLabel:  "Usar plantilla",
+          onConfirm: () => {
+            aplicarPlantilla(p);
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+            document.getElementById("channelSubtabs")?.classList.remove("hidden");
+            showPreviewChrome(activeChannel);
+          }
+        });
       });
       grid.appendChild(card);
     });
@@ -804,11 +817,24 @@ function renderHistPanelInline() {
         setStorage(key, items2);
         renderHistPanelInline();
       } else {
-        cargarEstado(items2[idx].state);
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-        document.getElementById("channelSubtabs")?.classList.remove("hidden");
-        showPreviewChrome(activeChannel);
+        const estado = items2[idx].state;
+        const esBorrador = btn.dataset.action === "cargar";
+        mostrarPreviewPlantilla({
+          titulo:    estado.titulo    || "",
+          subtitulo: estado.subtitulo || "",
+          imagenUrl: estado.imagen || estado.imagenUrl || "",
+          blocks:    estado.blocks    || [],
+          canal:     estado.canal     || "",
+          badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
+          btnLabel:  esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
+          onConfirm: () => {
+            cargarEstado(estado);
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+            document.getElementById("channelSubtabs")?.classList.remove("hidden");
+            showPreviewChrome(activeChannel);
+          }
+        });
       }
     });
   });
@@ -921,21 +947,198 @@ function mostrarConfirmEnvio() {
 }
 
 function ejecutarEnvio() {
-  const state = getCardState();
-  if (state.titulo) guardarEnviada(state);
-
-  // Visual feedback on button
-  const btn = tarjetaForm.querySelector(".btn-submit");
-  if (btn) {
-    const orig = btn.innerHTML;
-    btn.style.background = "#107c10";
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Enviada!`;
-    setTimeout(() => {
-      btn.style.background = "";
-      btn.innerHTML = orig;
-    }, 2500);
+  try {
+    const state = getCardState();
+    if (state.titulo) {
+      guardarEnviada(state);
+      const histPanel = document.getElementById("histPanelInline");
+      if (histPanel) {
+        currentHistTab = "enviadas";
+        document.querySelectorAll(".hist-tab").forEach(t => {
+          t.classList.toggle("active", t.dataset.htab === "enviadas");
+        });
+        renderHistPanelInline();
+      }
+    }
+    mostrarEnvioExito(state);
+  } catch (err) {
+    mostrarEnvioError(err);
   }
-  showToast("✅ Tarjeta enviada correctamente");
+}
+
+function mostrarEnvioError(err) {
+  document.getElementById("envioErrorModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "envioErrorModal";
+  modal.style.cssText = [
+    "position:fixed", "inset:0", "z-index:3000",
+    "background:rgba(0,0,0,.55)",
+    "display:flex", "align-items:center", "justify-content:center",
+    "padding:24px", "animation:fadeInBg .2s ease"
+  ].join(";");
+
+  const errMsg = (err && err.message) ? err.message : "Error desconocido";
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:20px;max-width:420px;width:100%;' +
+    'box-shadow:0 40px 100px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);' +
+    'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
+    'overflow:hidden;text-align:center;">' +
+
+    // Red header
+    '<div style="background:linear-gradient(135deg,#b91c1c 0%,#ef4444 100%);padding:32px 24px 28px;">' +
+    '<div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);' +
+    'display:flex;align-items:center;justify-content:center;margin:0 auto 14px;' +
+    'border:2px solid rgba(255,255,255,.4);">' +
+    '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" ' +
+    'style="animation:checkPop .3s .15s cubic-bezier(.22,1,.36,1) both">' +
+    '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>' +
+    '<div style="color:white;font-size:20px;font-weight:700;">Error al enviar</div>' +
+    '<div style="color:rgba(255,255,255,.8);font-size:13px;margin-top:6px;">No se ha podido enviar la tarjeta</div>' +
+    '</div>' +
+
+    // Body
+    '<div style="padding:24px 28px 8px;">' +
+    '<div style="background:#fff5f5;border:1.5px solid #fecaca;border-radius:10px;' +
+    'padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;text-align:left;">' +
+    '<span style="font-size:20px;flex-shrink:0;">&#9888;&#65039;</span>' +
+    '<div>' +
+    '<div style="font-size:12px;color:#dc2626;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Detalle del error</div>' +
+    '<div style="font-size:13px;color:#7f1d1d;line-height:1.5;word-break:break-word;">' + errMsg + '</div>' +
+    '</div></div>' +
+    '<p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px;">' +
+    'Comprueba tu conexion e intentalo de nuevo. Si el problema persiste, contacta con el administrador.' +
+    '</p></div>' +
+
+    // Buttons
+    '<div style="padding:0 28px 28px;display:flex;gap:10px;">' +
+    '<button id="envioErrorClose" style="flex:1;height:46px;border-radius:12px;' +
+    'border:1.5px solid #e0e0e0;background:white;font-family:inherit;font-size:14px;' +
+    'font-weight:600;color:#666;cursor:pointer;">Cancelar</button>' +
+    '<button id="envioErrorRetry" style="flex:2;height:46px;border-radius:12px;border:none;' +
+    'background:#0000D0;color:white;font-family:inherit;font-size:14px;font-weight:700;' +
+    'cursor:pointer;box-shadow:0 4px 16px rgba(0,0,208,.3);' +
+    'display:flex;align-items:center;justify-content:center;gap:8px;">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">' +
+    '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>' +
+    'Reintentar</button>' +
+    '</div></div>';
+
+  document.body.appendChild(modal);
+
+  document.getElementById("envioErrorClose").addEventListener("click", () => modal.remove());
+
+  const retryBtn = document.getElementById("envioErrorRetry");
+  retryBtn.addEventListener("click", () => { modal.remove(); ejecutarEnvio(); });
+  retryBtn.addEventListener("mouseenter", () => { retryBtn.style.background = "#0000aa"; retryBtn.style.transform = "translateY(-1px)"; });
+  retryBtn.addEventListener("mouseleave", () => { retryBtn.style.background = "#0000D0"; retryBtn.style.transform = ""; });
+}
+
+function mostrarEnvioExito(state) {
+  document.getElementById("envioExitoModal")?.remove();
+
+  const canal      = state?.canal === "outlook" ? "Outlook" : "Microsoft Teams";
+  const canalIcon  = state?.canal === "outlook" ? "📧" : "📤";
+  const tituloCard = state?.titulo || "Tu tarjeta";
+
+  const modal = document.createElement("div");
+  modal.id = "envioExitoModal";
+  modal.style.cssText = `
+    position:fixed; inset:0; z-index:3000;
+    background:rgba(0,0,0,.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    animation: fadeInBg .2s ease;
+  `;
+
+  modal.innerHTML = `
+    <div style="
+      background:#fff; border-radius:20px;
+      max-width:420px; width:100%;
+      box-shadow:0 40px 100px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.06);
+      font-family:var(--sans,'Segoe UI',sans-serif);
+      animation:msDropIn .25s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
+      text-align:center;
+    ">
+      <!-- Cabecera verde -->
+      <div style="
+        background:linear-gradient(135deg,#0a7c15 0%,#12a01e 100%);
+        padding:32px 24px 28px;
+        position:relative;
+      ">
+        <!-- Icono check animado -->
+        <div style="
+          width:64px; height:64px; border-radius:50%;
+          background:rgba(255,255,255,.2);
+          display:flex; align-items:center; justify-content:center;
+          margin:0 auto 14px;
+          border:2px solid rgba(255,255,255,.4);
+        ">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            style="animation:checkPop .3s .15s cubic-bezier(.22,1,.36,1) both">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div style="color:white; font-size:20px; font-weight:700; letter-spacing:-.01em;">¡Tarjeta enviada!</div>
+        <div style="color:rgba(255,255,255,.8); font-size:13px; margin-top:6px;">${canalIcon} Enviada vía <strong>${canal}</strong></div>
+      </div>
+
+      <!-- Cuerpo -->
+      <div style="padding:24px 28px 8px;">
+        <div style="
+          background:#f4f4f4; border-radius:10px;
+          padding:14px 16px; margin-bottom:20px;
+          display:flex; align-items:center; gap:12px;
+          text-align:left;
+        ">
+          <span style="font-size:22px">✉️</span>
+          <div>
+            <div style="font-size:12px; color:#999; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px;">Tarjeta</div>
+            <div style="font-size:14px; font-weight:600; color:#1a1a2e;">${tituloCard}</div>
+          </div>
+        </div>
+        <p style="font-size:13px; color:#666; line-height:1.6; margin:0 0 20px;">
+          Tu tarjeta adaptativa se ha enviado correctamente. Puedes consultarla en el <strong>historial</strong> en cualquier momento.
+        </p>
+      </div>
+
+      <!-- Botón cerrar -->
+      <div style="padding:0 28px 28px;">
+        <button id="envioExitoClose" style="
+          width:100%; height:46px; border-radius:12px; border:none;
+          background:#0000D0; color:white;
+          font-family:inherit; font-size:15px; font-weight:700;
+          cursor:pointer;
+          box-shadow:0 4px 16px rgba(0,0,208,.3);
+          transition:background .15s, transform .1s;
+          display:flex; align-items:center; justify-content:center; gap:8px;
+        ">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Aceptar
+        </button>
+      </div>
+    </div>
+
+    <style>
+      @keyframes checkPop {
+        from { opacity:0; transform:scale(.5) rotate(-20deg); }
+        to   { opacity:1; transform:scale(1) rotate(0deg); }
+      }
+      @keyframes fadeInBg {
+        from { opacity:0; }
+        to   { opacity:1; }
+      }
+    </style>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = document.getElementById("envioExitoClose");
+  closeBtn.addEventListener("mouseenter", () => { closeBtn.style.background = "#0000aa"; closeBtn.style.transform = "translateY(-1px)"; });
+  closeBtn.addEventListener("mouseleave", () => { closeBtn.style.background = "#0000D0"; closeBtn.style.transform = ""; });
+  closeBtn.addEventListener("click", () => modal.remove());
 }
 
 function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
@@ -1174,127 +1377,127 @@ const PLANTILLAS = [
     icon: "📢", name: "Anuncio", desc: "Comunicado general",
     titulo: "📢 Anuncio importante", subtitulo: "Por favor lee con atención",
     cuerpo: "Querido equipo, queremos informarte sobre una novedad importante que afecta a toda la organización. A partir del próximo lunes se implementará el nuevo proceso.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "✅", name: "Aprobación", desc: "Solicitud de visto bueno",
     titulo: "✅ Solicitud de aprobación", subtitulo: "Tu validación es necesaria",
     cuerpo: "Se requiere tu aprobación para continuar con el proceso. Por favor revisa la información adjunta y confirma tu decisión antes del viernes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📊", name: "Reporte", desc: "Resumen de resultados",
     titulo: "📊 Reporte semanal", subtitulo: "Resultados del equipo — Semana 12",
     cuerpo: "A continuación el resumen de los indicadores clave de esta semana. Los resultados muestran una tendencia positiva en los principales KPIs del departamento.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🎉", name: "Evento", desc: "Invitación o convocatoria",
     titulo: "🎉 Estás invitado", subtitulo: "No te lo pierdas",
     cuerpo: "Te invitamos a participar en nuestro próximo evento. Será una oportunidad única para conectar con el equipo y conocer los planes de la empresa para el próximo trimestre.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "⚠️", name: "Alerta", desc: "Aviso urgente",
     titulo: "⚠️ Aviso urgente", subtitulo: "Requiere atención inmediata",
     cuerpo: "Se ha detectado una situación que requiere tu atención inmediata. Por favor toma las medidas necesarias y confirma la recepción de este mensaje.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🏆", name: "Reconocimiento", desc: "Felicitación de logro",
     titulo: "🏆 ¡Felicitaciones!", subtitulo: "Has alcanzado un hito importante",
     cuerpo: "Nos complace reconocer tu excelente trabajo y dedicación. Tu contribución ha sido fundamental para el éxito del equipo. ¡Sigue así!",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📅", name: "Recordatorio", desc: "Aviso de fecha / tarea",
     titulo: "📅 Recordatorio", subtitulo: "No olvides esta fecha",
     cuerpo: "Te recordamos que el próximo miércoles vence el plazo para entregar los informes trimestrales. Asegúrate de tener todo listo con antelación.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🚀", name: "Lanzamiento", desc: "Nuevo producto o feature",
     titulo: "🚀 Nuevo lanzamiento", subtitulo: "Ya disponible para todos",
     cuerpo: "Con mucho orgullo anunciamos el lanzamiento de nuestra nueva funcionalidad. Está disponible desde hoy para todos los usuarios. ¡Esperamos que la disfrutes!",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1517976487492-5750f3195933?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📋", name: "Acta de reunión", desc: "Resumen y acuerdos",
     titulo: "📋 Acta de reunión", subtitulo: "Resumen de acuerdos y próximos pasos",
     cuerpo: "A continuación se detallan los principales acuerdos alcanzados durante la reunión de hoy. Por favor revisa los puntos asignados y confirma tu disponibilidad para los próximos pasos.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🎓", name: "Formación", desc: "Convocatoria formativa",
     titulo: "🎓 Nueva formación disponible", subtitulo: "Inscríbete antes de que se agoten las plazas",
     cuerpo: "Hemos habilitado un nuevo curso de formación para el equipo. La participación es voluntaria pero muy recomendada. Las plazas son limitadas, así que inscríbete cuanto antes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "💡", name: "Propuesta", desc: "Idea o iniciativa nueva",
     titulo: "💡 Nueva propuesta", subtitulo: "Tu opinión nos importa",
     cuerpo: "Queremos compartir contigo una nueva propuesta que estamos valorando. Nos gustaría conocer tu opinión antes de tomar una decisión final. Puedes enviarnos tu feedback antes del viernes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🔧", name: "Mantenimiento", desc: "Aviso de interrupción",
     titulo: "🔧 Mantenimiento programado", subtitulo: "Interrupción del servicio",
     cuerpo: "Te informamos de que el próximo domingo realizaremos tareas de mantenimiento en los sistemas. El servicio estará interrumpido entre las 2:00 y las 6:00 h. Disculpa las molestias.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1581092921461-39b9d08e47ce?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🤝", name: "Bienvenida", desc: "Incorporación al equipo",
     titulo: "🤝 ¡Bienvenido/a al equipo!", subtitulo: "Nos alegra tenerte con nosotros",
     cuerpo: "Es un placer darte la bienvenida a nuestra organización. En los próximos días recibirás toda la información necesaria para comenzar. No dudes en preguntar cualquier cosa al equipo.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📈", name: "Resultados", desc: "Informe de desempeño",
     titulo: "📈 Resultados del trimestre", subtitulo: "Balance y objetivos alcanzados",
     cuerpo: "Cerramos el trimestre con resultados muy positivos. Hemos superado los objetivos marcados en las principales áreas de negocio. Gracias a todo el equipo por el esfuerzo y dedicación.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🗳️", name: "Encuesta", desc: "Solicitud de feedback",
     titulo: "🗳️ Tu opinión importa", subtitulo: "Encuesta interna — 5 minutos",
     cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
     titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
     cuerpo: "#UnaiPaganos 😘",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
     cuerpo: "Como parte de nuestro compromiso medioambiental, lanzamos una nueva iniciativa para reducir nuestra huella de carbono. Te invitamos a participar y a compartir tus ideas con el equipo.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🔒", name: "Seguridad", desc: "Aviso de ciberseguridad",
     titulo: "🔒 Aviso de seguridad", subtitulo: "Acción requerida por tu parte",
     cuerpo: "Hemos detectado actividad inusual en algunos accesos. Te pedimos que actualices tu contraseña y actives la verificación en dos pasos antes del próximo lunes. Gracias por tu colaboración.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "💰", name: "Presupuesto", desc: "Aprobación de gastos",
     titulo: "💰 Revisión presupuestaria", subtitulo: "Cierre del ejercicio — acción necesaria",
     cuerpo: "Nos acercamos al cierre del ejercicio y necesitamos que revises y valides los presupuestos pendientes de tu área. Por favor envía tu confirmación antes del día 25 del mes en curso.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🏅", name: "Reto mensual", desc: "Desafío del equipo",
     titulo: "🏅 Reto del mes", subtitulo: "¿Aceptas el desafío?",
     cuerpo: "Este mes os lanzamos un nuevo reto para el equipo. El objetivo es mejorar nuestros tiempos de respuesta al cliente en un 15%. El equipo ganador recibirá un reconocimiento especial.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📣", name: "Cambio org.", desc: "Reestructuración interna",
     titulo: "📣 Cambio organizativo", subtitulo: "Nueva estructura a partir del 1 de enero",
     cuerpo: "Queremos comunicarte un cambio en la estructura organizativa de nuestra área. A partir del próximo mes entrarán en vigor los nuevos organigramas. Recibirás más información en los próximos días.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&h=300&fit=crop&auto=format"
   },
 
 ];
@@ -2018,3 +2221,81 @@ document.getElementById("btnLimpiar").addEventListener("click", () => {
     renderPreview();
   });
 });
+
+function mostrarPreviewPlantilla({titulo, subtitulo, imagenUrl, blocks, canal, badge, btnLabel, onConfirm}) {
+  document.getElementById("popupPreviewModal")?.remove();
+
+  const previewHTML = buildCardHTML({
+    titulo: {text: titulo, html: titulo},
+    subtitulo: {text: subtitulo, html: subtitulo},
+    imagenUrl: imagenUrl || "",
+    blocks: blocks || [],
+    canal: canal || "",
+    forModal: true
+  });
+
+  const modal = document.createElement("div");
+  modal.id = "popupPreviewModal";
+  modal.style.cssText = `
+  position:fixed; inset:0; z-index:2000;
+  background:rgba(0,0,0,.5);
+  display:flex; align-items:center; justify-content:center;
+  padding: 24px;
+  `;
+
+  modal.innerHTML = `
+    <div style="
+      background:white; border-radius:16px;
+      max-width:500px; width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.22);
+      font-family:var(--font,sans-serif);
+      animation:msDropIn .2s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
+    ">
+      <div style="
+        padding:18px 22px 14px;
+        border-bottom:1px solid #f0f0f0;
+        display:flex; align-items:center; justify-content:space-between;
+      ">
+        <div style="font-size:14px; font-weight:700; color:#0f0f12">${badge || "Vista previa"}</div>
+        <button id="popupPreviewClose" style="
+          background:none; border:none; font-size:18px;
+          color:#bbb; cursor:pointer;
+        ">✕</button>
+      </div>
+
+      <div style="
+        margin:16px 20px;
+        border:1.5px solid #e8e8e8; border-radius:10px;
+        overflow:hidden; max-height:360px; overflow-y:auto;
+        background:#fafafa;
+      ">
+        <div style="pointer-events:none;">${previewHTML}</div>
+      </div>
+
+      <div style="padding:8px 20px 20px; display:flex; gap:10px;">
+        <button id="popupPreviewCancel" style="
+          flex:1; height:42px; border-radius:9px;
+          border:1.5px solid #e0e0e0; background:white;
+          font-family:inherit; font-size:13px; font-weight:600;
+          color:#666; cursor:pointer;
+        ">Cancelar</button>
+        <button id="popupPreviewOk" style="
+          flex:2; height:42px; border-radius:9px; border:none;
+          background:#0000D0; color:white;
+          font-family:inherit; font-size:14px; font-weight:700;
+          cursor:pointer;
+        ">${btnLabel || "Usar"}</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove();});
+  document.getElementById("popupPreviewClose").addEventListener("click", () => modal.remove());
+  document.getElementById("popupPreviewOk").addEventListener("click", () => {
+    modal.remove();
+    onConfirm();
+  }); 
+
+}

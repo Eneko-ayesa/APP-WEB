@@ -81,10 +81,11 @@ body {
   height: calc(100dvh - 48px);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  position: relative;
 }
 
 .form-panel-inner {
-  padding: 36px 48px 60px;
+  padding: 36px 48px 100px;
 }
 
 /* ── TOP NAV BAR (Fluent style) ── */
@@ -161,7 +162,7 @@ body {
 
 label {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-2);
   display: block;
 }
@@ -241,6 +242,7 @@ textarea::placeholder {
 .block:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(0, 0, 208, 0.08);
+  background: #ffffff;
 }
 
 .block label {
@@ -291,12 +293,13 @@ textarea::placeholder {
   font-size: 14px;
   line-height: 1;
   z-index: 10;
-  opacity: 0;
+  opacity: 0.4;
   transition: opacity 0.15s;
   box-shadow: 0 2px 6px rgba(0, 0, 208, 0.3);
 }
 .add-btn:hover {
   background: var(--ms-blue-hover);
+  opacity: 1;
 }
 .block:hover .add-btn {
   opacity: 1;
@@ -1402,6 +1405,15 @@ div.rich-field a {
   display: flex;
   gap: 10px;
   margin-top: 4px;
+  position: sticky;
+  bottom: 0;
+  background: var(--card-bg);
+  padding: 14px 48px 20px;
+  margin-left: -48px;
+  margin-right: -48px;
+  border-top: 1px solid var(--border);
+  z-index: 10;
+  backdrop-filter: blur(8px);
 }
 .btn-save-draft {
   display: flex;
@@ -3242,146 +3254,6 @@ input:not(:placeholder-shown):not(:focus) {
 
   .preview-side-panel .tpl-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
-
-/* ── MOBILE (≤ 768px): Layout en columna, tabs de navegación ── */
-@media (max-width: 768px) {
-  /* Body scrollable en móvil */
-  body {
-    overflow: auto;
-    height: auto;
-  }
-
-  /* Layout vertical */
-  .app-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-    height: auto;
-    margin-top: 48px;
-  }
-
-  /* Panel del formulario: altura auto */
-  .form-panel {
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--paper-rule);
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-
-  .form-panel-inner {
-    padding: 20px 18px 40px;
-  }
-
-  .form-title {
-    font-size: 24px;
-    margin-top: 14px;
-    margin-bottom: 24px;
-  }
-
-  /* Panel de preview: altura fija razonable */
-  .preview-panel {
-    height: 70vh;
-    min-height: 400px;
-  }
-
-  /* Preview header: scroll horizontal si hace falta */
-  .preview-header {
-    padding: 0 12px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-
-  .preview-tabs {
-    flex-shrink: 0;
-  }
-
-  .tab {
-    padding: 0 10px;
-    font-size: 12px;
-  }
-
-  .preview-header-right {
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  /* Ocultar texto en channel-tabs en móvil pequeño */
-  .channel-tab {
-    padding: 4px 8px;
-    font-size: 11px;
-  }
-
-  /* App chrome ocupa el 100% */
-  .app-chrome {
-    max-width: 100%;
-    max-height: none;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-  }
-
-  .preview-screen {
-    padding: 0 !important;
-    align-items: stretch;
-    overflow: hidden;
-  }
-
-  /* Teams sidebar más estrecha */
-  .teams-sidebar {
-    width: 36px !important;
-  }
-  .ts-icon {
-    width: 24px;
-    height: 24px;
-  }
-
-  /* Formulario actions en columna */
-  .form-actions-row {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .btn-save-draft {
-    width: 100%;
-    justify-content: center;
-  }
-
-  /* Dropdown de usuario */
-  .topbar-user-btn span#topbarUserName {
-    display: none;
-  }
-
-  .topbar-user-btn {
-    padding: 4px 8px 4px 5px;
-  }
-
-  /* Topbar brand: ocultar Card Builder en pantallas muy pequeñas */
-  .global-topbar-inner > .brand > span {
-    display: none;
-  }
-
-  /* Toolbar global: scroll horizontal */
-  .gtb-inner {
-    overflow-x: auto;
-    max-width: calc(100vw - 32px);
-  }
-
-  /* Modal full width */
-  .modal-box {
-    max-width: 100%;
-    border-radius: 12px;
-  }
-
-  /* Template grid: 2 columnas */
-  .preview-side-panel .tpl-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* Historial items: ocultar acciones secundarias */
-  .hist-actions {
-    flex-wrap: wrap;
   }
 }
 
