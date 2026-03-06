@@ -828,19 +828,11 @@ function mostrarConfirmEnvio() {
 
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
   const canalIcon  = canal === "teams" ? "📤" : "📧";
+  const canalBadgeClass = canal === "teams" ? "badge-teams" : "badge-outlook";
 
-  // Build card preview
-  const subtitulo = getFieldValue("subtitulo");
-  const imagenUrl = getFieldValue("imagen").text;
-  const blocks = [];
-  document.getElementById("editor").querySelectorAll(".block").forEach(block => {
-    const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) blocks.push({ tipo:"titulo",  html:rich.innerHTML, text:rich.innerText.trim() });
-    else if (rich)                        blocks.push({ tipo:"parrafo", html:rich.innerHTML, text:rich.innerText.trim() });
-    else if (url)                         blocks.push({ tipo:"imagen",  value:url.value.trim() });
-  });
-  const cardPreviewHTML = buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal });
+  // Captura el HTML de la tarjeta actual
+  const previewSrc = document.getElementById("previewCard") || document.getElementById("previewCardOutlook");
+  const previewHTML = previewSrc ? previewSrc.innerHTML : "";
 
   document.getElementById("confirmEnvioModal")?.remove();
 
@@ -855,64 +847,72 @@ function mostrarConfirmEnvio() {
 
   modal.innerHTML = `
     <div style="
-      background:white;border-radius:16px;overflow:hidden;
-      max-width:440px;width:100%;
-      box-shadow:0 32px 80px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);
+      background:white;border-radius:16px;
+      max-width:480px;width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.06);
       font-family:var(--font,sans-serif);
       animation:msDropIn .2s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
     ">
       <!-- Header -->
       <div style="
-        padding:18px 22px 14px;
+        padding:20px 24px 16px;
         border-bottom:1px solid #f0f0f0;
-        display:flex;align-items:center;gap:10px;
+        display:flex;align-items:center;gap:12px;
       ">
-        <span style="font-size:24px;line-height:1">${canalIcon}</span>
+        <span style="font-size:22px">${canalIcon}</span>
         <div>
           <div style="font-size:15px;font-weight:700;color:#0f0f12;letter-spacing:-.01em">¿Enviar la tarjeta?</div>
-          <div style="font-size:11px;color:#aaa;margin-top:2px">
-            Vía <strong style="color:#0000D0">${canalLabel}</strong> · Esta acción no se puede deshacer
-          </div>
+          <div style="font-size:12px;color:#999;margin-top:2px">Vía <strong style="color:#0000D0">${canalLabel}</strong></div>
         </div>
+        <button id="confirmEnvioClose" style="
+          margin-left:auto;background:none;border:none;
+          font-size:18px;color:#bbb;cursor:pointer;line-height:1;padding:4px;
+        ">✕</button>
       </div>
 
       <!-- Card preview -->
-      <div style="padding:14px 16px;background:#f5f4f0;border-bottom:1px solid #e8e8e8;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:8px;">
-          Vista previa
-        </div>
-        <div style="
-          background:white;border-radius:8px;overflow:hidden;
-          box-shadow:0 1px 4px rgba(0,0,0,.08);
-          font-family:'Segoe UI',sans-serif;
-          max-height:240px;overflow-y:auto;
-          font-size:13px;
-        ">
-          ${cardPreviewHTML}
+      <div style="
+        margin:16px 20px;
+        border:1.5px solid #e8e8e8;border-radius:10px;
+        overflow:hidden;max-height:340px;overflow-y:auto;
+        background:#fafafa;
+        scrollbar-width:thin;
+      ">
+        <div id="confirmPreviewCard" style="pointer-events:none;user-select:none;">
+          ${previewHTML}
         </div>
       </div>
 
-      <!-- Actions -->
-      <div style="padding:14px 18px;display:flex;gap:10px;">
+      <!-- Footer buttons -->
+      <div style="
+        padding:12px 20px 20px;
+        display:flex;gap:10px;
+      ">
         <button id="confirmEnvioCancel" style="
-          flex:1;height:40px;border-radius:8px;
+          flex:1;height:42px;border-radius:9px;
           border:1.5px solid #e0e0e0;background:white;
           font-family:inherit;font-size:13px;font-weight:600;
-          color:#666;cursor:pointer;
+          color:#666;cursor:pointer;transition:background .15s;
         ">Cancelar</button>
         <button id="confirmEnvioOk" style="
-          flex:2;height:40px;border-radius:8px;border:none;
+          flex:2;height:42px;border-radius:9px;border:none;
           background:#0000D0;color:white;
-          font-family:inherit;font-size:13px;font-weight:700;
-          cursor:pointer;
+          font-family:inherit;font-size:14px;font-weight:700;
+          cursor:pointer;transition:background .15s,box-shadow .15s;
           box-shadow:0 2px 10px rgba(0,0,208,.3);
-        ">${canalIcon} Sí, enviar</button>
+          display:flex;align-items:center;justify-content:center;gap:8px;
+        ">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Sí, enviar
+        </button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
   modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+  document.getElementById("confirmEnvioClose").addEventListener("click", () => modal.remove());
   document.getElementById("confirmEnvioCancel").addEventListener("click", () => modal.remove());
   document.getElementById("confirmEnvioOk").addEventListener("click", () => {
     modal.remove();
@@ -1217,7 +1217,86 @@ const PLANTILLAS = [
     titulo: "🚀 Nuevo lanzamiento", subtitulo: "Ya disponible para todos",
     cuerpo: "Con mucho orgullo anunciamos el lanzamiento de nuestra nueva funcionalidad. Está disponible desde hoy para todos los usuarios. ¡Esperamos que la disfrutes!",
     imagen: ""
-  }
+  },
+  {
+    icon: "📋", name: "Acta de reunión", desc: "Resumen y acuerdos",
+    titulo: "📋 Acta de reunión", subtitulo: "Resumen de acuerdos y próximos pasos",
+    cuerpo: "A continuación se detallan los principales acuerdos alcanzados durante la reunión de hoy. Por favor revisa los puntos asignados y confirma tu disponibilidad para los próximos pasos.",
+    imagen: ""
+  },
+  {
+    icon: "🎓", name: "Formación", desc: "Convocatoria formativa",
+    titulo: "🎓 Nueva formación disponible", subtitulo: "Inscríbete antes de que se agoten las plazas",
+    cuerpo: "Hemos habilitado un nuevo curso de formación para el equipo. La participación es voluntaria pero muy recomendada. Las plazas son limitadas, así que inscríbete cuanto antes.",
+    imagen: ""
+  },
+  {
+    icon: "💡", name: "Propuesta", desc: "Idea o iniciativa nueva",
+    titulo: "💡 Nueva propuesta", subtitulo: "Tu opinión nos importa",
+    cuerpo: "Queremos compartir contigo una nueva propuesta que estamos valorando. Nos gustaría conocer tu opinión antes de tomar una decisión final. Puedes enviarnos tu feedback antes del viernes.",
+    imagen: ""
+  },
+  {
+    icon: "🔧", name: "Mantenimiento", desc: "Aviso de interrupción",
+    titulo: "🔧 Mantenimiento programado", subtitulo: "Interrupción del servicio",
+    cuerpo: "Te informamos de que el próximo domingo realizaremos tareas de mantenimiento en los sistemas. El servicio estará interrumpido entre las 2:00 y las 6:00 h. Disculpa las molestias.",
+    imagen: ""
+  },
+  {
+    icon: "🤝", name: "Bienvenida", desc: "Incorporación al equipo",
+    titulo: "🤝 ¡Bienvenido/a al equipo!", subtitulo: "Nos alegra tenerte con nosotros",
+    cuerpo: "Es un placer darte la bienvenida a nuestra organización. En los próximos días recibirás toda la información necesaria para comenzar. No dudes en preguntar cualquier cosa al equipo.",
+    imagen: ""
+  },
+  {
+    icon: "📈", name: "Resultados", desc: "Informe de desempeño",
+    titulo: "📈 Resultados del trimestre", subtitulo: "Balance y objetivos alcanzados",
+    cuerpo: "Cerramos el trimestre con resultados muy positivos. Hemos superado los objetivos marcados en las principales áreas de negocio. Gracias a todo el equipo por el esfuerzo y dedicación.",
+    imagen: ""
+  },
+  {
+    icon: "🗳️", name: "Encuesta", desc: "Solicitud de feedback",
+    titulo: "🗳️ Tu opinión importa", subtitulo: "Encuesta interna — 5 minutos",
+    cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
+    imagen: ""
+  },
+    {
+    icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
+    titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
+    cuerpo: "#UnaiPagame 😘",
+    imagen: ""
+  },
+  {
+    icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
+    titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
+    cuerpo: "Como parte de nuestro compromiso medioambiental, lanzamos una nueva iniciativa para reducir nuestra huella de carbono. Te invitamos a participar y a compartir tus ideas con el equipo.",
+    imagen: ""
+  },
+  {
+    icon: "🔒", name: "Seguridad", desc: "Aviso de ciberseguridad",
+    titulo: "🔒 Aviso de seguridad", subtitulo: "Acción requerida por tu parte",
+    cuerpo: "Hemos detectado actividad inusual en algunos accesos. Te pedimos que actualices tu contraseña y actives la verificación en dos pasos antes del próximo lunes. Gracias por tu colaboración.",
+    imagen: ""
+  },
+  {
+    icon: "💰", name: "Presupuesto", desc: "Aprobación de gastos",
+    titulo: "💰 Revisión presupuestaria", subtitulo: "Cierre del ejercicio — acción necesaria",
+    cuerpo: "Nos acercamos al cierre del ejercicio y necesitamos que revises y valides los presupuestos pendientes de tu área. Por favor envía tu confirmación antes del día 25 del mes en curso.",
+    imagen: ""
+  },
+  {
+    icon: "🏅", name: "Reto mensual", desc: "Desafío del equipo",
+    titulo: "🏅 Reto del mes", subtitulo: "¿Aceptas el desafío?",
+    cuerpo: "Este mes os lanzamos un nuevo reto para el equipo. El objetivo es mejorar nuestros tiempos de respuesta al cliente en un 15%. El equipo ganador recibirá un reconocimiento especial.",
+    imagen: ""
+  },
+  {
+    icon: "📣", name: "Cambio org.", desc: "Reestructuración interna",
+    titulo: "📣 Cambio organizativo", subtitulo: "Nueva estructura a partir del 1 de enero",
+    cuerpo: "Queremos comunicarte un cambio en la estructura organizativa de nuestra área. A partir del próximo mes entrarán en vigor los nuevos organigramas. Recibirás más información en los próximos días.",
+    imagen: ""
+  },
+
 ];
 
 // tplGrid is now rendered inline in ensurePreviewPanel("plantillas")
@@ -1404,204 +1483,6 @@ function renderHistPanel() {
 }
 
 // ═══════════════════════════════════════════════
-// FEATURE: GENERACIÓN CON IA
-// ═══════════════════════════════════════════════
-let iaSelectedLang = "es";
-
-document.querySelectorAll(".ia-lang-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".ia-lang-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    iaSelectedLang = btn.dataset.lang;
-  });
-});
-
-const LANG_NAMES = { es:"español", en:"English", fr:"français", de:"Deutsch", pt:"português" };
-
-document.getElementById("iaGenerateBtn").addEventListener("click", async () => {
-  const prompt  = document.getElementById("iaPrompt").value.trim();
-  if (!prompt) { alert("Escribe una descripción para generar la tarjeta."); return; }
-
-  const btn    = document.getElementById("iaGenerateBtn");
-  const status = document.getElementById("iaStatus");
-  btn.disabled = true;
-  document.getElementById("iaBtnText").textContent = "✨ Generando…";
-  status.textContent = "La IA está creando tu tarjeta…";
-  status.className = "ia-status";
-
-  const langName = LANG_NAMES[iaSelectedLang] || "español";
-
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: `Eres un asistente que crea tarjetas adaptativas para Microsoft Teams y Outlook.
-
-El usuario quiere: "${prompt}"
-
-Responde SOLO con un JSON válido (sin markdown, sin texto extra) con esta estructura exacta:
-{
-  "titulo": "Título corto y llamativo con emoji",
-  "subtitulo": "Subtítulo conciso",
-  "cuerpo": "Contenido del cuerpo en 2-3 frases. Tono profesional.",
-  "canal": "teams"
-}
-
-El idioma de salida debe ser: ${langName}
-El campo "canal" puede ser "teams" o "outlook" según el contexto.`
-        }]
-      })
-    });
-
-    const data = await res.json();
-    const text = data.content?.map(c => c.text || "").join("") || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
-
-    // Apply to form
-    const tituloEl = document.getElementById("titulo");
-    const subEl    = document.getElementById("subtitulo");
-    const canalEl  = document.getElementById("canal");
-    if (tituloEl) tituloEl.textContent = parsed.titulo || "";
-    if (subEl)    subEl.textContent    = parsed.subtitulo || "";
-    if (canalEl && parsed.canal) { canalEl.value = parsed.canal; canalEl.dispatchEvent(new Event("change")); }
-
-    // Set body block
-    const editorEl = document.getElementById("editor");
-    editorEl.innerHTML = "";
-    const block = crearBloqueConTexto("parrafo", parsed.cuerpo || "");
-    editorEl.appendChild(block);
-    renderPreview();
-
-    status.textContent = "✅ ¡Tarjeta generada! Puedes editarla libremente.";
-    status.classList.remove("error");
-    setTimeout(() => cerrarModal("modalIA"), 1500);
-  } catch(e) {
-    status.textContent = "❌ Error al generar. Revisa tu conexión e inténtalo de nuevo.";
-    status.classList.add("error");
-  } finally {
-    btn.disabled = false;
-    document.getElementById("iaBtnText").textContent = "✨ Generar tarjeta";
-  }
-});
-
-// ═══════════════════════════════════════════════
-// FEATURE: MULTI-IDIOMA
-// ═══════════════════════════════════════════════
-let langSelected = new Set(["es"]);
-
-document.querySelectorAll(".lang-sel-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const lang = btn.dataset.lang;
-    if (lang === "es") return; // always keep ES (source)
-    if (langSelected.has(lang)) {
-      langSelected.delete(lang);
-      btn.classList.remove("active");
-    } else {
-      langSelected.add(lang);
-      btn.classList.add("active");
-    }
-  });
-});
-
-document.getElementById("langTranslateBtn").addEventListener("click", async () => {
-  const state   = getCardState();
-  const tituloTxt  = state.titulo;
-  const subTxt     = state.subtitulo;
-  const cuerpoHtml = (state.blocks[0]?.html) || "";
-  const cuerpoTxt  = (state.blocks[0]?.html || "").replace(/<[^>]+>/g, "");
-
-  if (!tituloTxt && !cuerpoTxt) { alert("Rellena al menos el título antes de traducir."); return; }
-
-  const area       = document.getElementById("langContentArea");
-  const btn        = document.getElementById("langTranslateBtn");
-  btn.disabled     = true;
-  btn.textContent  = "🌍 Traduciendo…";
-  area.innerHTML   = '<div style="text-align:center;padding:30px;color:var(--ms-ink-3)">⏳ Generando traducciones…</div>';
-
-  // Always show ES source
-  const results = [{ lang: "es", flag: "🇪🇸", titulo: tituloTxt, subtitulo: subTxt, cuerpo: cuerpoTxt }];
-
-  const toTranslate = [...langSelected].filter(l => l !== "es");
-  const LANG_LABELS = { es:"Español", en:"English", fr:"Français", de:"Deutsch", pt:"Português" };
-  const FLAGS       = { es:"🇪🇸", en:"🇬🇧", fr:"🇫🇷", de:"🇩🇪", pt:"🇵🇹" };
-
-  for (const lang of toTranslate) {
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 600,
-          messages: [{
-            role: "user",
-            content: `Traduce al ${LANG_NAMES[lang]} el siguiente contenido de una tarjeta corporativa.
-Responde SOLO con JSON sin markdown:
-{
-  "titulo": "...",
-  "subtitulo": "...",
-  "cuerpo": "..."
-}
-
-Título: ${tituloTxt}
-Subtítulo: ${subTxt}
-Cuerpo: ${cuerpoTxt}`
-          }]
-        })
-      });
-      const data = await res.json();
-      const text = data.content?.map(c => c.text || "").join("") || "";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
-      results.push({ lang, flag: FLAGS[lang], titulo: parsed.titulo, subtitulo: parsed.subtitulo, cuerpo: parsed.cuerpo });
-    } catch(e) {
-      results.push({ lang, flag: FLAGS[lang], titulo: "Error", subtitulo: "", cuerpo: "No se pudo traducir." });
-    }
-  }
-
-  // Render results
-  area.innerHTML = results.map(r => `
-    <div class="lang-result-item" data-lang="${r.lang}">
-      <div class="lang-result-header">
-        <span>${r.flag} ${LANG_LABELS[r.lang] || r.lang}</span>
-        ${r.lang !== "es" ? `<button class="lang-copy-btn" data-lang="${r.lang}">📋 Usar esta versión</button>` : "<span style='font-size:10px;color:var(--ms-ink-3)'>Original</span>"}
-      </div>
-      <div class="lang-result-body">
-        <div class="lang-field-row"><label>Título</label><input type="text" value="${(r.titulo||"").replace(/"/g,"&quot;")}" data-field="titulo" data-lang="${r.lang}"></div>
-        <div class="lang-field-row"><label>Subtítulo</label><input type="text" value="${(r.subtitulo||"").replace(/"/g,"&quot;")}" data-field="subtitulo" data-lang="${r.lang}"></div>
-        <div class="lang-field-row"><label>Cuerpo</label><textarea rows="3" data-field="cuerpo" data-lang="${r.lang}">${r.cuerpo||""}</textarea></div>
-      </div>
-    </div>`).join("");
-
-  area.querySelectorAll(".lang-copy-btn").forEach(b => {
-    b.addEventListener("click", () => {
-      const lang = b.dataset.lang;
-      const item = area.querySelector(`.lang-result-item[data-lang="${lang}"]`);
-      const titulo    = item.querySelector("[data-field='titulo']").value;
-      const subtitulo = item.querySelector("[data-field='subtitulo']").value;
-      const cuerpo    = item.querySelector("[data-field='cuerpo']").value;
-      const tituloEl  = document.getElementById("titulo");
-      const subEl     = document.getElementById("subtitulo");
-      if (tituloEl) tituloEl.textContent = titulo;
-      if (subEl)    subEl.textContent    = subtitulo;
-      const editorEl = document.getElementById("editor");
-      editorEl.innerHTML = "";
-      editorEl.appendChild(crearBloqueConTexto("parrafo", cuerpo));
-      renderPreview();
-      cerrarModal("modalLang");
-    });
-  });
-
-  btn.disabled    = false;
-  btn.textContent = "🌍 Traducir seleccionados";
-});
-
-// ═══════════════════════════════════════════════
 // MODAL HELPERS
 // ═══════════════════════════════════════════════
 function abrirModal(id) {
@@ -1612,20 +1493,10 @@ function cerrarModal(id) {
 }
 
 // Wire open buttons (plantillas/historial are now inline in preview panel)
-document.getElementById("btnIA")?.addEventListener("click", () => {
-  document.getElementById("iaStatus").className = "ia-status hidden";
-  abrirModal("modalIA");
-});
-document.getElementById("btnLang")?.addEventListener("click", () => {
-  document.getElementById("langContentArea").innerHTML = "";
-  abrirModal("modalLang");
-});
 
 // Wire close buttons
 document.getElementById("cerrarModalPlantillas")?.addEventListener("click", () => cerrarModal("modalPlantillas"));
 document.getElementById("cerrarModalHistorial")?.addEventListener("click",  () => cerrarModal("modalHistorial"));
-document.getElementById("cerrarModalIA")?.addEventListener("click",         () => cerrarModal("modalIA"));
-document.getElementById("cerrarModalLang")?.addEventListener("click",       () => cerrarModal("modalLang"));
 
 // Close on overlay click
 document.querySelectorAll(".modal-overlay").forEach(overlay => {
@@ -1744,7 +1615,12 @@ const TIPS = [
   "Tu tarjeta aparecerá aquí en tiempo real",
   "Escribe un título para empezar",
   "Prueba una plantilla para comenzar rápido",
-  "Pulsa ✨ para generar con IA",
+  "Tu mensaje merece una gran presentación",
+  "Cada gran comunicado empieza con una idea",
+  "Convierte tu mensaje en algo memorable",
+  "Las mejores noticias merecen la mejor tarjeta",
+  "Un buen comunicado transforma la cultura del equipo",
+  "Prueba una plantilla para empezar rápido 👆"
 ];
 let tipIdx = 0;
 setInterval(() => {
@@ -1764,39 +1640,40 @@ if (phEl) phEl.style.transition = "opacity .3s";
 // ── CORPORATE IMAGE LIBRARY ───────────────────
 const IMG_LIBRARY = [
   {
-    cat: "Equipo",
+    cat: "Cabeceras",
     items: [
-      { id: "eq1", label: "Reunión de equipo",    url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80" },
-      { id: "eq2", label: "Colaboración",         url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&q=80" },
-      { id: "eq3", label: "Presentación",         url: "https://images.unsplash.com/photo-1560439514-4e9645039924?w=800&q=80" },
-      { id: "eq4", label: "Trabajo en equipo",    url: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80" },
+      { id: "eq1", label: "Cabecera 1",    url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v1.png?csf=1&web=1&e=nd33p6" },
+      { id: "eq2", label: "Cabecera 2",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v2.jpg?csf=1&web=1&e=b9Yt8O" },
+      { id: "eq3", label: "Cabecera 3",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v3.jpg?csf=1&web=1&e=518p6f" },
     ]
   },
   {
-    cat: "Oficina",
+    cat: "Generecias",
     items: [
-      { id: "of1", label: "Espacio de trabajo",   url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
-      { id: "of2", label: "Sala de reuniones",    url: "https://images.unsplash.com/photo-1497366754035-f200968a6e23?w=800&q=80" },
-      { id: "of3", label: "Escritorio moderno",   url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80" },
-      { id: "of4", label: "Zona colaborativa",    url: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80" },
+      { id: "of1", label: "Generica 1",   url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_1.jpg?csf=1&web=1&e=BbXRcr" },
+      { id: "of2", label: "Generica 2",    url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_2.jpg?csf=1&web=1&e=gv57hg" },
+      { id: "of3", label: "Generica 3",   url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_3.jpg?csf=1&web=1&e=mLUcxY" },
     ]
   },
   {
-    cat: "Tecnología",
+    cat: "Proyectos",
     items: [
-      { id: "te1", label: "Laptop y datos",       url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80" },
-      { id: "te2", label: "Código",               url: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&q=80" },
-      { id: "te3", label: "Dashboard",            url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" },
-      { id: "te4", label: "Conectividad",         url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80" },
+      { id: "te1", label: "Puente",       url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_1.jpg?csf=1&web=1&e=wzJ44M" },
+      { id: "te2", label: "Edificio",               url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_2.jpg?csf=1&web=1&e=5Aw8jg" },
+      { id: "te3", label: "Bernabeu",            url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_3.jpg?csf=1&web=1&e=IPLZ51" },
+      { id: "te4", label: "Tren",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_4.jpg?csf=1&web=1&e=kuGihb" },
+      { id: "te5", label: "Torre",         url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_5.jpg?csf=1&web=1&e=6l0RJL" },
     ]
   },
   {
-    cat: "Abstracto",
+    cat: "Fondos",
     items: [
-      { id: "ab1", label: "Gradiente azul",       url: "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=800&q=80" },
-      { id: "ab2", label: "Geometría",            url: "https://images.unsplash.com/photo-1550684376-efcbd6e3f031?w=800&q=80" },
-      { id: "ab3", label: "Minimalista",          url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80" },
-      { id: "ab4", label: "Textura clara",        url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80" },
+      { id: "ab1", label: "Gradiente azul",       url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams10.jpg?csf=1&web=1&e=gQ1rmF" },
+      { id: "ab2", label: "Geometría",            url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams11.jpg?csf=1&web=1&e=BVLL8u" },
+      { id: "ab3", label: "Minimalista",          url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams12.jpg?csf=1&web=1&e=Sh5f46" },
+      { id: "ab4", label: "Textura clara",        url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams2.jpg?csf=1&web=1&e=UgvRnc" },
+      { id: "ab5", label: "Textura clara",        url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams4.jpg?csf=1&web=1&e=Pog9j3" },
+      { id: "ab6", label: "Textura clara",        url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams5.jpg?csf=1&web=1&e=ZOrlMj" },
     ]
   }
 ];
@@ -2036,3 +1913,47 @@ ensurePreviewPanel = function(type) {
   screen.appendChild(panel);
   renderImagenesPanel(panel);
 };
+// ═══════════════════════════════════════════════
+// TOPBAR USER MENU
+// ═══════════════════════════════════════════════
+(function initUserMenu() {
+  const rawName     = sessionStorage.getItem("yako_user") || "Usuario";
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const initials    = rawName.slice(0, 2).toUpperCase();
+
+  const nameEl    = document.getElementById("topbarUserName");
+  const avatarEl  = document.getElementById("topbarAvatar");
+  const dNameEl   = document.getElementById("topbarDName");
+  const dEmailEl  = document.getElementById("topbarDEmail");
+  const btn       = document.getElementById("topbarUserBtn");
+  const dropdown  = document.getElementById("topbarDropdown");
+  const logoutBtn = document.getElementById("topbarLogout");
+
+  if (nameEl)   nameEl.textContent   = displayName;
+  if (avatarEl) avatarEl.textContent = initials;
+  if (dNameEl)  dNameEl.textContent  = displayName;
+  if (dEmailEl) dEmailEl.textContent = rawName.includes("@") ? rawName : rawName + "@ayesa.com";
+
+  if (btn && dropdown) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = dropdown.classList.toggle("open");
+      btn.classList.toggle("open", open);
+    });
+
+    document.addEventListener("click", () => {
+      dropdown.classList.remove("open");
+      btn.classList.remove("open");
+    });
+
+    dropdown.addEventListener("click", (e) => e.stopPropagation());
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.removeItem("yako_auth");
+      sessionStorage.removeItem("yako_user");
+      window.location.href = "login.html";
+    });
+  }
+})();

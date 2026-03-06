@@ -326,6 +326,7 @@
         // Replace condition below with real auth logic
         if (user && pass) {
           sessionStorage.setItem("yako_auth", "1");
+          sessionStorage.setItem("yako_user", user);
           window.location.href = "index.html";
         } else {
           err.textContent = "Usuario o contraseña incorrectos.";

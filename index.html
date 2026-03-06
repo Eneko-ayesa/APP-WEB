@@ -24,59 +24,6 @@
       }
     </script>
         
-    <!-- ══ MODAL: IA ════════════════════════════════════════ -->
-    <div class="modal-overlay hidden" id="modalIA">
-      <div class="modal-box">
-        <div class="modal-header">
-          <span class="modal-title">✨ Generar con IA</span>
-          <button class="modal-close" id="cerrarModalIA">✕</button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-desc">Describe en lenguaje natural lo que necesitas y la IA rellenará la tarjeta automáticamente.</p>
-          <textarea id="iaPrompt" class="ia-prompt-input" placeholder="Ej: Crea una tarjeta para anunciar el cierre de la oficina el viernes por mantenimiento. Tono formal." rows="4"></textarea>
-
-          <!-- Idioma -->
-          <div class="ia-lang-row">
-            <label class="ia-lang-label">Idioma de salida:</label>
-            <div class="ia-lang-btns" id="iaLangBtns">
-              <button class="ia-lang-btn active" data-lang="es">🇪🇸 ES</button>
-              <button class="ia-lang-btn" data-lang="en">🇬🇧 EN</button>
-              <button class="ia-lang-btn" data-lang="fr">🇫🇷 FR</button>
-              <button class="ia-lang-btn" data-lang="de">🇩🇪 DE</button>
-              <button class="ia-lang-btn" data-lang="pt">🇵🇹 PT</button>
-            </div>
-          </div>
-
-          <button class="ia-generate-btn" id="iaGenerateBtn">
-            <span id="iaBtnText">✨ Generar tarjeta</span>
-          </button>
-          <div class="ia-status hidden" id="iaStatus"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══ MODAL: MULTI-IDIOMA ══════════════════════════════ -->
-    <div class="modal-overlay hidden" id="modalLang">
-      <div class="modal-box modal-box--wide">
-        <div class="modal-header">
-          <span class="modal-title">🌍 Traducir tarjeta</span>
-          <button class="modal-close" id="cerrarModalLang">✕</button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-desc">Genera la tarjeta en otros idiomas. Puedes editarlas antes de enviar.</p>
-          <div class="lang-selector-row" id="langSelectorRow">
-            <button class="lang-sel-btn active" data-lang="es">🇪🇸 ES</button>
-            <button class="lang-sel-btn" data-lang="en">🇬🇧 EN</button>
-            <button class="lang-sel-btn" data-lang="fr">🇫🇷 FR</button>
-            <button class="lang-sel-btn" data-lang="de">🇩🇪 DE</button>
-            <button class="lang-sel-btn" data-lang="pt">🇵🇹 PT</button>
-          </div>
-          <div id="langContentArea"></div>
-          <button class="ia-generate-btn" id="langTranslateBtn">🌍 Traducir seleccionados</button>
-        </div>
-      </div>
-    </div>
-
     <!-- ══ GLOBAL TOP BAR ══════════════════════════════ -->
     <header class="global-topbar">
       <div class="global-topbar-inner">
@@ -88,6 +35,26 @@
           <span style="opacity:.3;font-size:13px;margin:0 4px">·</span>
           <span style="opacity:.7;font-size:12px;font-weight:500;letter-spacing:.02em">Card Builder</span>
         </div>
+
+        <!-- ── Menú de usuario ──────────────────── -->
+        <div class="topbar-user" id="topbarUser">
+          <button class="topbar-user-btn" id="topbarUserBtn" type="button">
+            <div class="topbar-user-avatar" id="topbarAvatar">U</div>
+            <span id="topbarUserName">Usuario</span>
+            <svg class="topbar-user-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="2,4 6,8 10,4"/></svg>
+          </button>
+          <div class="topbar-dropdown" id="topbarDropdown">
+            <div class="topbar-dropdown-head">
+              <div class="topbar-dropdown-name" id="topbarDName">Usuario</div>
+              <div class="topbar-dropdown-email" id="topbarDEmail">-</div>
+            </div>
+            <button class="topbar-dropdown-item danger" id="topbarLogout" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+
       </div>
     </header>
 
@@ -176,10 +143,7 @@
               </button>
             </div>
 
-            <!-- Translate button -->
-            <button type="button" class="btn-translate" id="btnLang">
-              🌍 Traducir a otros idiomas
-            </button>
+
 
           </form>
         </div>
