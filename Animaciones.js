@@ -1199,6 +1199,7 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
       altText: "Imagen de cabecera" // Texto duro, a prueba de fallos
     });
   }
+
  
   // 2. Contenedor del título
   if (titulo && titulo.text) {
@@ -1210,6 +1211,7 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
       wrap: true
     });
   }
+
  
   // 3. Subtítulo
   if (subtitulo && subtitulo.text) {
@@ -1221,11 +1223,13 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
       wrap: true
     });
   }
+
  
   // 4. Bloques de contenido dinámicos
   if (blocks && blocks.length > 0) {
     // Separador (solo visual)
     body.push({ type: "Container", style: "emphasis", bleed: false, items: [], spacing: "Small" });
+
  
     blocks.forEach(b => {
       if (b.tipo === "titulo" && b.text) {
@@ -1238,6 +1242,7 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
         });
       } else if (b.tipo === "imagen" && b.value) {
         body.push({
+          type: "Image", url: b.value.trim(), size: "stretch", spacing: "Small", 
           type: "Image", url: b.value.trim(), size: "stretch", spacing: "Small",
           altText: "Imagen del contenido" // Texto duro, a prueba de fallos
         });
@@ -1262,6 +1267,7 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
   };
 }
 
+  // Envoltorio limpio y sin variables nulas
 async function dispararEnvioATeams() {
     // 1. Recoger destinatarios usando el ID correcto del HTML para Teams
     const inputDestinatarios = document.getElementById('teamsRecipient').value;

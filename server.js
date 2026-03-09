@@ -1,101 +1,94 @@
-require('dotenv').config(); // Siempre al principio
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const { ClientSecretCredential } = require("@azure/identity");
-const { Client } = require("@microsoft/microsoft-graph-client");
-const { TokenCredentialAuthenticationProvider } = require("@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials");
+const cors = require('cors');
+const { CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext } = require('botbuilder');
 
-const app = express();
-app.use(express.json());
-
-// Sirve tus archivos HTML/JS/CSS desde la carpeta actual
-app.use(express.static(path.join(__dirname, '.')));
-
-// Configuración de autenticación con Azure
-const credential = new ClientSecretCredential(
-    process.env.TENANT_ID,
-    process.env.CLIENT_ID,
-    process.env.CLIENT_SECRET
-);
-
-const authProvider = new TokenCredentialAuthenticationProvider(credential, {
-    scopes: ['https://graph.microsoft.com/.default']
-});
-
-const client = Client.initWithMiddleware({ authProvider });
-
-/**
- * Función interna que realiza la magia en Microsoft Graph
- */
-async function enviarAMicrosoftGraph(email, tarjeta) {
-    // 1. Obtener el ID del usuario por su email
-    const user = await client.api(`/users/${email}`).get();
-    const userId = user.id;
-
-    // 2. Crear o recuperar el chat 1:1 entre la App y el Usuario
-    const chat = await client.api('/chats').post({
-        chatType: 'oneOnOne',
-        members: [
-            {
-                '@odata.type': '#microsoft.graph.aadUserConversationMember',
-                roles: ['owner'],
-                'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${userId}')`
-            },
-            {
-                '@odata.type': '#microsoft.graph.aadUserConversationMember',
-                roles: ['owner'],
-                'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${process.env.CLIENT_ID}')`
-            }
-        ]
-    });
-
-    // 3. Enviar la tarjeta adaptativa al chat creado
-    const message = {
-        body: {
-            contentType: 'html',
-            content: '<attachment id="74d20c7f34ad4991b4d8f5ee54749596"></attachment>'
-        },
-        attachments: [
-            {
-                id: '74d20c7f34ad4991b4d8f5ee54749596',
-                contentType: 'application/vnd.microsoft.card.adaptive',
-                content: JSON.stringify(tarjeta)
-            }
-        ]
-    };
-
-    return await client.api(`/chats/${chat.id}/messages`).post(message);
+// 1. VALIDACIÓN ESTRICTA: Detener si falta algo en el .env
+if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.TENANT_ID) {
+    console.error("❌ ERROR: Faltan variables de entorno en .env");
+    process.exit(1);
 }
 
-// Ruta principal para el envío masivo
-app.post('/api/enviar-teams', async (req, res) => {
-    const { destinatarios, tarjeta } = req.body;
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '.')));
 
-    if (!destinatarios || !tarjeta) {
-        return res.status(400).send({ error: "Faltan datos (emails o tarjeta)" });
-    }
-
-    // Ejecutar en segundo plano para no bloquear la web
-    console.log(`Iniciando envío masivo a ${destinatarios.length} personas...`);
-    
-    // Procesar envíos
-    for (const email of destinatarios) {
-        try {
-            await enviarAMicrosoftGraph(email.trim(), tarjeta);
-            console.log(`✅ Enviado con éxito a: ${email}`);
-        } catch (err) {
-            console.error(`❌ Error con ${email}:`, err.message);
-        }
-        // Delay de 1.2 segundos para respetar límites de la API de Microsoft
-        await new Promise(resolve => setTimeout(resolve, 1200));
-    }
-
-    res.send({ status: "Proceso de envío finalizado" });
+// 2. CONFIGURACIÓN DEL ADAPTER PARA MICROSOFT TEAMS
+const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
+    MicrosoftAppId: process.env.CLIENT_ID,
+    MicrosoftAppPassword: process.env.CLIENT_SECRET,
+    MicrosoftAppTenantId: process.env.TENANT_ID,
+    MicrosoftAppType: 'SingleTenant'
 });
 
-const PORT = 3000;
+const adapter = new CloudAdapter(botFrameworkAuthentication);
+
+// 3. ALMACÉN TEMPORAL DE CONVERSACIONES
+// Aquí guardaremos "quién ha hablado con el bot" para poder responderle después.
+const conversationReferences = {};
+
+// 4. ENDPOINT PARA RECIBIR MENSAJES DE TEAMS (Tu conexión con ngrok)
+app.post('/api/messages', (req, res) => {
+    adapter.process(req, res, async (context) => {
+        try {
+            if (context.activity.type === 'message') {
+                // ¡CLAVE! Extraemos y guardamos la referencia de esta conversación
+                const reference = TurnContext.getConversationReference(context.activity);
+                conversationReferences[reference.conversation.id] = reference;
+
+                // Respondemos para confirmar que el vínculo está hecho
+                await context.sendActivity("¡Bot activo y chat vinculado! Ya puedes enviarme tarjetas desde tu panel web.");
+            }
+        } catch (error) {
+            console.error("Error procesando el mensaje desde Teams:", error);
+        }
+    });
+});
+
+// 5. ENDPOINT PARA ENVIAR LA TARJETA DESDE TU FORMULARIO (Llamado por Animaciones.js)
+app.post('/api/enviar-teams', async (req, res) => {
+    try {
+        const { tarjeta, destinatarios } = req.body;
+
+        if (!tarjeta) {
+            return res.status(400).json({ error: 'Falta el JSON de la tarjeta adaptativa' });
+        }
+
+        if (Object.keys(conversationReferences).length === 0) {
+            return res.status(400).json({ error: 'No hay chats vinculados. Debes escribirle "hola" al bot en Teams primero.' });
+        }
+
+        // Recorremos todos los chats que el bot tiene guardados y enviamos la tarjeta
+        // (En esta versión de prueba, lo enviará a todos los que hayan hablado con el bot)
+        for (const conversationId of Object.keys(conversationReferences)) {
+            const reference = conversationReferences[conversationId];
+            
+            await adapter.continueConversationAsync(
+                process.env.CLIENT_ID,
+                reference,
+                async (turnContext) => {
+                    await turnContext.sendActivity({
+                        attachments: [{
+                            contentType: 'application/vnd.microsoft.card.adaptive',
+                            content: tarjeta
+                        }]
+                    });
+                }
+            );
+        }
+
+        res.status(200).json({ mensaje: 'Tarjeta enviada a Teams correctamente' });
+    } catch (error) {
+        console.error("Error interno al enviar tarjeta proactiva:", error);
+        res.status(500).json({ error: 'Error al enviar la tarjeta a Teams.' });
+    }
+});
+
+// 6. INICIO DEL SERVIDOR
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("-----------------------------------------");
-    console.log(`Servidor de Ayesa listo en: http://localhost:${PORT}`);
-    console.log("-----------------------------------------");
+    console.log(`🚀 Servidor iniciado en el puerto ${PORT}`);
+    console.log(`Conexión con ngrok esperada en: /api/messages`);
 });
