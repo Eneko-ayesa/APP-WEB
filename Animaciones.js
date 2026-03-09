@@ -845,12 +845,58 @@ tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarConfirm
 // ═══════════════════════════════════════════════
 // CONFIRMACIÓN DE ENVÍO
 // ═══════════════════════════════════════════════
+
+function mostrarErrorValidacion(titulo, mensaje, ayuda) {
+  document.getElementById("errorValidacionModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "errorValidacionModal";
+  modal.style.cssText = [
+    "position:fixed","inset:0","z-index:3000",
+    "background:rgba(0,0,0,.5)",
+    "display:flex","align-items:center","justify-content:center",
+    "padding:24px","animation:fadeInBg .2s ease"
+  ].join(";");
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;' +
+    'box-shadow:0 40px 100px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);' +
+    'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
+    'overflow:hidden;text-align:center;">' +
+    '<div style="background:linear-gradient(135deg,#d97706 0%,#f59e0b 100%);padding:28px 24px 24px;">' +
+    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);' +
+    'display:flex;align-items:center;justify-content:center;margin:0 auto 12px;' +
+    'border:2px solid rgba(255,255,255,.4);">' +
+    '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"' +
+    ' style="animation:checkPop .3s .1s cubic-bezier(.22,1,.36,1) both">' +
+    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>' +
+    '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
+    '<div style="color:white;font-size:18px;font-weight:700;">' + titulo + '</div></div>' +
+    '<div style="padding:22px 26px 8px;">' +
+    '<p style="font-size:14px;font-weight:600;color:#1a1a2e;margin:0 0 10px;">' + mensaje + '</p>' +
+    '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;' +
+    'padding:12px 14px;text-align:left;font-size:13px;color:#78350f;line-height:1.5;">' +
+    '<strong>&#128161; ¿Qué hacer?</strong><br>' + ayuda + '</div></div>' +
+    '<div style="padding:8px 26px 26px;">' +
+    '<button id="errorValidacionClose" style="width:100%;height:44px;border-radius:12px;border:none;' +
+    'background:#0000D0;color:white;font-family:inherit;font-size:14px;font-weight:700;' +
+    'cursor:pointer;box-shadow:0 4px 14px rgba(0,0,208,.3);transition:background .15s,transform .1s;">' +
+    'Entendido</button></div></div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+  const btn = document.getElementById("errorValidacionClose");
+  btn.addEventListener("click", () => modal.remove());
+  btn.addEventListener("mouseenter", () => { btn.style.background="#0000aa"; btn.style.transform="translateY(-1px)"; });
+  btn.addEventListener("mouseleave", () => { btn.style.background="#0000D0"; btn.style.transform=""; });
+}
+
 function mostrarConfirmEnvio() {
   const canal = canalSelect.value;
-  if (!canal) { showToast("⚠️ Selecciona un canal antes de enviar", "error"); return; }
+  if (!canal) { mostrarErrorValidacion("Canal no seleccionado", "Debes elegir un canal de envío antes de continuar.", "Selecciona <strong>Microsoft Teams</strong> o <strong>Outlook</strong> en el campo canal."); return; }
 
   const titulo = getFieldValue("titulo");
-  if (!titulo.text) { showToast("⚠️ Añade un título antes de enviar", "error"); return; }
+  if (!titulo.text) { mostrarErrorValidacion("Título requerido", "La tarjeta necesita un título para poder enviarse.", "Escribe un título en el campo <strong>01 · Título</strong> del formulario."); return; }
 
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
   const canalIcon = canal === "teams" ? "📤" : "📧";
@@ -2308,11 +2354,12 @@ function mostrarPreviewPlantilla({titulo, subtitulo, imagenUrl, blocks, canal, b
   `;
 
   document.body.appendChild(modal);
-  modal.addEventListener("click", e => { if (e.target === modal) modal.remove();});
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
   document.getElementById("popupPreviewClose").addEventListener("click", () => modal.remove());
+  document.getElementById("popupPreviewCancel").addEventListener("click", () => modal.remove());
   document.getElementById("popupPreviewOk").addEventListener("click", () => {
     modal.remove();
     onConfirm();
-  }); 
+  });
 
 }
