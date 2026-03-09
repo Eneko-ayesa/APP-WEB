@@ -1188,77 +1188,172 @@ function mostrarEnvioExito(state) {
 }
 
 function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
-  // Microsoft Adaptive Card schema v1.4
   const body = [];
-
-  // Header image
+ 
+  // 1. Imagen de cabecera (altText de texto fijo)
   if (imagenUrl) {
     body.push({
       type: "Image",
-      url: imagenUrl,
+      url: imagenUrl.trim(),
       size: "stretch",
-      altText: titulo.text || "Imagen de cabecera"
+      altText: "Imagen de cabecera" // Texto duro, a prueba de fallos
     });
   }
-
-  // Title container with accent color bar
-  if (titulo.text) {
+ 
+  // 2. Contenedor del título
+  if (titulo && titulo.text) {
     body.push({
       type: "TextBlock",
-      text: titulo.text,
+      text: titulo.text.trim(),
       weight: "Bolder",
       size: "Large",
-      wrap: true,
-      color: "Default"
+      wrap: true
     });
   }
-
-  // Subtitle
-  if (subtitulo.text) {
+ 
+  // 3. Subtítulo
+  if (subtitulo && subtitulo.text) {
     body.push({
       type: "TextBlock",
-      text: subtitulo.text,
+      text: subtitulo.text.trim(),
       size: "Small",
       isSubtle: true,
       wrap: true
     });
   }
-
-  // Separator before body blocks
-  if (titulo.text && blocks.some(b => b.text || b.value)) {
+ 
+  // 4. Bloques de contenido dinámicos
+  if (blocks && blocks.length > 0) {
+    // Separador (solo visual)
     body.push({ type: "Container", style: "emphasis", bleed: false, items: [], spacing: "Small" });
+ 
+    blocks.forEach(b => {
+      if (b.tipo === "titulo" && b.text) {
+        body.push({
+          type: "TextBlock", text: b.text.trim(), weight: "Bolder", size: "Medium", wrap: true, spacing: "Medium"
+        });
+      } else if (b.tipo === "parrafo" && b.text) {
+        body.push({
+          type: "TextBlock", text: b.text.trim(), wrap: true, spacing: "Small"
+        });
+      } else if (b.tipo === "imagen" && b.value) {
+        body.push({
+          type: "Image", url: b.value.trim(), size: "stretch", spacing: "Small",
+          altText: "Imagen del contenido" // Texto duro, a prueba de fallos
+        });
+      }
+    });
   }
+ 
+  // Envoltorio limpio y sin variables nulas
+  return {
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          type: "AdaptiveCard",
+          version: "1.4",
+          fallbackText: "Nueva tarjeta de Teams",
+          body: body
+        }
+      }
+    ]
+  };
+}
 
-  // Content blocks
-  blocks.forEach(b => {
-    if (b.tipo === "titulo" && b.text) {
-      body.push({
-        type: "TextBlock",
-        text: b.text,
-        weight: "Bolder",
-        size: "Medium",
-        wrap: true,
-        spacing: "Medium"
-      });
-    } else if (b.tipo === "parrafo" && b.text) {
-      // Strip HTML tags for plain text in AC
-      const plain = b.text;
-      body.push({
-        type: "TextBlock",
-        text: plain,
-        wrap: true,
-        spacing: "Small",
-        color: "Default"
-      });
-    } else if (b.tipo === "imagen" && b.value) {
-      body.push({
-        type: "Image",
-        url: b.value,
-        size: "stretch",
-        spacing: "Small"
-      });
+async function dispararEnvioATeams() {
+    // 1. Recoger destinatarios usando el ID correcto del HTML para Teams
+    const inputDestinatarios = document.getElementById('teamsRecipient').value;
+   
+    // Separamos los correos por coma en caso de que haya varios
+    const destinatariosArray = inputDestinatarios
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email !== "");
+ 
+    // ════════ 2. ¡LA MAGIA CON DATOS REALES (BLINDADO)! ════════
+   
+    // 1. Leemos los elementos del HTML directamente
+    const elTitulo = document.getElementById("titulo");
+    const elSubtitulo = document.getElementById("subtitulo");
+    const elImagen = document.getElementById("imagen");
+   
+    // 2. Extraemos ÚNICAMENTE el texto puro.
+    // Usamos (innerText || value) por si es un div editable o un input normal, y lo forzamos a String
+    const textoTitulo = elTitulo ? String(elTitulo.innerText || elTitulo.value || "") : "";
+    const textoSubtitulo = elSubtitulo ? String(elSubtitulo.innerText || elSubtitulo.value || "") : "";
+    const urlImagen = elImagen ? String(elImagen.value || "") : null;
+ 
+    // 3. Recorremos los bloques dinámicos del editor
+    const blocks = [];
+    const editorContenedor = document.getElementById("editor");
+   
+    if (editorContenedor) {
+        editorContenedor.querySelectorAll(".block").forEach(block => {
+            const rich = block.querySelector(".rich-editor-area");
+            const url = block.querySelector("input[type='url']");
+           
+            if (rich && rich.dataset.singleline) {
+                blocks.push({ tipo: "titulo", text: String(rich.innerText || "") });
+            } else if (rich) {
+                blocks.push({ tipo: "parrafo", text: String(rich.innerText || "") });
+            } else if (url) {
+                blocks.push({ tipo: "imagen", value: String(url.value || "") });
+            }
+        });
     }
-  });
+ 
+    // 4. Juntamos los ingredientes con el formato perfecto que espera Teams
+    const datosReales = {
+        titulo: { text: textoTitulo },      
+        subtitulo: { text: textoSubtitulo },
+        imagenUrl: urlImagen,
+        blocks: blocks
+    };
+ 
+    // 5. Construimos la tarjeta con la función que blindamos antes
+    const mensajeCompleto = buildCardJSON(datosReales);
+ 
+    // Extraemos el "content" puro
+    const tarjetaVisual = mensajeCompleto.attachments[0].content;
+ 
+    // ════════════════════════════════════════════════
+ 
+    // 3. Feedback visual: cambiamos el botón mientras carga
+    const botonEnviar = document.getElementById('btnEnviar');
+    const textoOriginal = botonEnviar.innerText;
+    botonEnviar.innerText = "Enviando...";
+    botonEnviar.disabled = true;
+ 
+    // 4. Llamar a tu servidor local (server.js)
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/enviar-teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                destinatarios: destinatariosArray,
+                tarjeta: tarjetaVisual
+            })
+        });
+ 
+        const data = await respuesta.json();
+ 
+        if (respuesta.ok) {
+            alert("✅ ¡Comunicado enviado a Teams con éxito!");
+        } else {
+            alert("❌ Hubo un problema: " + (data.error || "Desconocido"));
+            console.error("Detalle del error:", data);
+        }
+    } catch (error) {
+        console.error("Error de red/conexión:", error);
+        alert("❌ No se pudo conectar con el servidor. ¿Está encendido 'node server.js'?");
+    } finally {
+        // Restaurar el botón a su estado normal
+        botonEnviar.innerText = textoOriginal;
+        botonEnviar.disabled = false;
+    }
+}
 
   return {
     type: "message",
@@ -2329,7 +2424,7 @@ function mostrarPreviewPlantilla({titulo, subtitulo, imagenUrl, blocks, canal, b
 
       <div style="
         margin:16px 20px;
-        border:1.5px solid #e8e8e8; border-radius:10px;
+        border:1.5px solid #e8e8e8; border-radius:10px;<
         overflow:hidden; max-height:360px; overflow-y:auto;
         background:#fafafa;
       ">
