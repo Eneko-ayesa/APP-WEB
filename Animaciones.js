@@ -988,7 +988,7 @@ function mostrarConfirmEnvio() {
   document.getElementById("confirmEnvioCancel").addEventListener("click", () => modal.remove());
   document.getElementById("confirmEnvioOk").addEventListener("click", () => {
     modal.remove();
-    ejecutarEnvio();
+    dispararEnvioATeams();
   });
 }
 
@@ -1269,70 +1269,63 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
 
   // Envoltorio limpio y sin variables nulas
 async function dispararEnvioATeams() {
-    // 1. Recoger destinatarios usando el ID correcto del HTML para Teams
-    const inputDestinatarios = document.getElementById('teamsRecipient').value;
-   
-    // Separamos los correos por coma en caso de que haya varios
+    // 1. Recoger destinatarios (Blindado con ?.)
+    const inputDestinatarios = document.getElementById('teamsRecipient')?.value || ""; 
     const destinatariosArray = inputDestinatarios
         .split(',')
         .map(email => email.trim())
         .filter(email => email !== "");
- 
-    // ════════ 2. ¡LA MAGIA CON DATOS REALES (BLINDADO)! ════════
-   
-    // 1. Leemos los elementos del HTML directamente
-    const elTitulo = document.getElementById("titulo");
-    const elSubtitulo = document.getElementById("subtitulo");
-    const elImagen = document.getElementById("imagen");
-   
-    // 2. Extraemos ÚNICAMENTE el texto puro.
-    // Usamos (innerText || value) por si es un div editable o un input normal, y lo forzamos a String
-    const textoTitulo = elTitulo ? String(elTitulo.innerText || elTitulo.value || "") : "";
-    const textoSubtitulo = elSubtitulo ? String(elSubtitulo.innerText || elSubtitulo.value || "") : "";
-    const urlImagen = elImagen ? String(elImagen.value || "") : null;
- 
-    // 3. Recorremos los bloques dinámicos del editor
+
+    // ════════ 2. ¡LA MAGIA CON DATOS REALES (INMORTAL)! ════════
+    
+    // Leemos los elementos. Usamos ?. para que si tus compañeros 
+    // han cambiado el ID en el HTML, el código no explote, sino que devuelva "".
+    const textoTitulo = document.getElementById("titulo")?.innerText || document.getElementById("titulo")?.value || "";
+    const textoSubtitulo = document.getElementById("subtitulo")?.innerText || document.getElementById("subtitulo")?.value || "";
+    const urlImagen = document.getElementById("imagen")?.value || null;
+
+    // Recorremos los bloques dinámicos
     const blocks = [];
     const editorContenedor = document.getElementById("editor");
-   
+    
     if (editorContenedor) {
         editorContenedor.querySelectorAll(".block").forEach(block => {
             const rich = block.querySelector(".rich-editor-area");
             const url = block.querySelector("input[type='url']");
-           
-            if (rich && rich.dataset.singleline) {
-                blocks.push({ tipo: "titulo", text: String(rich.innerText || "") });
-            } else if (rich) {
-                blocks.push({ tipo: "parrafo", text: String(rich.innerText || "") });
+            
+            if (rich) {
+                const texto = rich.innerText || "";
+                if (rich.dataset.singleline) {
+                    blocks.push({ tipo: "titulo", text: String(texto) });
+                } else {
+                    blocks.push({ tipo: "parrafo", text: String(texto) });
+                }
             } else if (url) {
                 blocks.push({ tipo: "imagen", value: String(url.value || "") });
             }
         });
     }
- 
-    // 4. Juntamos los ingredientes con el formato perfecto que espera Teams
+
     const datosReales = {
-        titulo: { text: textoTitulo },      
-        subtitulo: { text: textoSubtitulo },
+        titulo: { text: String(textoTitulo) },       
+        subtitulo: { text: String(textoSubtitulo) }, 
         imagenUrl: urlImagen,
         blocks: blocks
     };
- 
-    // 5. Construimos la tarjeta con la función que blindamos antes
+
     const mensajeCompleto = buildCardJSON(datosReales);
- 
-    // Extraemos el "content" puro
     const tarjetaVisual = mensajeCompleto.attachments[0].content;
- 
     // ════════════════════════════════════════════════
- 
-    // 3. Feedback visual: cambiamos el botón mientras carga
+
+    // 3. Feedback visual
     const botonEnviar = document.getElementById('btnEnviar');
-    const textoOriginal = botonEnviar.innerText;
-    botonEnviar.innerText = "Enviando...";
-    botonEnviar.disabled = true;
- 
-    // 4. Llamar a tu servidor local (server.js)
+    const textoOriginal = botonEnviar ? botonEnviar.innerText : "Enviar";
+    if (botonEnviar) {
+        botonEnviar.innerText = "Enviando...";
+        botonEnviar.disabled = true;
+    }
+
+    // 4. Llamada al servidor
     try {
         const respuesta = await fetch('http://localhost:3000/api/enviar-teams', {
             method: 'POST',
@@ -1342,22 +1335,22 @@ async function dispararEnvioATeams() {
                 tarjeta: tarjetaVisual
             })
         });
- 
+
         const data = await respuesta.json();
- 
+
         if (respuesta.ok) {
             alert("✅ ¡Comunicado enviado a Teams con éxito!");
         } else {
             alert("❌ Hubo un problema: " + (data.error || "Desconocido"));
-            console.error("Detalle del error:", data);
         }
     } catch (error) {
         console.error("Error de red/conexión:", error);
-        alert("❌ No se pudo conectar con el servidor. ¿Está encendido 'node server.js'?");
+        alert("❌ No se pudo conectar. ¿Está encendido 'node server.js'?");
     } finally {
-        // Restaurar el botón a su estado normal
-        botonEnviar.innerText = textoOriginal;
-        botonEnviar.disabled = false;
+        if (botonEnviar) {
+            botonEnviar.innerText = textoOriginal;
+            botonEnviar.disabled = false;
+        }
     }
 }
 
