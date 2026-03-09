@@ -3,13 +3,13 @@
    Toolbar global — funciona en todos los campos
    ═══════════════════════════════════════════════ */
 
-const canalSelect   = document.getElementById("canal");
-const emailField    = document.getElementById("emailField");
+const canalSelect = document.getElementById("canal");
+const emailField = document.getElementById("emailField");
 const teamsRecipientField = document.getElementById("teamsRecipientField");
-const editor        = document.getElementById("editor");
-const tarjetaForm   = document.getElementById("tarjetaForm");
+const editor = document.getElementById("editor");
+const tarjetaForm = document.getElementById("tarjetaForm");
 const globalToolbar = document.getElementById("globalToolbar");
-const gtbInner      = document.getElementById("gtbInner");
+const gtbInner = document.getElementById("gtbInner");
 
 // ── IMAGE SIZE STORE ──────────────────────────
 // maps block element → { width, headerHeight }
@@ -17,27 +17,27 @@ const imgSizes = new WeakMap();
 
 // ── SVG ICONS ─────────────────────────────────
 const I = {
-  bold:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6zm0 8h9a4 4 0 0 1 0 8H6z"/></svg>`,
-  italic:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
+  bold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6zm0 8h9a4 4 0 0 1 0 8H6z"/></svg>`,
+  italic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
   underline: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 12 0V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>`,
-  strike:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><path d="M16 6c-.5-1.5-2-2.5-4-2.5-2.8 0-4 1.5-4 3 0 1 .4 1.8 1.2 2.3M8 18c.6 1.2 2 2 4 2 3 0 4.5-1.5 4.5-3"/></svg>`,
-  ul:        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>`,
-  ol:        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1V3L3.5 4M3 14h2v.5H3.5v1H5V17H3M4 21l1-1.5H3" stroke-width="1.5"/></svg>`,
-  quote:     `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>`,
-  alignL:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>`,
-  alignC:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>`,
-  alignR:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>`,
-  link:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
-  emoji:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="3"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="3"/></svg>`,
-  undo:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
-  redo:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.95"/></svg>`,
-  colorA:    `<svg viewBox="0 0 24 24"><text x="4" y="18" font-size="15" font-weight="800" font-family="sans-serif" fill="currentColor">A</text></svg>`,
-  pen:       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
+  strike: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><path d="M16 6c-.5-1.5-2-2.5-4-2.5-2.8 0-4 1.5-4 3 0 1 .4 1.8 1.2 2.3M8 18c.6 1.2 2 2 4 2 3 0 4.5-1.5 4.5-3"/></svg>`,
+  ul: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>`,
+  ol: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1V3L3.5 4M3 14h2v.5H3.5v1H5V17H3M4 21l1-1.5H3" stroke-width="1.5"/></svg>`,
+  quote: `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1zm12 0c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>`,
+  alignL: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>`,
+  alignC: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>`,
+  alignR: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>`,
+  link: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  emoji: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="3"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="3"/></svg>`,
+  undo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>`,
+  redo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.95"/></svg>`,
+  colorA: `<svg viewBox="0 0 24 24"><text x="4" y="18" font-size="15" font-weight="800" font-family="sans-serif" fill="currentColor">A</text></svg>`,
+  pen: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
 };
 
-const EMOJIS = ["😊","😂","🔥","✨","👍","❤️","🚀","🎉","💡","⚠️","✅","❌",
-  "📢","📌","📎","🔗","💬","🗓️","📊","📈","🎯","🏆","💪","👏",
-  "🌟","💎","⚡","🔒","📧","📱","💻","🛠️","⚙️","📝","🖼️","🔔"];
+const EMOJIS = ["😊", "😂", "🔥", "✨", "👍", "❤️", "🚀", "🎉", "💡", "⚠️", "✅", "❌",
+  "📢", "📌", "📎", "🔗", "💬", "🗓️", "📊", "📈", "🎯", "🏆", "💪", "👏",
+  "🌟", "💎", "⚡", "🔒", "📧", "📱", "💻", "🛠️", "⚙️", "📝", "🖼️", "🔔"];
 
 // ═══════════════════════════════════════════════
 // CONVERT HEADER INPUTS → CONTENTEDITABLE
@@ -50,7 +50,7 @@ function convertirInputAEditable(inputEl, claseExtra = "") {
   div.dataset.name = inputEl.name || inputEl.id || "";
   div.id = inputEl.id;
   div.className = inputEl.className + " rich-field " + claseExtra;
-  div.setAttribute("spellcheck","true");
+  div.setAttribute("spellcheck", "true");
   // copy inline styles / data attrs if any
   inputEl.parentNode.replaceChild(div, inputEl);
   registrarCampoEditable(div);
@@ -60,7 +60,7 @@ function convertirInputAEditable(inputEl, claseExtra = "") {
 // ── CONVERT HEADER FIELDS ON LOAD ─────────────
 // We wait for DOM then replace them
 function initHeaderFields() {
-  ["titulo","subtitulo"].forEach(id => {
+  ["titulo", "subtitulo"].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.tagName === "INPUT") convertirInputAEditable(el);
   });
@@ -171,7 +171,7 @@ floatTb.innerHTML = `
 document.body.appendChild(floatTb);
 
 let activeEditor = null;
-let savedRange   = null;
+let savedRange = null;
 
 // ═══════════════════════════════════════════════
 // REGISTER ANY CONTENTEDITABLE AS EDITABLE FIELD
@@ -197,8 +197,8 @@ function registrarCampoEditable(area) {
 
   area.addEventListener("keydown", e => {
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === "b") { e.preventDefault(); document.execCommand("bold");      updateActiveStates(); }
-      if (e.key === "i") { e.preventDefault(); document.execCommand("italic");    updateActiveStates(); }
+      if (e.key === "b") { e.preventDefault(); document.execCommand("bold"); updateActiveStates(); }
+      if (e.key === "i") { e.preventDefault(); document.execCommand("italic"); updateActiveStates(); }
       if (e.key === "u") { e.preventDefault(); document.execCommand("underline"); updateActiveStates(); }
       if (e.key === "k") { e.preventDefault(); openLinkDialog(); }
     }
@@ -206,9 +206,9 @@ function registrarCampoEditable(area) {
     if (e.key === "Enter" && area.dataset.singleline) e.preventDefault();
   });
 
-  area.addEventListener("keyup",   updateActiveStates);
+  area.addEventListener("keyup", updateActiveStates);
   area.addEventListener("mouseup", updateActiveStates);
-  area.addEventListener("input",   renderPreview);
+  area.addEventListener("input", () => { renderPreview(); actualizarBotonEnviar(); });
 }
 
 // ═══════════════════════════════════════════════
@@ -217,7 +217,7 @@ function registrarCampoEditable(area) {
 
 // Prevent losing selection on toolbar click
 gtbInner.addEventListener("mousedown", e => {
-  if (!["INPUT","SELECT"].includes(e.target.tagName)) e.preventDefault();
+  if (!["INPUT", "SELECT"].includes(e.target.tagName)) e.preventDefault();
 });
 
 // execCommand buttons
@@ -245,17 +245,17 @@ function applySize(s) {
       const span = document.createElement("span");
       span.style.fontSize = s + "px";
       sel.getRangeAt(0).surroundContents(span);
-    } catch(e) {}
+    } catch (e) { }
   }
   renderPreview();
 }
-gtbInner.querySelector(".gtb-fs-up").addEventListener("click",   () => { if(activeEditor) activeEditor.focus(); applySize(+sizeInput.value + 2); });
-gtbInner.querySelector(".gtb-fs-down").addEventListener("click", () => { if(activeEditor) activeEditor.focus(); applySize(+sizeInput.value - 2); });
-sizeInput.addEventListener("change", () => { if(activeEditor) activeEditor.focus(); applySize(+sizeInput.value); });
+gtbInner.querySelector(".gtb-fs-up").addEventListener("click", () => { if (activeEditor) activeEditor.focus(); applySize(+sizeInput.value + 2); });
+gtbInner.querySelector(".gtb-fs-down").addEventListener("click", () => { if (activeEditor) activeEditor.focus(); applySize(+sizeInput.value - 2); });
+sizeInput.addEventListener("change", () => { if (activeEditor) activeEditor.focus(); applySize(+sizeInput.value); });
 
 // text color
 const tcInput = gtbInner.querySelector(".gtb-text-color");
-const tcDot   = gtbInner.querySelector(".gtb-text-cdot");
+const tcDot = gtbInner.querySelector(".gtb-text-cdot");
 tcInput.addEventListener("input", function () {
   tcDot.style.background = this.value;
   if (activeEditor) { activeEditor.focus(); document.execCommand("foreColor", false, this.value); renderPreview(); }
@@ -263,7 +263,7 @@ tcInput.addEventListener("input", function () {
 
 // highlight
 const hlInput = gtbInner.querySelector(".gtb-hl-color");
-const hlDot   = gtbInner.querySelector(".gtb-hl-cdot");
+const hlDot = gtbInner.querySelector(".gtb-hl-cdot");
 hlInput.addEventListener("input", function () {
   hlDot.style.background = this.value;
   if (activeEditor) { activeEditor.focus(); document.execCommand("hiliteColor", false, this.value); renderPreview(); }
@@ -317,7 +317,7 @@ gtbInner.querySelectorAll(".palette-swatch").forEach(swatch => {
       document.execCommand("foreColor", false, swatch.dataset.color);
       // update text color dot to show selected color
       tcDot.style.background = swatch.dataset.color;
-      tcInput.value = swatch.dataset.color.replace('#','') < 'aaaaaa' ? swatch.dataset.color : swatch.dataset.color;
+      tcInput.value = swatch.dataset.color.replace('#', '') < 'aaaaaa' ? swatch.dataset.color : swatch.dataset.color;
       renderPreview();
     }
   });
@@ -327,7 +327,7 @@ gtbInner.querySelectorAll(".palette-swatch").forEach(swatch => {
 document.getElementById("globalLinkOk").addEventListener("click", confirmLink);
 document.getElementById("globalLinkCancel").addEventListener("click", () => linkDialog.classList.remove("open"));
 document.getElementById("globalLinkInput").addEventListener("keydown", e => {
-  if (e.key === "Enter")  confirmLink();
+  if (e.key === "Enter") confirmLink();
   if (e.key === "Escape") linkDialog.classList.remove("open");
 });
 function openLinkDialog() {
@@ -356,8 +356,8 @@ floatTb.querySelectorAll(".btb-btn[data-cmd]").forEach(btn => {
   });
 });
 
-document.addEventListener("mouseup",  () => setTimeout(checkFloatShow, 15));
-document.addEventListener("keyup",    () => setTimeout(checkFloatShow, 15));
+document.addEventListener("mouseup", () => setTimeout(checkFloatShow, 15));
+document.addEventListener("keyup", () => setTimeout(checkFloatShow, 15));
 function checkFloatShow() {
   const sel = window.getSelection();
   if (!sel || sel.isCollapsed || !activeEditor || !activeEditor.contains(sel.anchorNode)) {
@@ -367,18 +367,18 @@ function checkFloatShow() {
   floatTb.classList.add("visible");
   const tbW = floatTb.offsetWidth || 200, tbH = floatTb.offsetHeight || 36;
   let left = rect.left + rect.width / 2 - tbW / 2;
-  let top  = rect.top  - tbH - 8 + window.scrollY;
+  let top = rect.top - tbH - 8 + window.scrollY;
   left = Math.max(8, Math.min(left, window.innerWidth - tbW - 8));
   if (top < window.scrollY + 8) top = rect.bottom + 8 + window.scrollY;
   floatTb.style.left = left + "px";
-  floatTb.style.top  = top  + "px";
+  floatTb.style.top = top + "px";
 }
 document.addEventListener("mousedown", e => {
   if (!floatTb.contains(e.target)) floatTb.classList.remove("visible");
 });
 
 function updateActiveStates() {
-  ["bold","italic","underline","strikeThrough"].forEach(cmd => {
+  ["bold", "italic", "underline", "strikeThrough"].forEach(cmd => {
     const on = document.queryCommandState(cmd);
     document.querySelectorAll(`[data-cmd="${cmd}"]`).forEach(b => b.classList.toggle("active", on));
   });
@@ -489,17 +489,17 @@ function getFieldValue(id) {
 }
 
 function renderPreview() {
-  const titulo    = getFieldValue("titulo");
+  const titulo = getFieldValue("titulo");
   const subtitulo = getFieldValue("subtitulo");
   const imagenUrl = getFieldValue("imagen").text;
-  const emails    = getFieldValue("emails").text;
+  const emails = getFieldValue("emails").text;
   const teamsRecipient = document.getElementById("teamsRecipient")?.value?.trim() || "";
-  const canal     = canalSelect.value;
+  const canal = canalSelect.value;
 
   const blocks = [];
   editor.querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
+    const url = block.querySelector("input[type='url']");
     if (rich && rich.dataset.singleline) {
       blocks.push({ tipo: "titulo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (rich) {
@@ -511,7 +511,7 @@ function renderPreview() {
   });
 
   const cardHTML = buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal });
-  ["previewCard","previewCardOutlook"].forEach(id => {
+  ["previewCard", "previewCardOutlook"].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.innerHTML = cardHTML;
@@ -542,18 +542,20 @@ function renderPreview() {
   }
 }
 
-function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
+function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal, forModal = false }) {
   const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text);
   if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Empieza a escribir en el panel izquierdo y tu tarjeta tomará forma aquí</p></div>`;
 
   const headerPct = imgSizes.get("header") || 100;
   const hStyle = `width:${headerPct}%;`;
   let html = imagenUrl
-    ? `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
+    ? forModal
+      ? `<img src="${esc(imagenUrl)}" style="width:100%;display:block;object-fit:cover;max-height:180px;" alt="">`
+      : `<div class="header-img-resize-wrap" style="${hStyle}"><img class="card-header-img" src="${esc(imagenUrl)}" onerror="this.closest('.header-img-resize-wrap').style.display='none'" alt=""><div class="resize-handle-h"></div></div>`
     : titulo.text ? `<div class="card-header-img-placeholder">${titulo.html || esc(titulo.text)}</div>` : "";
 
   html += `<div class="card-body">`;
-  if (titulo.html)    html += `<div class="card-title">${titulo.html}</div>`;
+  if (titulo.html) html += `<div class="card-title">${titulo.html}</div>`;
   if (subtitulo.html) html += `<div class="card-subtitle">${subtitulo.html}</div>`;
 
   blocks.forEach(b => {
@@ -567,7 +569,7 @@ function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal }) {
   });
 
   if (canal) {
-    const cls   = canal === "teams" ? "badge-teams" : "badge-outlook";
+    const cls = canal === "teams" ? "badge-teams" : "badge-outlook";
     const label = canal === "teams" ? "📤 Microsoft Teams" : "📧 Outlook";
     html += `<span class="card-channel-badge ${cls}">${label}</span>`;
   }
@@ -582,29 +584,29 @@ function initResizableImages(cardEl, blocks) {
   // ── block images ──
   cardEl.querySelectorAll(".img-resize-wrap").forEach((wrap, i) => {
     const handle = wrap.querySelector(".resize-handle");
-    const label  = wrap.querySelector(".resize-label");
+    const label = wrap.querySelector(".resize-label");
     if (!handle) return;
 
     handle.addEventListener("mousedown", e => {
       e.preventDefault(); e.stopPropagation();
       wrap.classList.add("resizing");
-      const startX   = e.clientX;
-      const startW   = wrap.offsetWidth;
-      const blockEl  = blocks[i]?.blockEl;
+      const startX = e.clientX;
+      const startW = wrap.offsetWidth;
+      const blockEl = blocks[i]?.blockEl;
 
       function onMove(ev) {
         const newW = Math.max(60, Math.min(startW + (ev.clientX - startX), wrap.parentElement.offsetWidth));
         wrap.style.width = newW + "px";
         if (label) label.textContent = Math.round(newW) + "px";
-        if (blockEl) imgSizes.set(blockEl, { ...(imgSizes.get(blockEl)||{}), width: Math.round(newW) });
+        if (blockEl) imgSizes.set(blockEl, { ...(imgSizes.get(blockEl) || {}), width: Math.round(newW) });
       }
       function onUp() {
         wrap.classList.remove("resizing");
         document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup",   onUp);
+        document.removeEventListener("mouseup", onUp);
       }
       document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup",   onUp);
+      document.addEventListener("mouseup", onUp);
     });
   });
 
@@ -617,12 +619,12 @@ function initResizableImages(cardEl, blocks) {
         e.preventDefault(); e.stopPropagation();
         // dragging DOWN = bigger, UP = smaller
         // we scale the img element's width as % of parent
-        const startY  = e.clientY;
+        const startY = e.clientY;
         const parentW = headerWrap.parentElement?.offsetWidth || headerWrap.offsetWidth || 400;
-        const startW  = parseFloat(imgSizes.get("header") || 100); // % of parent
+        const startW = parseFloat(imgSizes.get("header") || 100); // % of parent
 
         function onMove(ev) {
-          const delta  = (ev.clientY - startY);          // px dragged
+          const delta = (ev.clientY - startY);          // px dragged
           const pctDelta = (delta / parentW) * 100;      // convert to %
           const newPct = Math.max(20, Math.min(100, startW + pctDelta));
           headerWrap.style.width = newPct + "%";
@@ -630,17 +632,17 @@ function initResizableImages(cardEl, blocks) {
         }
         function onUp() {
           document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup",   onUp);
+          document.removeEventListener("mouseup", onUp);
         }
         document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup",   onUp);
+        document.addEventListener("mouseup", onUp);
       });
     }
   }
 }
 
 function esc(s) {
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 // ── CANAL / TABS ──────────────────────────────
@@ -652,7 +654,7 @@ canalSelect.addEventListener("change", function () {
   if (teamsRecipientField) {
     val === "teams" ? teamsRecipientField.classList.remove("hidden") : teamsRecipientField.classList.add("hidden");
   }
-  renderPreview(); syncTabToCanal(val);
+  renderPreview(); syncTabToCanal(val); actualizarBotonEnviar();
 });
 // Current active channel (teams or outlook)
 let activeChannel = "teams";
@@ -669,12 +671,12 @@ function syncTabToCanal(val) {
 }
 
 function showPreviewChrome(val) {
-  const teamsEl   = document.getElementById("teamsChrome");
+  const teamsEl = document.getElementById("teamsChrome");
   const outlookEl = document.getElementById("outlookChrome");
-  const screen    = document.getElementById("previewScreen");
+  const screen = document.getElementById("previewScreen");
   // Hide any side panels
   screen?.querySelectorAll(".preview-side-panel").forEach(p => p.remove());
-  if (teamsEl)   teamsEl.classList.toggle("hidden", val === "outlook");
+  if (teamsEl) teamsEl.classList.toggle("hidden", val === "outlook");
   if (outlookEl) outlookEl.classList.toggle("hidden", val !== "outlook");
   // Show channel subtabs
   document.getElementById("channelSubtabs")?.classList.remove("hidden");
@@ -742,11 +744,22 @@ function ensurePreviewPanel(type) {
       card.className = "tpl-card";
       card.innerHTML = `<span class="tpl-icon">${p.icon}</span><div class="tpl-name">${p.name}</div><div class="tpl-desc">${p.desc}</div>`;
       card.addEventListener("click", () => {
-        aplicarPlantilla(p);
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-        document.getElementById("channelSubtabs")?.classList.remove("hidden");
-        showPreviewChrome(activeChannel);
+        mostrarPreviewPlantilla({
+          titulo:    p.titulo,
+          subtitulo: p.subtitulo,
+          imagenUrl: p.imagen || "",
+          blocks:    [{ tipo: "parrafo", html: p.cuerpo, text: p.cuerpo }],
+          canal:     "",
+          badge:     p.icon + " " + p.name,
+          btnLabel:  "Usar plantilla",
+          onConfirm: () => {
+            aplicarPlantilla(p);
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+            document.getElementById("channelSubtabs")?.classList.remove("hidden");
+            showPreviewChrome(activeChannel);
+          }
+        });
       });
       grid.appendChild(card);
     });
@@ -776,7 +789,7 @@ function ensurePreviewPanel(type) {
 function renderHistPanelInline() {
   const panel = document.getElementById("histPanelInline");
   if (!panel) return;
-  const key   = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
+  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
   if (!items.length) {
     panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
@@ -804,11 +817,24 @@ function renderHistPanelInline() {
         setStorage(key, items2);
         renderHistPanelInline();
       } else {
-        cargarEstado(items2[idx].state);
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-        document.getElementById("channelSubtabs")?.classList.remove("hidden");
-        showPreviewChrome(activeChannel);
+        const estado = items2[idx].state;
+        const esBorrador = btn.dataset.action === "cargar";
+        mostrarPreviewPlantilla({
+          titulo:    estado.titulo    || "",
+          subtitulo: estado.subtitulo || "",
+          imagenUrl: estado.imagen || estado.imagenUrl || "",
+          blocks:    estado.blocks    || [],
+          canal:     estado.canal     || "",
+          badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
+          btnLabel:  esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
+          onConfirm: () => {
+            cargarEstado(estado);
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+            document.getElementById("channelSubtabs")?.classList.remove("hidden");
+            showPreviewChrome(activeChannel);
+          }
+        });
       }
     });
   });
@@ -819,28 +845,66 @@ tarjetaForm.addEventListener("submit", e => { e.preventDefault(); mostrarConfirm
 // ═══════════════════════════════════════════════
 // CONFIRMACIÓN DE ENVÍO
 // ═══════════════════════════════════════════════
+
+function mostrarErrorValidacion(titulo, mensaje, ayuda) {
+  document.getElementById("errorValidacionModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "errorValidacionModal";
+  modal.style.cssText = [
+    "position:fixed","inset:0","z-index:3000",
+    "background:rgba(0,0,0,.5)",
+    "display:flex","align-items:center","justify-content:center",
+    "padding:24px","animation:fadeInBg .2s ease"
+  ].join(";");
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;' +
+    'box-shadow:0 40px 100px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);' +
+    'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
+    'overflow:hidden;text-align:center;">' +
+    '<div style="background:linear-gradient(135deg,#d97706 0%,#f59e0b 100%);padding:28px 24px 24px;">' +
+    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);' +
+    'display:flex;align-items:center;justify-content:center;margin:0 auto 12px;' +
+    'border:2px solid rgba(255,255,255,.4);">' +
+    '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"' +
+    ' style="animation:checkPop .3s .1s cubic-bezier(.22,1,.36,1) both">' +
+    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>' +
+    '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
+    '<div style="color:white;font-size:18px;font-weight:700;">' + titulo + '</div></div>' +
+    '<div style="padding:22px 26px 8px;">' +
+    '<p style="font-size:14px;font-weight:600;color:#1a1a2e;margin:0 0 10px;">' + mensaje + '</p>' +
+    '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;' +
+    'padding:12px 14px;text-align:left;font-size:13px;color:#78350f;line-height:1.5;">' +
+    '<strong>&#128161; ¿Qué hacer?</strong><br>' + ayuda + '</div></div>' +
+    '<div style="padding:8px 26px 26px;">' +
+    '<button id="errorValidacionClose" style="width:100%;height:44px;border-radius:12px;border:none;' +
+    'background:#0000D0;color:white;font-family:inherit;font-size:14px;font-weight:700;' +
+    'cursor:pointer;box-shadow:0 4px 14px rgba(0,0,208,.3);transition:background .15s,transform .1s;">' +
+    'Entendido</button></div></div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+  const btn = document.getElementById("errorValidacionClose");
+  btn.addEventListener("click", () => modal.remove());
+  btn.addEventListener("mouseenter", () => { btn.style.background="#0000aa"; btn.style.transform="translateY(-1px)"; });
+  btn.addEventListener("mouseleave", () => { btn.style.background="#0000D0"; btn.style.transform=""; });
+}
+
 function mostrarConfirmEnvio() {
   const canal = canalSelect.value;
-  if (!canal) { showToast("⚠️ Selecciona un canal antes de enviar", "error"); return; }
+  if (!canal) { mostrarErrorValidacion("Canal no seleccionado", "Debes elegir un canal de envío antes de continuar.", "Selecciona <strong>Microsoft Teams</strong> o <strong>Outlook</strong> en el campo canal."); return; }
 
   const titulo = getFieldValue("titulo");
-  if (!titulo.text) { showToast("⚠️ Añade un título antes de enviar", "error"); return; }
+  if (!titulo.text) { mostrarErrorValidacion("Título requerido", "La tarjeta necesita un título para poder enviarse.", "Escribe un título en el campo <strong>01 · Título</strong> del formulario."); return; }
 
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
-  const canalIcon  = canal === "teams" ? "📤" : "📧";
+  const canalIcon = canal === "teams" ? "📤" : "📧";
+  const canalBadgeClass = canal === "teams" ? "badge-teams" : "badge-outlook";
 
-  // Build card preview
-  const subtitulo = getFieldValue("subtitulo");
-  const imagenUrl = getFieldValue("imagen").text;
-  const blocks = [];
-  document.getElementById("editor").querySelectorAll(".block").forEach(block => {
-    const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) blocks.push({ tipo:"titulo",  html:rich.innerHTML, text:rich.innerText.trim() });
-    else if (rich)                        blocks.push({ tipo:"parrafo", html:rich.innerHTML, text:rich.innerText.trim() });
-    else if (url)                         blocks.push({ tipo:"imagen",  value:url.value.trim() });
-  });
-  const cardPreviewHTML = buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal });
+  // Captura el HTML de la tarjeta actual
+  const previewSrc = document.getElementById("previewCard") || document.getElementById("previewCardOutlook");
+  const previewHTML = previewSrc ? previewSrc.innerHTML : "";
 
   document.getElementById("confirmEnvioModal")?.remove();
 
@@ -855,64 +919,72 @@ function mostrarConfirmEnvio() {
 
   modal.innerHTML = `
     <div style="
-      background:white;border-radius:16px;overflow:hidden;
-      max-width:440px;width:100%;
-      box-shadow:0 32px 80px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);
+      background:white;border-radius:16px;
+      max-width:480px;width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.22),0 0 0 1px rgba(0,0,0,.06);
       font-family:var(--font,sans-serif);
       animation:msDropIn .2s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
     ">
       <!-- Header -->
       <div style="
-        padding:18px 22px 14px;
+        padding:20px 24px 16px;
         border-bottom:1px solid #f0f0f0;
-        display:flex;align-items:center;gap:10px;
+        display:flex;align-items:center;gap:12px;
       ">
-        <span style="font-size:24px;line-height:1">${canalIcon}</span>
+        <span style="font-size:22px">${canalIcon}</span>
         <div>
           <div style="font-size:15px;font-weight:700;color:#0f0f12;letter-spacing:-.01em">¿Enviar la tarjeta?</div>
-          <div style="font-size:11px;color:#aaa;margin-top:2px">
-            Vía <strong style="color:#0000D0">${canalLabel}</strong> · Esta acción no se puede deshacer
-          </div>
+          <div style="font-size:12px;color:#999;margin-top:2px">Vía <strong style="color:#0000D0">${canalLabel}</strong></div>
         </div>
+        <button id="confirmEnvioClose" style="
+          margin-left:auto;background:none;border:none;
+          font-size:18px;color:#bbb;cursor:pointer;line-height:1;padding:4px;
+        ">✕</button>
       </div>
 
       <!-- Card preview -->
-      <div style="padding:14px 16px;background:#f5f4f0;border-bottom:1px solid #e8e8e8;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:8px;">
-          Vista previa
-        </div>
-        <div style="
-          background:white;border-radius:8px;overflow:hidden;
-          box-shadow:0 1px 4px rgba(0,0,0,.08);
-          font-family:'Segoe UI',sans-serif;
-          max-height:240px;overflow-y:auto;
-          font-size:13px;
-        ">
-          ${cardPreviewHTML}
+      <div style="
+        margin:16px 20px;
+        border:1.5px solid #e8e8e8;border-radius:10px;
+        overflow:hidden;max-height:340px;overflow-y:auto;
+        background:#fafafa;
+        scrollbar-width:thin;
+      ">
+        <div id="confirmPreviewCard" style="pointer-events:none;user-select:none;">
+          ${previewHTML}
         </div>
       </div>
 
-      <!-- Actions -->
-      <div style="padding:14px 18px;display:flex;gap:10px;">
+      <!-- Footer buttons -->
+      <div style="
+        padding:12px 20px 20px;
+        display:flex;gap:10px;
+      ">
         <button id="confirmEnvioCancel" style="
-          flex:1;height:40px;border-radius:8px;
+          flex:1;height:42px;border-radius:9px;
           border:1.5px solid #e0e0e0;background:white;
           font-family:inherit;font-size:13px;font-weight:600;
-          color:#666;cursor:pointer;
+          color:#666;cursor:pointer;transition:background .15s;
         ">Cancelar</button>
         <button id="confirmEnvioOk" style="
-          flex:2;height:40px;border-radius:8px;border:none;
+          flex:2;height:42px;border-radius:9px;border:none;
           background:#0000D0;color:white;
-          font-family:inherit;font-size:13px;font-weight:700;
-          cursor:pointer;
+          font-family:inherit;font-size:14px;font-weight:700;
+          cursor:pointer;transition:background .15s,box-shadow .15s;
           box-shadow:0 2px 10px rgba(0,0,208,.3);
-        ">${canalIcon} Sí, enviar</button>
+          display:flex;align-items:center;justify-content:center;gap:8px;
+        ">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Sí, enviar
+        </button>
       </div>
     </div>
   `;
 
   document.body.appendChild(modal);
   modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+  document.getElementById("confirmEnvioClose").addEventListener("click", () => modal.remove());
   document.getElementById("confirmEnvioCancel").addEventListener("click", () => modal.remove());
   document.getElementById("confirmEnvioOk").addEventListener("click", () => {
     modal.remove();
@@ -921,26 +993,203 @@ function mostrarConfirmEnvio() {
 }
 
 function ejecutarEnvio() {
-  const state = getCardState();
-  if (state.titulo) guardarEnviada(state);
-
-  // Visual feedback on button
-  const btn = tarjetaForm.querySelector(".btn-submit");
-  if (btn) {
-    const orig = btn.innerHTML;
-    btn.style.background = "#107c10";
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ¡Enviada!`;
-    setTimeout(() => {
-      btn.style.background = "";
-      btn.innerHTML = orig;
-    }, 2500);
+  try {
+    const state = getCardState();
+    if (state.titulo) {
+      guardarEnviada(state);
+      const histPanel = document.getElementById("histPanelInline");
+      if (histPanel) {
+        currentHistTab = "enviadas";
+        document.querySelectorAll(".hist-tab").forEach(t => {
+          t.classList.toggle("active", t.dataset.htab === "enviadas");
+        });
+        renderHistPanelInline();
+      }
+    }
+    mostrarEnvioExito(state);
+  } catch (err) {
+    mostrarEnvioError(err);
   }
-  showToast("✅ Tarjeta enviada correctamente");
+}
+
+function mostrarEnvioError(err) {
+  document.getElementById("envioErrorModal")?.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "envioErrorModal";
+  modal.style.cssText = [
+    "position:fixed", "inset:0", "z-index:3000",
+    "background:rgba(0,0,0,.55)",
+    "display:flex", "align-items:center", "justify-content:center",
+    "padding:24px", "animation:fadeInBg .2s ease"
+  ].join(";");
+
+  const errMsg = (err && err.message) ? err.message : "Error desconocido";
+
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:20px;max-width:420px;width:100%;' +
+    'box-shadow:0 40px 100px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);' +
+    'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
+    'overflow:hidden;text-align:center;">' +
+
+    // Red header
+    '<div style="background:linear-gradient(135deg,#b91c1c 0%,#ef4444 100%);padding:32px 24px 28px;">' +
+    '<div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);' +
+    'display:flex;align-items:center;justify-content:center;margin:0 auto 14px;' +
+    'border:2px solid rgba(255,255,255,.4);">' +
+    '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" ' +
+    'style="animation:checkPop .3s .15s cubic-bezier(.22,1,.36,1) both">' +
+    '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>' +
+    '<div style="color:white;font-size:20px;font-weight:700;">Error al enviar</div>' +
+    '<div style="color:rgba(255,255,255,.8);font-size:13px;margin-top:6px;">No se ha podido enviar la tarjeta</div>' +
+    '</div>' +
+
+    // Body
+    '<div style="padding:24px 28px 8px;">' +
+    '<div style="background:#fff5f5;border:1.5px solid #fecaca;border-radius:10px;' +
+    'padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;text-align:left;">' +
+    '<span style="font-size:20px;flex-shrink:0;">&#9888;&#65039;</span>' +
+    '<div>' +
+    '<div style="font-size:12px;color:#dc2626;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Detalle del error</div>' +
+    '<div style="font-size:13px;color:#7f1d1d;line-height:1.5;word-break:break-word;">' + errMsg + '</div>' +
+    '</div></div>' +
+    '<p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px;">' +
+    'Comprueba tu conexion e intentalo de nuevo. Si el problema persiste, contacta con el administrador.' +
+    '</p></div>' +
+
+    // Buttons
+    '<div style="padding:0 28px 28px;display:flex;gap:10px;">' +
+    '<button id="envioErrorClose" style="flex:1;height:46px;border-radius:12px;' +
+    'border:1.5px solid #e0e0e0;background:white;font-family:inherit;font-size:14px;' +
+    'font-weight:600;color:#666;cursor:pointer;">Cancelar</button>' +
+    '<button id="envioErrorRetry" style="flex:2;height:46px;border-radius:12px;border:none;' +
+    'background:#0000D0;color:white;font-family:inherit;font-size:14px;font-weight:700;' +
+    'cursor:pointer;box-shadow:0 4px 16px rgba(0,0,208,.3);' +
+    'display:flex;align-items:center;justify-content:center;gap:8px;">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">' +
+    '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>' +
+    'Reintentar</button>' +
+    '</div></div>';
+
+  document.body.appendChild(modal);
+
+  document.getElementById("envioErrorClose").addEventListener("click", () => modal.remove());
+
+  const retryBtn = document.getElementById("envioErrorRetry");
+  retryBtn.addEventListener("click", () => { modal.remove(); ejecutarEnvio(); });
+  retryBtn.addEventListener("mouseenter", () => { retryBtn.style.background = "#0000aa"; retryBtn.style.transform = "translateY(-1px)"; });
+  retryBtn.addEventListener("mouseleave", () => { retryBtn.style.background = "#0000D0"; retryBtn.style.transform = ""; });
+}
+
+function mostrarEnvioExito(state) {
+  document.getElementById("envioExitoModal")?.remove();
+
+  const canal      = state?.canal === "outlook" ? "Outlook" : "Microsoft Teams";
+  const canalIcon  = state?.canal === "outlook" ? "📧" : "📤";
+  const tituloCard = state?.titulo || "Tu tarjeta";
+
+  const modal = document.createElement("div");
+  modal.id = "envioExitoModal";
+  modal.style.cssText = `
+    position:fixed; inset:0; z-index:3000;
+    background:rgba(0,0,0,.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    animation: fadeInBg .2s ease;
+  `;
+
+  modal.innerHTML = `
+    <div style="
+      background:#fff; border-radius:20px;
+      max-width:420px; width:100%;
+      box-shadow:0 40px 100px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.06);
+      font-family:var(--sans,'Segoe UI',sans-serif);
+      animation:msDropIn .25s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
+      text-align:center;
+    ">
+      <!-- Cabecera verde -->
+      <div style="
+        background:linear-gradient(135deg,#0a7c15 0%,#12a01e 100%);
+        padding:32px 24px 28px;
+        position:relative;
+      ">
+        <!-- Icono check animado -->
+        <div style="
+          width:64px; height:64px; border-radius:50%;
+          background:rgba(255,255,255,.2);
+          display:flex; align-items:center; justify-content:center;
+          margin:0 auto 14px;
+          border:2px solid rgba(255,255,255,.4);
+        ">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            style="animation:checkPop .3s .15s cubic-bezier(.22,1,.36,1) both">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div style="color:white; font-size:20px; font-weight:700; letter-spacing:-.01em;">¡Tarjeta enviada!</div>
+        <div style="color:rgba(255,255,255,.8); font-size:13px; margin-top:6px;">${canalIcon} Enviada vía <strong>${canal}</strong></div>
+      </div>
+
+      <!-- Cuerpo -->
+      <div style="padding:24px 28px 8px;">
+        <div style="
+          background:#f4f4f4; border-radius:10px;
+          padding:14px 16px; margin-bottom:20px;
+          display:flex; align-items:center; gap:12px;
+          text-align:left;
+        ">
+          <span style="font-size:22px">✉️</span>
+          <div>
+            <div style="font-size:12px; color:#999; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px;">Tarjeta</div>
+            <div style="font-size:14px; font-weight:600; color:#1a1a2e;">${tituloCard}</div>
+          </div>
+        </div>
+        <p style="font-size:13px; color:#666; line-height:1.6; margin:0 0 20px;">
+          Tu tarjeta adaptativa se ha enviado correctamente. Puedes consultarla en el <strong>historial</strong> en cualquier momento.
+        </p>
+      </div>
+
+      <!-- Botón cerrar -->
+      <div style="padding:0 28px 28px;">
+        <button id="envioExitoClose" style="
+          width:100%; height:46px; border-radius:12px; border:none;
+          background:#0000D0; color:white;
+          font-family:inherit; font-size:15px; font-weight:700;
+          cursor:pointer;
+          box-shadow:0 4px 16px rgba(0,0,208,.3);
+          transition:background .15s, transform .1s;
+          display:flex; align-items:center; justify-content:center; gap:8px;
+        ">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Aceptar
+        </button>
+      </div>
+    </div>
+
+    <style>
+      @keyframes checkPop {
+        from { opacity:0; transform:scale(.5) rotate(-20deg); }
+        to   { opacity:1; transform:scale(1) rotate(0deg); }
+      }
+      @keyframes fadeInBg {
+        from { opacity:0; }
+        to   { opacity:1; }
+      }
+    </style>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = document.getElementById("envioExitoClose");
+  closeBtn.addEventListener("mouseenter", () => { closeBtn.style.background = "#0000aa"; closeBtn.style.transform = "translateY(-1px)"; });
+  closeBtn.addEventListener("mouseleave", () => { closeBtn.style.background = "#0000D0"; closeBtn.style.transform = ""; });
+  closeBtn.addEventListener("click", () => modal.remove());
 }
 
 function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
   const body = [];
-
+ 
   // 1. Imagen de cabecera (altText de texto fijo)
   if (imagenUrl) {
     body.push({
@@ -951,6 +1200,7 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
     });
   }
 
+ 
   // 2. Contenedor del título
   if (titulo && titulo.text) {
     body.push({
@@ -962,6 +1212,7 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
     });
   }
 
+ 
   // 3. Subtítulo
   if (subtitulo && subtitulo.text) {
     body.push({
@@ -973,11 +1224,13 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
     });
   }
 
+ 
   // 4. Bloques de contenido dinámicos
   if (blocks && blocks.length > 0) {
     // Separador (solo visual)
     body.push({ type: "Container", style: "emphasis", bleed: false, items: [], spacing: "Small" });
 
+ 
     blocks.forEach(b => {
       if (b.tipo === "titulo" && b.text) {
         body.push({
@@ -990,12 +1243,13 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
       } else if (b.tipo === "imagen" && b.value) {
         body.push({
           type: "Image", url: b.value.trim(), size: "stretch", spacing: "Small", 
+          type: "Image", url: b.value.trim(), size: "stretch", spacing: "Small",
           altText: "Imagen del contenido" // Texto duro, a prueba de fallos
         });
       }
     });
   }
-
+ 
   // Envoltorio limpio y sin variables nulas
   return {
     attachments: [
@@ -1012,6 +1266,116 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
     ]
   };
 }
+
+  // Envoltorio limpio y sin variables nulas
+async function dispararEnvioATeams() {
+    // 1. Recoger destinatarios usando el ID correcto del HTML para Teams
+    const inputDestinatarios = document.getElementById('teamsRecipient').value;
+   
+    // Separamos los correos por coma en caso de que haya varios
+    const destinatariosArray = inputDestinatarios
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email !== "");
+ 
+    // ════════ 2. ¡LA MAGIA CON DATOS REALES (BLINDADO)! ════════
+   
+    // 1. Leemos los elementos del HTML directamente
+    const elTitulo = document.getElementById("titulo");
+    const elSubtitulo = document.getElementById("subtitulo");
+    const elImagen = document.getElementById("imagen");
+   
+    // 2. Extraemos ÚNICAMENTE el texto puro.
+    // Usamos (innerText || value) por si es un div editable o un input normal, y lo forzamos a String
+    const textoTitulo = elTitulo ? String(elTitulo.innerText || elTitulo.value || "") : "";
+    const textoSubtitulo = elSubtitulo ? String(elSubtitulo.innerText || elSubtitulo.value || "") : "";
+    const urlImagen = elImagen ? String(elImagen.value || "") : null;
+ 
+    // 3. Recorremos los bloques dinámicos del editor
+    const blocks = [];
+    const editorContenedor = document.getElementById("editor");
+   
+    if (editorContenedor) {
+        editorContenedor.querySelectorAll(".block").forEach(block => {
+            const rich = block.querySelector(".rich-editor-area");
+            const url = block.querySelector("input[type='url']");
+           
+            if (rich && rich.dataset.singleline) {
+                blocks.push({ tipo: "titulo", text: String(rich.innerText || "") });
+            } else if (rich) {
+                blocks.push({ tipo: "parrafo", text: String(rich.innerText || "") });
+            } else if (url) {
+                blocks.push({ tipo: "imagen", value: String(url.value || "") });
+            }
+        });
+    }
+ 
+    // 4. Juntamos los ingredientes con el formato perfecto que espera Teams
+    const datosReales = {
+        titulo: { text: textoTitulo },      
+        subtitulo: { text: textoSubtitulo },
+        imagenUrl: urlImagen,
+        blocks: blocks
+    };
+ 
+    // 5. Construimos la tarjeta con la función que blindamos antes
+    const mensajeCompleto = buildCardJSON(datosReales);
+ 
+    // Extraemos el "content" puro
+    const tarjetaVisual = mensajeCompleto.attachments[0].content;
+ 
+    // ════════════════════════════════════════════════
+ 
+    // 3. Feedback visual: cambiamos el botón mientras carga
+    const botonEnviar = document.getElementById('btnEnviar');
+    const textoOriginal = botonEnviar.innerText;
+    botonEnviar.innerText = "Enviando...";
+    botonEnviar.disabled = true;
+ 
+    // 4. Llamar a tu servidor local (server.js)
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/enviar-teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                destinatarios: destinatariosArray,
+                tarjeta: tarjetaVisual
+            })
+        });
+ 
+        const data = await respuesta.json();
+ 
+        if (respuesta.ok) {
+            alert("✅ ¡Comunicado enviado a Teams con éxito!");
+        } else {
+            alert("❌ Hubo un problema: " + (data.error || "Desconocido"));
+            console.error("Detalle del error:", data);
+        }
+    } catch (error) {
+        console.error("Error de red/conexión:", error);
+        alert("❌ No se pudo conectar con el servidor. ¿Está encendido 'node server.js'?");
+    } finally {
+        // Restaurar el botón a su estado normal
+        botonEnviar.innerText = textoOriginal;
+        botonEnviar.disabled = false;
+    }
+}
+
+  return {
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+          type: "AdaptiveCard",
+          version: "1.4",
+          fallbackText: "Nueva tarjeta de Teams",
+          body: body
+        }
+      }
+    ]
+  };
+
 
 function buildOutlookHTML({ titulo, subtitulo, imagenUrl, blocks }) {
   // Clean, table-based HTML safe for Outlook rendering engine
@@ -1080,8 +1444,8 @@ function mostrarModalOutput(isTeams, outputStr) {
       <div style="padding:12px 24px 8px;display:flex;align-items:center;gap:10px;flex-shrink:0">
         <p style="font-size:12px;color:#888;flex:1;font-style:italic">
           ${isTeams
-            ? "Envía este JSON a tu webhook de Teams (Power Automate, Bot Framework, etc.)"
-            : "Copia este HTML para usarlo en el cuerpo del correo de Outlook"}
+      ? "Envía este JSON a tu webhook de Teams (Power Automate, Bot Framework, etc.)"
+      : "Copia este HTML para usarlo en el cuerpo del correo de Outlook"}
         </p>
         <button id="copyOutputBtn" style="
           padding:8px 18px;border-radius:8px;border:1.5px solid #0000D0;
@@ -1096,7 +1460,7 @@ function mostrarModalOutput(isTeams, outputStr) {
           font-family:'Cascadia Code','DM Mono',monospace;font-size:12px;
           line-height:1.7;overflow:auto;white-space:pre-wrap;word-break:break-all;
           margin:0;border:1px solid #1e1e2e
-        ">${outputStr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+        ">${outputStr.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
       </div>
     </div>
   `;
@@ -1120,7 +1484,7 @@ function mostrarModalOutput(isTeams, outputStr) {
         btn.style.borderColor = "#0000D0";
         btn.style.color = "#0000D0";
       }, 2000);
-    } catch(e) {
+    } catch (e) {
       showToast("❌ No se pudo copiar al portapapeles", "error");
     }
   });
@@ -1130,11 +1494,25 @@ function mostrarModalOutput(isTeams, outputStr) {
 initHeaderFields();
 
 // imagen y emails siguen siendo inputs normales — registrar eventos
-["imagen","emails","teamsRecipient"].forEach(id => {
+["imagen", "emails", "teamsRecipient"].forEach(id => {
   document.getElementById(id)?.addEventListener("input", renderPreview);
 });
 
 crearBloque("parrafo");
+
+// ── VALIDACIÓN DEL BOTÓN ENVIAR ───────────────
+function actualizarBotonEnviar() {
+  const btnEnviar = document.querySelector(".btn-submit");
+  if (!btnEnviar) return;
+  const tituloEl = document.getElementById("titulo");
+  const canalEl  = document.getElementById("canal");
+  const tituloOk = tituloEl && tituloEl.textContent.trim().length > 0;
+  const canalOk  = canalEl  && canalEl.value.trim().length > 0;
+  btnEnviar.disabled = !(tituloOk && canalOk);
+}
+
+// Estado inicial: botón desactivado
+setTimeout(actualizarBotonEnviar, 250);
 // ═══════════════════════════════════════════════
 // FEATURE: DEVICE TOGGLE (móvil / escritorio)
 // ═══════════════════════════════════════════════
@@ -1159,50 +1537,129 @@ const PLANTILLAS = [
     icon: "📢", name: "Anuncio", desc: "Comunicado general",
     titulo: "📢 Anuncio importante", subtitulo: "Por favor lee con atención",
     cuerpo: "Querido equipo, queremos informarte sobre una novedad importante que afecta a toda la organización. A partir del próximo lunes se implementará el nuevo proceso.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "✅", name: "Aprobación", desc: "Solicitud de visto bueno",
     titulo: "✅ Solicitud de aprobación", subtitulo: "Tu validación es necesaria",
     cuerpo: "Se requiere tu aprobación para continuar con el proceso. Por favor revisa la información adjunta y confirma tu decisión antes del viernes.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📊", name: "Reporte", desc: "Resumen de resultados",
     titulo: "📊 Reporte semanal", subtitulo: "Resultados del equipo — Semana 12",
     cuerpo: "A continuación el resumen de los indicadores clave de esta semana. Los resultados muestran una tendencia positiva en los principales KPIs del departamento.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🎉", name: "Evento", desc: "Invitación o convocatoria",
     titulo: "🎉 Estás invitado", subtitulo: "No te lo pierdas",
     cuerpo: "Te invitamos a participar en nuestro próximo evento. Será una oportunidad única para conectar con el equipo y conocer los planes de la empresa para el próximo trimestre.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "⚠️", name: "Alerta", desc: "Aviso urgente",
     titulo: "⚠️ Aviso urgente", subtitulo: "Requiere atención inmediata",
     cuerpo: "Se ha detectado una situación que requiere tu atención inmediata. Por favor toma las medidas necesarias y confirma la recepción de este mensaje.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🏆", name: "Reconocimiento", desc: "Felicitación de logro",
     titulo: "🏆 ¡Felicitaciones!", subtitulo: "Has alcanzado un hito importante",
     cuerpo: "Nos complace reconocer tu excelente trabajo y dedicación. Tu contribución ha sido fundamental para el éxito del equipo. ¡Sigue así!",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "📅", name: "Recordatorio", desc: "Aviso de fecha / tarea",
     titulo: "📅 Recordatorio", subtitulo: "No olvides esta fecha",
     cuerpo: "Te recordamos que el próximo miércoles vence el plazo para entregar los informes trimestrales. Asegúrate de tener todo listo con antelación.",
-    imagen: ""
+    imagen: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800&h=300&fit=crop&auto=format"
   },
   {
     icon: "🚀", name: "Lanzamiento", desc: "Nuevo producto o feature",
     titulo: "🚀 Nuevo lanzamiento", subtitulo: "Ya disponible para todos",
     cuerpo: "Con mucho orgullo anunciamos el lanzamiento de nuestra nueva funcionalidad. Está disponible desde hoy para todos los usuarios. ¡Esperamos que la disfrutes!",
-    imagen: ""
-  }
+    imagen: "https://images.unsplash.com/photo-1517976487492-5750f3195933?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "📋", name: "Acta de reunión", desc: "Resumen y acuerdos",
+    titulo: "📋 Acta de reunión", subtitulo: "Resumen de acuerdos y próximos pasos",
+    cuerpo: "A continuación se detallan los principales acuerdos alcanzados durante la reunión de hoy. Por favor revisa los puntos asignados y confirma tu disponibilidad para los próximos pasos.",
+    imagen: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🎓", name: "Formación", desc: "Convocatoria formativa",
+    titulo: "🎓 Nueva formación disponible", subtitulo: "Inscríbete antes de que se agoten las plazas",
+    cuerpo: "Hemos habilitado un nuevo curso de formación para el equipo. La participación es voluntaria pero muy recomendada. Las plazas son limitadas, así que inscríbete cuanto antes.",
+    imagen: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "💡", name: "Propuesta", desc: "Idea o iniciativa nueva",
+    titulo: "💡 Nueva propuesta", subtitulo: "Tu opinión nos importa",
+    cuerpo: "Queremos compartir contigo una nueva propuesta que estamos valorando. Nos gustaría conocer tu opinión antes de tomar una decisión final. Puedes enviarnos tu feedback antes del viernes.",
+    imagen: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🔧", name: "Mantenimiento", desc: "Aviso de interrupción",
+    titulo: "🔧 Mantenimiento programado", subtitulo: "Interrupción del servicio",
+    cuerpo: "Te informamos de que el próximo domingo realizaremos tareas de mantenimiento en los sistemas. El servicio estará interrumpido entre las 2:00 y las 6:00 h. Disculpa las molestias.",
+    imagen: "https://images.unsplash.com/photo-1581092921461-39b9d08e47ce?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🤝", name: "Bienvenida", desc: "Incorporación al equipo",
+    titulo: "🤝 ¡Bienvenido/a al equipo!", subtitulo: "Nos alegra tenerte con nosotros",
+    cuerpo: "Es un placer darte la bienvenida a nuestra organización. En los próximos días recibirás toda la información necesaria para comenzar. No dudes en preguntar cualquier cosa al equipo.",
+    imagen: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "📈", name: "Resultados", desc: "Informe de desempeño",
+    titulo: "📈 Resultados del trimestre", subtitulo: "Balance y objetivos alcanzados",
+    cuerpo: "Cerramos el trimestre con resultados muy positivos. Hemos superado los objetivos marcados en las principales áreas de negocio. Gracias a todo el equipo por el esfuerzo y dedicación.",
+    imagen: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🗳️", name: "Encuesta", desc: "Solicitud de feedback",
+    titulo: "🗳️ Tu opinión importa", subtitulo: "Encuesta interna — 5 minutos",
+    cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
+    imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
+    titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
+    cuerpo: "#UnaiPaganos 😘",
+    imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
+    titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
+    cuerpo: "Como parte de nuestro compromiso medioambiental, lanzamos una nueva iniciativa para reducir nuestra huella de carbono. Te invitamos a participar y a compartir tus ideas con el equipo.",
+    imagen: "https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🔒", name: "Seguridad", desc: "Aviso de ciberseguridad",
+    titulo: "🔒 Aviso de seguridad", subtitulo: "Acción requerida por tu parte",
+    cuerpo: "Hemos detectado actividad inusual en algunos accesos. Te pedimos que actualices tu contraseña y actives la verificación en dos pasos antes del próximo lunes. Gracias por tu colaboración.",
+    imagen: "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "💰", name: "Presupuesto", desc: "Aprobación de gastos",
+    titulo: "💰 Revisión presupuestaria", subtitulo: "Cierre del ejercicio — acción necesaria",
+    cuerpo: "Nos acercamos al cierre del ejercicio y necesitamos que revises y valides los presupuestos pendientes de tu área. Por favor envía tu confirmación antes del día 25 del mes en curso.",
+    imagen: "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "🏅", name: "Reto mensual", desc: "Desafío del equipo",
+    titulo: "🏅 Reto del mes", subtitulo: "¿Aceptas el desafío?",
+    cuerpo: "Este mes os lanzamos un nuevo reto para el equipo. El objetivo es mejorar nuestros tiempos de respuesta al cliente en un 15%. El equipo ganador recibirá un reconocimiento especial.",
+    imagen: "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=800&h=300&fit=crop&auto=format"
+  },
+  {
+    icon: "📣", name: "Cambio org.", desc: "Reestructuración interna",
+    titulo: "📣 Cambio organizativo", subtitulo: "Nueva estructura a partir del 1 de enero",
+    cuerpo: "Queremos comunicarte un cambio en la estructura organizativa de nuestra área. A partir del próximo mes entrarán en vigor los nuevos organigramas. Recibirás más información en los próximos días.",
+    imagen: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&h=300&fit=crop&auto=format"
+  },
+
 ];
 
 // tplGrid is now rendered inline in ensurePreviewPanel("plantillas")
@@ -1224,6 +1681,7 @@ function aplicarPlantilla(p) {
   const block = crearBloqueConTexto("parrafo", p.cuerpo);
   editorEl.appendChild(block);
   renderPreview();
+  actualizarBotonEnviar();
 }
 
 function crearBloqueConTexto(tipo, texto) {
@@ -1259,36 +1717,36 @@ function crearBloqueConTexto(tipo, texto) {
 let currentHistTab = "borradores";
 
 function getStorage(key) {
-  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; }
 }
 function setStorage(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { }
 }
 
 function getCardState() {
   const tituloEl = document.getElementById("titulo");
-  const subEl    = document.getElementById("subtitulo");
-  const imgEl    = document.getElementById("imagen");
-  const canalEl  = document.getElementById("canal");
+  const subEl = document.getElementById("subtitulo");
+  const imgEl = document.getElementById("imagen");
+  const canalEl = document.getElementById("canal");
   const emailsEl = document.getElementById("emails");
-  const teamsEl  = document.getElementById("teamsRecipient");
+  const teamsEl = document.getElementById("teamsRecipient");
 
   const blocks = [];
   document.getElementById("editor").querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
-    const url  = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) blocks.push({ tipo: "titulo",   html: rich.innerHTML });
-    else if (rich)                         blocks.push({ tipo: "parrafo", html: rich.innerHTML });
-    else if (url)                          blocks.push({ tipo: "imagen",  value: url.value });
+    const url = block.querySelector("input[type='url']");
+    if (rich && rich.dataset.singleline) blocks.push({ tipo: "titulo", html: rich.innerHTML });
+    else if (rich) blocks.push({ tipo: "parrafo", html: rich.innerHTML });
+    else if (url) blocks.push({ tipo: "imagen", value: url.value });
   });
 
   return {
-    titulo:    tituloEl?.innerText?.trim() || "",
-    subtitulo: subEl?.innerText?.trim()    || "",
-    imagen:    imgEl?.value?.trim()        || "",
-    canal:     canalEl?.value              || "",
-    emails:    emailsEl?.value             || "",
-    teamsRecipient: teamsEl?.value         || "",
+    titulo: tituloEl?.innerText?.trim() || "",
+    subtitulo: subEl?.innerText?.trim() || "",
+    imagen: imgEl?.value?.trim() || "",
+    canal: canalEl?.value || "",
+    emails: emailsEl?.value || "",
+    teamsRecipient: teamsEl?.value || "",
     blocks
   };
 }
@@ -1311,18 +1769,18 @@ function guardarEnviada(state) {
 
 function cargarEstado(state) {
   const tituloEl = document.getElementById("titulo");
-  const subEl    = document.getElementById("subtitulo");
-  const imgEl    = document.getElementById("imagen");
-  const canalEl  = document.getElementById("canal");
+  const subEl = document.getElementById("subtitulo");
+  const imgEl = document.getElementById("imagen");
+  const canalEl = document.getElementById("canal");
   const emailsEl = document.getElementById("emails");
-  const teamsEl  = document.getElementById("teamsRecipient");
+  const teamsEl = document.getElementById("teamsRecipient");
 
   if (tituloEl) tituloEl.innerHTML = state.titulo || "";
-  if (subEl)    subEl.innerHTML    = state.subtitulo || "";
-  if (imgEl)    imgEl.value        = state.imagen || "";
-  if (canalEl)  { canalEl.value = state.canal || ""; canalEl.dispatchEvent(new Event("change")); }
-  if (emailsEl) emailsEl.value     = state.emails || "";
-  if (teamsEl)  teamsEl.value      = state.teamsRecipient || "";
+  if (subEl) subEl.innerHTML = state.subtitulo || "";
+  if (imgEl) imgEl.value = state.imagen || "";
+  if (canalEl) { canalEl.value = state.canal || ""; canalEl.dispatchEvent(new Event("change")); }
+  if (emailsEl) emailsEl.value = state.emails || "";
+  if (teamsEl) teamsEl.value = state.teamsRecipient || "";
 
   // Rebuild blocks
   const editorEl = document.getElementById("editor");
@@ -1346,12 +1804,13 @@ function cargarEstado(state) {
   });
 
   renderPreview();
+  actualizarBotonEnviar();
   // panel is inline, no modal to close
 }
 
 function renderHistPanel() {
   const panel = document.getElementById("histPanel");
-  const key   = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
+  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
 
   if (!items.length) {
@@ -1375,7 +1834,7 @@ function renderHistPanel() {
 
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const idx    = +btn.dataset.i;
+      const idx = +btn.dataset.i;
       const items2 = getStorage(key);
       if (btn.dataset.action === "borrar") {
         items2.splice(idx, 1);
@@ -1389,204 +1848,6 @@ function renderHistPanel() {
 }
 
 // ═══════════════════════════════════════════════
-// FEATURE: GENERACIÓN CON IA
-// ═══════════════════════════════════════════════
-let iaSelectedLang = "es";
-
-document.querySelectorAll(".ia-lang-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".ia-lang-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    iaSelectedLang = btn.dataset.lang;
-  });
-});
-
-const LANG_NAMES = { es:"español", en:"English", fr:"français", de:"Deutsch", pt:"português" };
-
-document.getElementById("iaGenerateBtn").addEventListener("click", async () => {
-  const prompt  = document.getElementById("iaPrompt").value.trim();
-  if (!prompt) { alert("Escribe una descripción para generar la tarjeta."); return; }
-
-  const btn    = document.getElementById("iaGenerateBtn");
-  const status = document.getElementById("iaStatus");
-  btn.disabled = true;
-  document.getElementById("iaBtnText").textContent = "✨ Generando…";
-  status.textContent = "La IA está creando tu tarjeta…";
-  status.className = "ia-status";
-
-  const langName = LANG_NAMES[iaSelectedLang] || "español";
-
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: `Eres un asistente que crea tarjetas adaptativas para Microsoft Teams y Outlook.
-
-El usuario quiere: "${prompt}"
-
-Responde SOLO con un JSON válido (sin markdown, sin texto extra) con esta estructura exacta:
-{
-  "titulo": "Título corto y llamativo con emoji",
-  "subtitulo": "Subtítulo conciso",
-  "cuerpo": "Contenido del cuerpo en 2-3 frases. Tono profesional.",
-  "canal": "teams"
-}
-
-El idioma de salida debe ser: ${langName}
-El campo "canal" puede ser "teams" o "outlook" según el contexto.`
-        }]
-      })
-    });
-
-    const data = await res.json();
-    const text = data.content?.map(c => c.text || "").join("") || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
-
-    // Apply to form
-    const tituloEl = document.getElementById("titulo");
-    const subEl    = document.getElementById("subtitulo");
-    const canalEl  = document.getElementById("canal");
-    if (tituloEl) tituloEl.textContent = parsed.titulo || "";
-    if (subEl)    subEl.textContent    = parsed.subtitulo || "";
-    if (canalEl && parsed.canal) { canalEl.value = parsed.canal; canalEl.dispatchEvent(new Event("change")); }
-
-    // Set body block
-    const editorEl = document.getElementById("editor");
-    editorEl.innerHTML = "";
-    const block = crearBloqueConTexto("parrafo", parsed.cuerpo || "");
-    editorEl.appendChild(block);
-    renderPreview();
-
-    status.textContent = "✅ ¡Tarjeta generada! Puedes editarla libremente.";
-    status.classList.remove("error");
-    setTimeout(() => cerrarModal("modalIA"), 1500);
-  } catch(e) {
-    status.textContent = "❌ Error al generar. Revisa tu conexión e inténtalo de nuevo.";
-    status.classList.add("error");
-  } finally {
-    btn.disabled = false;
-    document.getElementById("iaBtnText").textContent = "✨ Generar tarjeta";
-  }
-});
-
-// ═══════════════════════════════════════════════
-// FEATURE: MULTI-IDIOMA
-// ═══════════════════════════════════════════════
-let langSelected = new Set(["es"]);
-
-document.querySelectorAll(".lang-sel-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const lang = btn.dataset.lang;
-    if (lang === "es") return; // always keep ES (source)
-    if (langSelected.has(lang)) {
-      langSelected.delete(lang);
-      btn.classList.remove("active");
-    } else {
-      langSelected.add(lang);
-      btn.classList.add("active");
-    }
-  });
-});
-
-document.getElementById("langTranslateBtn").addEventListener("click", async () => {
-  const state   = getCardState();
-  const tituloTxt  = state.titulo;
-  const subTxt     = state.subtitulo;
-  const cuerpoHtml = (state.blocks[0]?.html) || "";
-  const cuerpoTxt  = (state.blocks[0]?.html || "").replace(/<[^>]+>/g, "");
-
-  if (!tituloTxt && !cuerpoTxt) { alert("Rellena al menos el título antes de traducir."); return; }
-
-  const area       = document.getElementById("langContentArea");
-  const btn        = document.getElementById("langTranslateBtn");
-  btn.disabled     = true;
-  btn.textContent  = "🌍 Traduciendo…";
-  area.innerHTML   = '<div style="text-align:center;padding:30px;color:var(--ms-ink-3)">⏳ Generando traducciones…</div>';
-
-  // Always show ES source
-  const results = [{ lang: "es", flag: "🇪🇸", titulo: tituloTxt, subtitulo: subTxt, cuerpo: cuerpoTxt }];
-
-  const toTranslate = [...langSelected].filter(l => l !== "es");
-  const LANG_LABELS = { es:"Español", en:"English", fr:"Français", de:"Deutsch", pt:"Português" };
-  const FLAGS       = { es:"🇪🇸", en:"🇬🇧", fr:"🇫🇷", de:"🇩🇪", pt:"🇵🇹" };
-
-  for (const lang of toTranslate) {
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 600,
-          messages: [{
-            role: "user",
-            content: `Traduce al ${LANG_NAMES[lang]} el siguiente contenido de una tarjeta corporativa.
-Responde SOLO con JSON sin markdown:
-{
-  "titulo": "...",
-  "subtitulo": "...",
-  "cuerpo": "..."
-}
-
-Título: ${tituloTxt}
-Subtítulo: ${subTxt}
-Cuerpo: ${cuerpoTxt}`
-          }]
-        })
-      });
-      const data = await res.json();
-      const text = data.content?.map(c => c.text || "").join("") || "";
-      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
-      results.push({ lang, flag: FLAGS[lang], titulo: parsed.titulo, subtitulo: parsed.subtitulo, cuerpo: parsed.cuerpo });
-    } catch(e) {
-      results.push({ lang, flag: FLAGS[lang], titulo: "Error", subtitulo: "", cuerpo: "No se pudo traducir." });
-    }
-  }
-
-  // Render results
-  area.innerHTML = results.map(r => `
-    <div class="lang-result-item" data-lang="${r.lang}">
-      <div class="lang-result-header">
-        <span>${r.flag} ${LANG_LABELS[r.lang] || r.lang}</span>
-        ${r.lang !== "es" ? `<button class="lang-copy-btn" data-lang="${r.lang}">📋 Usar esta versión</button>` : "<span style='font-size:10px;color:var(--ms-ink-3)'>Original</span>"}
-      </div>
-      <div class="lang-result-body">
-        <div class="lang-field-row"><label>Título</label><input type="text" value="${(r.titulo||"").replace(/"/g,"&quot;")}" data-field="titulo" data-lang="${r.lang}"></div>
-        <div class="lang-field-row"><label>Subtítulo</label><input type="text" value="${(r.subtitulo||"").replace(/"/g,"&quot;")}" data-field="subtitulo" data-lang="${r.lang}"></div>
-        <div class="lang-field-row"><label>Cuerpo</label><textarea rows="3" data-field="cuerpo" data-lang="${r.lang}">${r.cuerpo||""}</textarea></div>
-      </div>
-    </div>`).join("");
-
-  area.querySelectorAll(".lang-copy-btn").forEach(b => {
-    b.addEventListener("click", () => {
-      const lang = b.dataset.lang;
-      const item = area.querySelector(`.lang-result-item[data-lang="${lang}"]`);
-      const titulo    = item.querySelector("[data-field='titulo']").value;
-      const subtitulo = item.querySelector("[data-field='subtitulo']").value;
-      const cuerpo    = item.querySelector("[data-field='cuerpo']").value;
-      const tituloEl  = document.getElementById("titulo");
-      const subEl     = document.getElementById("subtitulo");
-      if (tituloEl) tituloEl.textContent = titulo;
-      if (subEl)    subEl.textContent    = subtitulo;
-      const editorEl = document.getElementById("editor");
-      editorEl.innerHTML = "";
-      editorEl.appendChild(crearBloqueConTexto("parrafo", cuerpo));
-      renderPreview();
-      cerrarModal("modalLang");
-    });
-  });
-
-  btn.disabled    = false;
-  btn.textContent = "🌍 Traducir seleccionados";
-});
-
-// ═══════════════════════════════════════════════
 // MODAL HELPERS
 // ═══════════════════════════════════════════════
 function abrirModal(id) {
@@ -1597,20 +1858,10 @@ function cerrarModal(id) {
 }
 
 // Wire open buttons (plantillas/historial are now inline in preview panel)
-document.getElementById("btnIA")?.addEventListener("click", () => {
-  document.getElementById("iaStatus").className = "ia-status hidden";
-  abrirModal("modalIA");
-});
-document.getElementById("btnLang")?.addEventListener("click", () => {
-  document.getElementById("langContentArea").innerHTML = "";
-  abrirModal("modalLang");
-});
 
 // Wire close buttons
 document.getElementById("cerrarModalPlantillas")?.addEventListener("click", () => cerrarModal("modalPlantillas"));
-document.getElementById("cerrarModalHistorial")?.addEventListener("click",  () => cerrarModal("modalHistorial"));
-document.getElementById("cerrarModalIA")?.addEventListener("click",         () => cerrarModal("modalIA"));
-document.getElementById("cerrarModalLang")?.addEventListener("click",       () => cerrarModal("modalLang"));
+document.getElementById("cerrarModalHistorial")?.addEventListener("click", () => cerrarModal("modalHistorial"));
 
 // Close on overlay click
 document.querySelectorAll(".modal-overlay").forEach(overlay => {
@@ -1659,7 +1910,7 @@ function addCharCounter(fieldId, max, label) {
 
 // Wait until header fields are converted to contenteditable
 setTimeout(() => {
-  addCharCounter("titulo",    80, "Título");
+  addCharCounter("titulo", 80, "Título");
   addCharCounter("subtitulo", 140, "Subtítulo");
 }, 200);
 
@@ -1704,7 +1955,7 @@ function showToast(msg, type = "success") {
 
 // Override guardarBorrador to use toast instead of alert
 const _origGuardarBorrador = guardarBorrador;
-window.guardarBorrador = function() {
+window.guardarBorrador = function () {
   const state = getCardState();
   if (!state.titulo) { showToast("Añade un título antes de guardar", "error"); return; }
   const borradores = getStorage("yako_borradores");
@@ -1729,7 +1980,12 @@ const TIPS = [
   "Tu tarjeta aparecerá aquí en tiempo real",
   "Escribe un título para empezar",
   "Prueba una plantilla para comenzar rápido",
-  "Pulsa ✨ para generar con IA",
+  "Tu mensaje merece una gran presentación",
+  "Cada gran comunicado empieza con una idea",
+  "Convierte tu mensaje en algo memorable",
+  "Las mejores noticias merecen la mejor tarjeta",
+  "Un buen comunicado transforma la cultura del equipo",
+  "Prueba una plantilla para empezar rápido 👆"
 ];
 let tipIdx = 0;
 setInterval(() => {
@@ -1749,39 +2005,40 @@ if (phEl) phEl.style.transition = "opacity .3s";
 // ── CORPORATE IMAGE LIBRARY ───────────────────
 const IMG_LIBRARY = [
   {
-    cat: "Equipo",
+    cat: "Cabeceras",
     items: [
-      { id: "eq1", label: "Reunión de equipo",    url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80" },
-      { id: "eq2", label: "Colaboración",         url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&q=80" },
-      { id: "eq3", label: "Presentación",         url: "https://images.unsplash.com/photo-1560439514-4e9645039924?w=800&q=80" },
-      { id: "eq4", label: "Trabajo en equipo",    url: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80" },
+      { id: "eq1", label: "Cabecera 1", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v1.png?csf=1&web=1&e=nd33p6" },
+      { id: "eq2", label: "Cabecera 2", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v2.jpg?csf=1&web=1&e=b9Yt8O" },
+      { id: "eq3", label: "Cabecera 3", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/Cabecera-Ayesa%20v3.jpg?csf=1&web=1&e=518p6f" },
     ]
   },
   {
-    cat: "Oficina",
+    cat: "Generecias",
     items: [
-      { id: "of1", label: "Espacio de trabajo",   url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80" },
-      { id: "of2", label: "Sala de reuniones",    url: "https://images.unsplash.com/photo-1497366754035-f200968a6e23?w=800&q=80" },
-      { id: "of3", label: "Escritorio moderno",   url: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80" },
-      { id: "of4", label: "Zona colaborativa",    url: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80" },
+      { id: "of1", label: "Generica 1", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_1.jpg?csf=1&web=1&e=BbXRcr" },
+      { id: "of2", label: "Generica 2", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_2.jpg?csf=1&web=1&e=gv57hg" },
+      { id: "of3", label: "Generica 3", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_generico_3.jpg?csf=1&web=1&e=mLUcxY" },
     ]
   },
   {
-    cat: "Tecnología",
+    cat: "Proyectos",
     items: [
-      { id: "te1", label: "Laptop y datos",       url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80" },
-      { id: "te2", label: "Código",               url: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&q=80" },
-      { id: "te3", label: "Dashboard",            url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80" },
-      { id: "te4", label: "Conectividad",         url: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80" },
+      { id: "te1", label: "Puente", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_1.jpg?csf=1&web=1&e=wzJ44M" },
+      { id: "te2", label: "Edificio", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_2.jpg?csf=1&web=1&e=5Aw8jg" },
+      { id: "te3", label: "Bernabeu", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_3.jpg?csf=1&web=1&e=IPLZ51" },
+      { id: "te4", label: "Tren", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_4.jpg?csf=1&web=1&e=kuGihb" },
+      { id: "te5", label: "Torre", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams_ing_5.jpg?csf=1&web=1&e=6l0RJL" },
     ]
   },
   {
-    cat: "Abstracto",
+    cat: "Fondos",
     items: [
-      { id: "ab1", label: "Gradiente azul",       url: "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=800&q=80" },
-      { id: "ab2", label: "Geometría",            url: "https://images.unsplash.com/photo-1550684376-efcbd6e3f031?w=800&q=80" },
-      { id: "ab3", label: "Minimalista",          url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80" },
-      { id: "ab4", label: "Textura clara",        url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80" },
+      { id: "ab1", label: "Gradiente azul", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams10.jpg?csf=1&web=1&e=gQ1rmF" },
+      { id: "ab2", label: "Geometría", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams11.jpg?csf=1&web=1&e=BVLL8u" },
+      { id: "ab3", label: "Minimalista", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams12.jpg?csf=1&web=1&e=Sh5f46" },
+      { id: "ab4", label: "Textura clara", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams2.jpg?csf=1&web=1&e=UgvRnc" },
+      { id: "ab5", label: "Textura clara", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams4.jpg?csf=1&web=1&e=Pog9j3" },
+      { id: "ab6", label: "Textura clara", url: "https://grupoayesaa41015322.sharepoint.com/:i:/r/sites/DonBot/Documentos%20compartidos/General/Imagenes/teams5.jpg?csf=1&web=1&e=ZOrlMj" },
     ]
   }
 ];
@@ -1791,10 +2048,10 @@ let uploadedImages = [];
 try {
   const saved = localStorage.getItem("yako_uploaded_imgs");
   if (saved) uploadedImages = JSON.parse(saved);
-} catch(e) {}
+} catch (e) { }
 
 function saveUploadedImages() {
-  try { localStorage.setItem("yako_uploaded_imgs", JSON.stringify(uploadedImages.slice(0, 20))); } catch(e) {}
+  try { localStorage.setItem("yako_uploaded_imgs", JSON.stringify(uploadedImages.slice(0, 20))); } catch (e) { }
 }
 
 // ── INSERT IMAGE DIALOG ────────────────────────
@@ -1960,7 +2217,7 @@ function renderImagenesPanel(panel) {
 
 function renderUploadedGrid(panel) {
   const section = panel.querySelector("#uploadedImgsSection");
-  const grid    = panel.querySelector("#uploadedImgsGrid");
+  const grid = panel.querySelector("#uploadedImgsGrid");
   if (!section || !grid) return;
 
   if (!uploadedImages.length) { section.style.display = "none"; return; }
@@ -2009,7 +2266,7 @@ function handleFiles(files, panel) {
 
 // ── PATCH ensurePreviewPanel for "imagenes" ────
 const _origEnsure = ensurePreviewPanel;
-ensurePreviewPanel = function(type) {
+ensurePreviewPanel = function (type) {
   if (type !== "imagenes") { _origEnsure(type); return; }
 
   const screen = document.getElementById("previewScreen");
@@ -2021,192 +2278,188 @@ ensurePreviewPanel = function(type) {
   screen.appendChild(panel);
   renderImagenesPanel(panel);
 };
-// AGREGAR ESTO AL FINAL DE Animaciones.js PARA RECUPERAR EL ENVÍO
+// ═══════════════════════════════════════════════
+// TOPBAR USER MENU
+// ═══════════════════════════════════════════════
+(function initUserMenu() {
+  const rawName = sessionStorage.getItem("yako_user") || "Usuario";
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const initials = rawName.slice(0, 2).toUpperCase();
 
-async function enviarComunicado() {
-    console.log("🚀 Iniciando envío desde Animaciones.js...");
+  const nameEl = document.getElementById("topbarUserName");
+  const avatarEl = document.getElementById("topbarAvatar");
+  const dNameEl = document.getElementById("topbarDName");
+  const dEmailEl = document.getElementById("topbarDEmail");
+  const btn = document.getElementById("topbarUserBtn");
+  const dropdown = document.getElementById("topbarDropdown");
+  const logoutBtn = document.getElementById("topbarLogout");
 
-    // 1. Recoger destinatarios
-    const emailsInput = document.getElementById('emails');
-    const teamsInput = document.getElementById('teamsRecipient');
-    
-    let combined = "";
-    if (emailsInput) combined += emailsInput.value + ";";
-    if (teamsInput) combined += teamsInput.value;
+  if (nameEl) nameEl.textContent = displayName;
+  if (avatarEl) avatarEl.textContent = initials;
+  if (dNameEl) dNameEl.textContent = displayName;
+  if (dEmailEl) dEmailEl.textContent = rawName.includes("@") ? rawName : rawName + "@ayesa.com";
 
-    const listaEmails = combined.split(';').map(e => e.trim()).filter(e => e !== "");
-
-    if (listaEmails.length === 0) {
-        showToast("⚠️ Introduce al menos un email de destino.", "error");
-        return;
-    }
-
-    // 2. Obtener los datos
-    const datosTarjeta = obtenerDatosTarjeta();
-
-    const bodyEnvio = {
-        destinatarios: listaEmails,
-        tarjeta: datosTarjeta 
-    };
-
-    // 3. FETCH al servidor
-    try {
-        const response = await fetch('/api/enviar-teams', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyEnvio)
-        });
-
-        if (response.ok) {
-            showToast("✅ ¡Tarjeta enviada correctamente!");
-            // Opcional: guardar en historial si tienes la función
-            if (typeof guardarEnviada === 'function') guardarEnviada(getCardState());
-        } else {
-            const error = await response.json();
-            showToast("❌ Error: " + (error.error || "Error en el servidor"), "error");
-        }
-    } catch (err) {
-        console.error("Error conexión:", err);
-        showToast("No se pudo conectar con el servidor de Node.js", "error");
-    }
-}
-
-function obtenerDatosTarjeta() {
-    const titulo = getFieldValue("titulo");
-    const subtitulo = getFieldValue("subtitulo");
-    const imagenCabecera = getFieldValue("imagen").text;
-    const canal = canalSelect.value;
-
-    const bloques = [];
-    editor.querySelectorAll(".block").forEach(block => {
-        const rich = block.querySelector(".rich-editor-area");
-        const urlInput = block.querySelector("input[type='url']");
-        
-        if (rich) {
-            bloques.push({
-                tipo: rich.dataset.singleline ? "titulo" : "parrafo",
-                text: rich.innerText.trim(),
-                html: rich.innerHTML
-            });
-        } else if (urlInput) {
-            bloques.push({
-                tipo: "imagen",
-                value: urlInput.value.trim()
-            });
-        }
+  if (btn && dropdown) {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = dropdown.classList.toggle("open");
+      btn.classList.toggle("open", open);
     });
 
-    return {
-        titulo: titulo,
-        subtitulo: subtitulo,
-        imagenUrl: imagenCabecera,
-        bloques: bloques,
-        canal: canal
-    };
-}
+    document.addEventListener("click", () => {
+      dropdown.classList.remove("open");
+      btn.classList.remove("open");
+    });
 
-// ── EVENTO DE ENVÍO AL SERVIDOR (TEAMS) ─────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    // Usamos el ID 'btnEnviar' exacto de tu HTML
-    const botonEnviar = document.getElementById('btnEnviar');
+    dropdown.addEventListener("click", (e) => e.stopPropagation());
+  }
 
-    if (botonEnviar) {
-        botonEnviar.addEventListener('click', (event) => {
-            event.preventDefault(); // Evita que se recargue la página
-            dispararEnvioATeams();
-        });
-    }
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      sessionStorage.removeItem("yako_auth");
+      sessionStorage.removeItem("yako_user");
+      window.location.href = "login.html";
+    });
+  }
+})();
+
+document.getElementById("btnLimpiar").addEventListener("click", () => {
+  const modal = document.createElement("div");
+  modal.style.cssText = `
+    position:fixed; inset:0; z-index:2000;
+    background:rgba(0,0,0,.45);
+    display:flex; align-items:center; justify-content:center;
+  `;
+
+  modal.innerHTML = `
+  <div style="
+  background:white; border-radius:16px; padding:32px 28px 24px;
+  max-width:340px; width:100%;
+  box-shadow: 0 32px 80px rgba(0,0,0,.2);
+  font-family:var(--font, sans-serif);
+  text-align:center;
+  ">
+  <div style="font-size:36px; margin-bottom:14px">🗑️</div>
+  <div style="font-size:17px; font-weight:700; color:#0f0f12; margin-bottom:10px">
+    ¿Limpiar formualario?
+  </div>
+  <p style="font-size:13px; color:#888; line-height:1.6; margin-bottom:24px">
+    Se borrarán todos los campos. Esta acción no se puede deshacer.
+  </p>
+  <div style="display:flex; gap:10px;">
+        <button id="limpiarCancel" style="
+          flex:1; height:42px; border-radius:9px;
+          border:1.5px solid #e0e0e0; background:white;
+          font-family:inherit; font-size:13px; font-weight:600;
+          color:#666; cursor:pointer;
+          ">Cancelar</button>
+        <button id="limpiarOK" style="
+          flex:1; height:42px; border-radius:9px; border:none;
+          background:#d13438; color:white;
+          font-family:inherit; font-size:13px; font-weight:700;
+          cursor:pointer;
+          ">Sí, limpiar</button>
+        </div>
+      </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("limpiarCancel").addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+
+  document.getElementById("limpiarOK").addEventListener("click", () => {
+    modal.remove();
+
+    document.getElementById("titulo").textContent = "";
+    document.getElementById("subtitulo").textContent = "";
+    document.getElementById("canal").value = "";
+
+    const editor = document.getElementById("editor") = "";
+    editor.innerHTML = "";
+    crearBloque("parrafo");
+    document.getElementById("canal").value = "";
+
+    renderPreview();
+    actualizarBotonEnviar();
+  });
 });
 
-async function dispararEnvioATeams() {
-    // 1. Recoger destinatarios usando el ID correcto del HTML para Teams
-    const inputDestinatarios = document.getElementById('teamsRecipient').value; 
-    
-    // Separamos los correos por coma en caso de que haya varios
-    const destinatariosArray = inputDestinatarios
-        .split(',')
-        .map(email => email.trim())
-        .filter(email => email !== "");
+function mostrarPreviewPlantilla({titulo, subtitulo, imagenUrl, blocks, canal, badge, btnLabel, onConfirm}) {
+  document.getElementById("popupPreviewModal")?.remove();
 
-    // ════════ 2. ¡LA MAGIA CON DATOS REALES (BLINDADO)! ════════
-    
-    // 1. Leemos los elementos del HTML directamente
-    const elTitulo = document.getElementById("titulo");
-    const elSubtitulo = document.getElementById("subtitulo");
-    const elImagen = document.getElementById("imagen");
-    
-    // 2. Extraemos ÚNICAMENTE el texto puro. 
-    // Usamos (innerText || value) por si es un div editable o un input normal, y lo forzamos a String
-    const textoTitulo = elTitulo ? String(elTitulo.innerText || elTitulo.value || "") : "";
-    const textoSubtitulo = elSubtitulo ? String(elSubtitulo.innerText || elSubtitulo.value || "") : "";
-    const urlImagen = elImagen ? String(elImagen.value || "") : null;
+  const previewHTML = buildCardHTML({
+    titulo: {text: titulo, html: titulo},
+    subtitulo: {text: subtitulo, html: subtitulo},
+    imagenUrl: imagenUrl || "",
+    blocks: blocks || [],
+    canal: canal || "",
+    forModal: true
+  });
 
-    // 3. Recorremos los bloques dinámicos del editor
-    const blocks = [];
-    const editorContenedor = document.getElementById("editor");
-    
-    if (editorContenedor) {
-        editorContenedor.querySelectorAll(".block").forEach(block => {
-            const rich = block.querySelector(".rich-editor-area");
-            const url = block.querySelector("input[type='url']");
-            
-            if (rich && rich.dataset.singleline) {
-                blocks.push({ tipo: "titulo", text: String(rich.innerText || "") });
-            } else if (rich) {
-                blocks.push({ tipo: "parrafo", text: String(rich.innerText || "") });
-            } else if (url) {
-                blocks.push({ tipo: "imagen", value: String(url.value || "") });
-            }
-        });
-    }
+  const modal = document.createElement("div");
+  modal.id = "popupPreviewModal";
+  modal.style.cssText = `
+  position:fixed; inset:0; z-index:2000;
+  background:rgba(0,0,0,.5);
+  display:flex; align-items:center; justify-content:center;
+  padding: 24px;
+  `;
 
-    // 4. Juntamos los ingredientes con el formato perfecto que espera Teams
-    const datosReales = {
-        titulo: { text: textoTitulo },       
-        subtitulo: { text: textoSubtitulo }, 
-        imagenUrl: urlImagen,
-        blocks: blocks
-    };
+  modal.innerHTML = `
+    <div style="
+      background:white; border-radius:16px;
+      max-width:500px; width:100%;
+      box-shadow:0 32px 80px rgba(0,0,0,.22);
+      font-family:var(--font,sans-serif);
+      animation:msDropIn .2s cubic-bezier(.22,1,.36,1);
+      overflow:hidden;
+    ">
+      <div style="
+        padding:18px 22px 14px;
+        border-bottom:1px solid #f0f0f0;
+        display:flex; align-items:center; justify-content:space-between;
+      ">
+        <div style="font-size:14px; font-weight:700; color:#0f0f12">${badge || "Vista previa"}</div>
+        <button id="popupPreviewClose" style="
+          background:none; border:none; font-size:18px;
+          color:#bbb; cursor:pointer;
+        ">✕</button>
+      </div>
 
-    // 5. Construimos la tarjeta con la función que blindamos antes
-    const mensajeCompleto = buildCardJSON(datosReales);
+      <div style="
+        margin:16px 20px;
+        border:1.5px solid #e8e8e8; border-radius:10px;<
+        overflow:hidden; max-height:360px; overflow-y:auto;
+        background:#fafafa;
+      ">
+        <div style="pointer-events:none;">${previewHTML}</div>
+      </div>
 
-    // Extraemos el "content" puro
-    const tarjetaVisual = mensajeCompleto.attachments[0].content;
+      <div style="padding:8px 20px 20px; display:flex; gap:10px;">
+        <button id="popupPreviewCancel" style="
+          flex:1; height:42px; border-radius:9px;
+          border:1.5px solid #e0e0e0; background:white;
+          font-family:inherit; font-size:13px; font-weight:600;
+          color:#666; cursor:pointer;
+        ">Cancelar</button>
+        <button id="popupPreviewOk" style="
+          flex:2; height:42px; border-radius:9px; border:none;
+          background:#0000D0; color:white;
+          font-family:inherit; font-size:14px; font-weight:700;
+          cursor:pointer;
+        ">${btnLabel || "Usar"}</button>
+      </div>
+    </div>
+  `;
 
-    // ════════════════════════════════════════════════
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) modal.remove(); });
+  document.getElementById("popupPreviewClose").addEventListener("click", () => modal.remove());
+  document.getElementById("popupPreviewCancel").addEventListener("click", () => modal.remove());
+  document.getElementById("popupPreviewOk").addEventListener("click", () => {
+    modal.remove();
+    onConfirm();
+  });
 
-    // 3. Feedback visual: cambiamos el botón mientras carga
-    const botonEnviar = document.getElementById('btnEnviar');
-    const textoOriginal = botonEnviar.innerText;
-    botonEnviar.innerText = "Enviando...";
-    botonEnviar.disabled = true;
-
-    // 4. Llamar a tu servidor local (server.js)
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/enviar-teams', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                destinatarios: destinatariosArray,
-                tarjeta: tarjetaVisual
-            })
-        });
-
-        const data = await respuesta.json();
-
-        if (respuesta.ok) {
-            alert("✅ ¡Comunicado enviado a Teams con éxito!");
-        } else {
-            alert("❌ Hubo un problema: " + (data.error || "Desconocido"));
-            console.error("Detalle del error:", data);
-        }
-    } catch (error) {
-        console.error("Error de red/conexión:", error);
-        alert("❌ No se pudo conectar con el servidor. ¿Está encendido 'node server.js'?");
-    } finally {
-        // Restaurar el botón a su estado normal
-        botonEnviar.innerText = textoOriginal;
-        botonEnviar.disabled = false;
-    }
 }
