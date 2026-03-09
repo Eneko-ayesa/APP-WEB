@@ -1,0 +1,25 @@
+[
+  {
+    "conversationId": "a:1twkVSoCjL270uKg-JYkCkYwlUmcE8Ig7AxBmnJz8SA4FvL-wygMt4qhrLSWnS03-IlmG9do2IKes0r3acaQzn7PIewsHCQMBxZtD0VwnnHMewbH0OimwyGMGbSm5nKg_",
+    "reference": {
+      "activityId": "1773046410751",
+      "user": {
+        "id": "29:1xn_ZfhavQ4lK2mzrWMsyI23_Y4dIJTQGUEak86FnP9B485aFdgjyqIBUU5NnWC5Q36Y4xVMto1fb3VX8794oZA",
+        "name": "ITTM OAI",
+        "aadObjectId": "eef4513b-eb12-4c6a-8b4e-8f4f5e87043d"
+      },
+      "bot": {
+        "id": "28:b2349f49-1c18-4a03-8d2f-c21d45bca5e2",
+        "name": "BotComunicadosAyesa"
+      },
+      "conversation": {
+        "conversationType": "personal",
+        "tenantId": "6f167842-765d-4bda-a56e-9d433bc27739",
+        "id": "a:1twkVSoCjL270uKg-JYkCkYwlUmcE8Ig7AxBmnJz8SA4FvL-wygMt4qhrLSWnS03-IlmG9do2IKes0r3acaQzn7PIewsHCQMBxZtD0VwnnHMewbH0OimwyGMGbSm5nKg_"
+      },
+      "channelId": "msteams",
+      "locale": "es-ES",
+      "serviceUrl": "https://smba.trafficmanager.net/es/6f167842-765d-4bda-a56e-9d433bc27739/"
+    }
+  }
+]
