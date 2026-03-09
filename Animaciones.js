@@ -1355,23 +1355,6 @@ async function dispararEnvioATeams() {
     }
 }
 
-  return {
-    type: "message",
-    attachments: [
-      {
-        contentType: "application/vnd.microsoft.card.adaptive",
-        contentUrl: null,
-        content: {
-          "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-          type: "AdaptiveCard",
-          version: "1.4",
-          body
-        }
-      }
-    ]
-  };
-}
-
 function buildOutlookHTML({ titulo, subtitulo, imagenUrl, blocks }) {
   // Clean, table-based HTML safe for Outlook rendering engine
   let html = `<!DOCTYPE html>
