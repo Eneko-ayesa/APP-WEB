@@ -988,7 +988,7 @@ function mostrarConfirmEnvio() {
   document.getElementById("confirmEnvioCancel").addEventListener("click", () => modal.remove());
   document.getElementById("confirmEnvioOk").addEventListener("click", () => {
     modal.remove();
-    dispararEnvioATeams();
+    dispararEnvios();
   });
 }
 
@@ -1267,24 +1267,36 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
   };
 }
 
+
+
+
+
   // Envoltorio limpio y sin variables nulas
-async function dispararEnvioATeams() {
-    // 1. Recoger destinatarios (Blindado con ?.)
-    const inputDestinatarios = document.getElementById('teamsRecipient')?.value || ""; 
+async function dispararEnvios() {
+    // 1. Detectar el Canal seleccionado
+    const canal = document.getElementById("canal")?.value;
+    
+    // Outlook usa el input con id="emails"
+    // Teams usa el input con id="teamsRecipient"
+    const inputID = (canal === "teams") ? 'teamsRecipient' : 'emails';
+    const inputDestinatarios = document.getElementById(inputID)?.value || ""; 
+    
     const destinatariosArray = inputDestinatarios
         .split(',')
         .map(email => email.trim())
         .filter(email => email !== "");
 
-    // ════════ 2. ¡LA MAGIA CON DATOS REALES (INMORTAL)! ════════
-    
-    // Leemos los elementos. Usamos ?. para que si tus compañeros 
-    // han cambiado el ID en el HTML, el código no explote, sino que devuelva "".
+    if (destinatariosArray.length === 0) {
+        alert("⚠️ Por favor, escribe al menos un destinatario en el campo correspondiente.");
+        return;
+    }
+
+    // 3. Recoger datos del editor (Título, Subtítulo, Imagen)
     const textoTitulo = document.getElementById("titulo")?.innerText || document.getElementById("titulo")?.value || "";
     const textoSubtitulo = document.getElementById("subtitulo")?.innerText || document.getElementById("subtitulo")?.value || "";
     const urlImagen = document.getElementById("imagen")?.value || null;
 
-    // Recorremos los bloques dinámicos
+    // Recorremos los bloques dinámicos del editor
     const blocks = [];
     const editorContenedor = document.getElementById("editor");
     
@@ -1295,11 +1307,10 @@ async function dispararEnvioATeams() {
             
             if (rich) {
                 const texto = rich.innerText || "";
-                if (rich.dataset.singleline) {
-                    blocks.push({ tipo: "titulo", text: String(texto) });
-                } else {
-                    blocks.push({ tipo: "parrafo", text: String(texto) });
-                }
+                blocks.push({
+                    tipo: rich.dataset.singleline ? "titulo" : "parrafo",
+                    text: String(texto)
+                });
             } else if (url) {
                 blocks.push({ tipo: "imagen", value: String(url.value || "") });
             }
@@ -1313,11 +1324,21 @@ async function dispararEnvioATeams() {
         blocks: blocks
     };
 
-    const mensajeCompleto = buildCardJSON(datosReales);
-    const tarjetaVisual = mensajeCompleto.attachments[0].content;
-    // ════════════════════════════════════════════════
+    // 4. Preparar el cuerpo del mensaje según el canal
+    let bodyPayload = { destinatarios: destinatariosArray };
+    let endpoint = "";
 
-    // 3. Feedback visual
+    if (canal === "teams") {
+        endpoint = "/api/enviar-teams";
+        const mensajeCompleto = buildCardJSON(datosReales);
+        bodyPayload.tarjeta = mensajeCompleto.attachments[0].content;
+    } else {
+        endpoint = "/api/enviar-outlook";
+        bodyPayload.asunto = textoTitulo || "Nuevo Comunicado Yako";
+        bodyPayload.htmlCuerpo = generarHTMLParaEmail(datosReales);
+    }
+
+    // 5. Feedback visual en el botón
     const botonEnviar = document.getElementById('btnEnviar');
     const textoOriginal = botonEnviar ? botonEnviar.innerText : "Enviar";
     if (botonEnviar) {
@@ -1325,32 +1346,60 @@ async function dispararEnvioATeams() {
         botonEnviar.disabled = true;
     }
 
-    // 4. Llamada al servidor
+    // 6. Llamada al servidor
     try {
-        const respuesta = await fetch('http://localhost:3000/api/enviar-teams', {
+        const respuesta = await fetch(`http://localhost:3000${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                destinatarios: destinatariosArray,
-                tarjeta: tarjetaVisual
-            })
+            body: JSON.stringify(bodyPayload)
         });
 
         const data = await respuesta.json();
 
         if (respuesta.ok) {
+<<<<<<< HEAD
             mostrarEnvioExito(getCardState());
         } else {
             throw new Error(data.error || "El servidor devolvió un error desconocido");
         }
     } catch (error) {
         mostrarEnvioError(error);
+=======
+            alert(`✅ ¡Enviado a ${canal.toUpperCase()} con éxito!`);
+        } else {
+            alert("❌ Error: " + (data.error || "Desconocido"));
+        }
+    } catch (error) {
+        console.error("Error de conexión:", error);
+        alert("❌ No se pudo conectar con el servidor Node.js");
+>>>>>>> b7d65d1a74e89ae64ff0ad57b23058a68a21e0e9
     } finally {
         if (botonEnviar) {
             botonEnviar.innerText = textoOriginal;
             botonEnviar.disabled = false;
         }
     }
+}
+
+// Función auxiliar para crear un diseño simple de email
+function generarHTMLParaEmail(datos) {
+    let bloquesHTML = datos.blocks.map(b => {
+        if (b.tipo === "titulo") return `<h2 style="color:#333;">${b.text}</h2>`;
+        if (b.tipo === "parrafo") return `<p style="color:#666; line-height:1.5;">${b.text}</p>`;
+        if (b.tipo === "imagen") return `<img src="${b.value}" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
+        return "";
+    }).join("");
+
+    return `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 12px;">
+            ${datos.imagenUrl ? `<img src="${datos.imagenUrl}" style="width:100%; border-radius:8px;">` : ""}
+            <h1 style="color:#0000D0;">${datos.titulo.text}</h1>
+            <h3 style="color:#555;">${datos.subtitulo.text}</h3>
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+            ${bloquesHTML}
+            <p style="font-size:12px; color:#aaa; margin-top:30px;">Enviado desde Yako Card Builder</p>
+        </div>
+    `;
 }
 
 function buildOutlookHTML({ titulo, subtitulo, imagenUrl, blocks }) {
@@ -2439,3 +2488,24 @@ function mostrarPreviewPlantilla({titulo, subtitulo, imagenUrl, blocks, canal, b
   });
 
 }
+
+
+
+// ── GESTIÓN DE CANALES (Añade esto al final de Animaciones.js) ─────────────
+canalSelect.addEventListener("change", function() {
+    const canal = this.value;
+    
+    // Ocultar ambos campos primero
+    document.getElementById("emailField").classList.add("hidden");
+    document.getElementById("teamsRecipientField").classList.add("hidden");
+    
+    // Mostrar solo el seleccionado
+    if (canal === "outlook") {
+        document.getElementById("emailField").classList.remove("hidden");
+    } else if (canal === "teams") {
+        document.getElementById("teamsRecipientField").classList.remove("hidden");
+    }
+    
+    // Actualizar previsualización al cambiar de canal
+    renderPreview();
+});
