@@ -446,7 +446,7 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
 
   block.querySelector(".btn-delete").addEventListener("click", () => {
     if (editor.querySelectorAll(".block").length > 1) { block.remove(); renderPreview(); }
-    else alert("La tarjeta debe tener al menos un bloque de contenido.");
+    else mostrarErrorValidacion("Contenido requerido", "La tarjeta necesita al menos un bloque de contenido.", "Añade un bloque de texto o imagen desde el editor.");
   });
   block.querySelectorAll(".add-btn").forEach(btn => {
     btn.addEventListener("click", e => {
@@ -1357,6 +1357,14 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
+<<<<<<< HEAD
+            mostrarEnvioExito(getCardState());
+        } else {
+            throw new Error(data.error || "El servidor devolvió un error desconocido");
+        }
+    } catch (error) {
+        mostrarEnvioError(error);
+=======
             alert(`✅ ¡Enviado a ${canal.toUpperCase()} con éxito!`);
         } else {
             alert("❌ Error: " + (data.error || "Desconocido"));
@@ -1364,6 +1372,7 @@ async function dispararEnvios() {
     } catch (error) {
         console.error("Error de conexión:", error);
         alert("❌ No se pudo conectar con el servidor Node.js");
+>>>>>>> b7d65d1a74e89ae64ff0ad57b23058a68a21e0e9
     } finally {
         if (botonEnviar) {
             botonEnviar.innerText = textoOriginal;
@@ -1716,7 +1725,7 @@ function crearBloqueConTexto(tipo, texto) {
   block.appendChild(lbl); block.appendChild(area); block.appendChild(botBtn);
   delBtn.addEventListener("click", () => {
     if (document.getElementById("editor").querySelectorAll(".block").length > 1) { block.remove(); renderPreview(); }
-    else alert("La tarjeta debe tener al menos un bloque de contenido.");
+    else mostrarErrorValidacion("Contenido requerido", "La tarjeta necesita al menos un bloque de contenido.", "Añade un bloque de texto o imagen desde el editor.");
   });
   block.querySelectorAll(".add-btn").forEach(btn => {
     btn.addEventListener("click", e => {
@@ -1769,12 +1778,12 @@ function getCardState() {
 
 function guardarBorrador() {
   const state = getCardState();
-  if (!state.titulo) { alert("Añade al menos un título para guardar el borrador."); return; }
+  if (!state.titulo) { mostrarErrorValidacion("Título requerido", "El borrador necesita un título para guardarse.", "Escribe un título en el campo <strong>01 · Título</strong>."); return; }
   const borradores = getStorage("yako_borradores");
   const nuevo = { id: Date.now(), fecha: new Date().toLocaleString("es-ES"), tipo: "borrador", state };
   borradores.unshift(nuevo);
   setStorage("yako_borradores", borradores.slice(0, 20)); // max 20
-  alert("✅ Borrador guardado correctamente.");
+  mostrarEnvioExito && showToast("✅ Borrador guardado");
 }
 
 function guardarEnviada(state) {
