@@ -10,7 +10,7 @@ const editor = document.getElementById("editor");
 const tarjetaForm = document.getElementById("tarjetaForm");
 const globalToolbar = document.getElementById("globalToolbar");
 const gtbInner = document.getElementById("gtbInner");
-
+const inputEmails = document.getElementById("emails");
 // ── IMAGE SIZE STORE ──────────────────────────
 // maps block element → { width, headerHeight }
 const imgSizes = new WeakMap();
@@ -2500,3 +2500,48 @@ canalSelect.addEventListener("change", function() {
     // Actualizar previsualización al cambiar de canal
     renderPreview();
 });
+
+
+
+const emailInput = document.getElementById("emails");
+const suggestionsBox = document.getElementById("suggestions");
+
+emailInput.addEventListener("input", async () => {
+  console.log("¡Escribiendo en el campo!"); // <--- SI ESTO NO SALE EN LA CONSOLA, EL CÓDIGO NO ESTÁ LEYENDO EL INPUT
+    const valor = emailInput.value.split(',').pop().trim();
+    
+    if (valor.length < 3) {
+        suggestionsBox.innerHTML = "";
+        return;
+    }
+
+    try {
+        // Consultamos al servidor
+        const res = await fetch(`http://localhost:3000/api/buscar-usuarios?q=${valor}`);
+        const usuarios = await res.json();
+        
+        console.log("Usuarios recibidos de Entra:", usuarios); // <-- MIRA LA CONSOLA (F12)
+
+        if (usuarios.length > 0) {
+            suggestionsBox.innerHTML = usuarios.map(u => `
+                <div class="sug-item" onclick="seleccionarUsuario('${u.mail}')" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;">
+                    <div style="font-weight: 600;">${u.name} <span style="font-size:10px; color:#888;">(${u.tipo})</span></div>
+                    <div style="font-size: 12px; color: #666;">${u.mail}</div>
+                </div>
+            `).join('');
+        } else {
+            suggestionsBox.innerHTML = "<div style='padding:10px;'>Sin resultados</div>";
+        }
+    } catch (e) {
+        console.error("Error al buscar:", e);
+    }
+});
+
+function seleccionarUsuario(email) {
+    let valores = emailInput.value.split(',');
+    valores.pop(); // Quitamos lo que estábamos escribiendo
+    valores.push(email);
+    emailInput.value = valores.join(', ') + ', ';
+    suggestionsBox.innerHTML = ""; // Limpiar lista
+    emailInput.focus();
+}

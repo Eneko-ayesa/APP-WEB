@@ -101,4 +101,28 @@ app.post('/api/enviar-outlook', async (req, res) => {
     }
 });
 
-app.listen(3000, () => console.log('🚀 Servidor activo en puerto 3000'));
+app.get('/api/buscar-usuarios', async (req, res) => {
+    const query = req.query.q;
+    try {
+        // Buscamos tanto en 'users' como en 'groups'
+        const [users, groups] = await Promise.all([
+            graphClient.api('/users').filter(`startswith(displayName, '${query}')`).select('displayName,mail').top(5).get(),
+            graphClient.api('/groups').filter(`startswith(displayName, '${query}')`).select('displayName,mail').top(5).get()
+        ]);
+
+        // Combinamos resultados
+        const resultados = [
+            ...users.value.map(u => ({ name: u.displayName, mail: u.mail || "Sin email", tipo: "👤 Usuario" })),
+            ...groups.value.map(g => ({ name: g.displayName, mail: g.mail || "Grupo", tipo: "👥 Grupo" }))
+        ];
+        
+        res.json(resultados);
+    } catch (error) {
+        console.error("Error Graph API:", error);
+        res.status(500).json({ error: 'Error al buscar' });
+    }
+});
+// --- Iniciacion ---
+app.listen(3000, () => {
+    console.log('🚀 Servidor activo en puerto 3000');
+});

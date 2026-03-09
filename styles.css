@@ -87,6 +87,25 @@ body {
 .form-panel-inner {
   padding: 36px 48px 100px;
 }
+.sug-item:hover { background-color: #f0f0f0; }
+#emailField {
+    position: relative;
+    z-index: 1000; /* Asegura que este campo esté por encima de otros */
+}
+
+#suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #ccc;
+    z-index: 9999 !important; /* Muy alto para que siempre esté arriba */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
 
 /* ── TOP NAV BAR (Fluent style) ── */
 .brand {

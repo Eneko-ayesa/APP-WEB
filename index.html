@@ -207,12 +207,10 @@
                 <span class="field-num">06</span>
                 <label for="emails">Destinatarios</label>
               </div>
-              <input
-                id="emails"
-                type="text"
-                name="emails"
-                placeholder="usuario@empresa.com; otro@empresa.com"
-              />
+              <div style="position: relative;">
+                <input id="emails" type="text" name="emails" placeholder="usuario@empresa.com..." autocomplete="off" />
+                <div id="suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 999; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+              </div>
             </div>
 
             <div id="teamsRecipientField" class="field-group hidden">
