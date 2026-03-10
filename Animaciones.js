@@ -1287,7 +1287,7 @@ async function dispararEnvios() {
         .filter(email => email !== "");
 
     if (destinatariosArray.length === 0) {
-        alert("⚠️ Por favor, escribe al menos un destinatario en el campo correspondiente.");
+        mostrarErrorValidacion("Destinatario requerido", "Escribe al menos un destinatario antes de enviar.", "Rellena el campo de destinatarios con un email o canal válido.");
         return;
     }
 
@@ -1357,22 +1357,12 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
-<<<<<<< HEAD
             mostrarEnvioExito(getCardState());
         } else {
             throw new Error(data.error || "El servidor devolvió un error desconocido");
         }
     } catch (error) {
         mostrarEnvioError(error);
-=======
-            alert(`✅ ¡Enviado a ${canal.toUpperCase()} con éxito!`);
-        } else {
-            alert("❌ Error: " + (data.error || "Desconocido"));
-        }
-    } catch (error) {
-        console.error("Error de conexión:", error);
-        alert("❌ No se pudo conectar con el servidor Node.js");
->>>>>>> b7d65d1a74e89ae64ff0ad57b23058a68a21e0e9
     } finally {
         if (botonEnviar) {
             botonEnviar.innerText = textoOriginal;
@@ -2554,3 +2544,156 @@ function seleccionarUsuario(email) {
     suggestionsBox.innerHTML = ""; // Limpiar lista
     emailInput.focus();
 }
+
+// ═══════════════════════════════════════════════════════
+// IMÁGENES CORPORATIVAS
+// ═══════════════════════════════════════════════════════
+// ── IMÁGENES CORPORATIVAS: usa las imágenes subidas por el usuario ──────────
+function renderCorpImgDropdown() {
+  const grid = document.getElementById("corpImgGrid");
+  const toggle = document.getElementById("corpImgToggle");
+  if (!grid || !toggle) return;
+
+  grid.innerHTML = "";
+
+  if (!uploadedImages || uploadedImages.length === 0) {
+    grid.innerHTML = '<p style="font-size:12px;color:#999;padding:8px;text-align:center;grid-column:1/-1;">Sin imágenes subidas.<br>Añádelas en la pestaña <strong>Imágenes</strong>.</p>';
+    toggle.textContent = "Sin imágenes ▾";
+    return;
+  }
+
+  toggle.textContent = "Seleccionar imagen ▾";
+  uploadedImages.forEach(img => {
+    const item = document.createElement("div");
+    item.className = "corp-img-item";
+    const label = img.label || "Imagen";
+    item.innerHTML = `<img src="${img.url}" alt="${label}" loading="lazy"><span>${label}</span>`;
+    item.addEventListener("click", () => {
+      const imagenInput = document.getElementById("imagen");
+      const dropdown = document.getElementById("corpImgDropdown");
+      if (imagenInput) {
+        imagenInput.value = img.url;
+        imagenInput.dispatchEvent(new Event("input"));
+        renderPreview();
+      }
+      dropdown?.classList.remove("open");
+    });
+    grid.appendChild(item);
+  });
+}
+
+(function initCorpImages() {
+  const toggle = document.getElementById("corpImgToggle");
+  const dropdown = document.getElementById("corpImgDropdown");
+  if (!toggle || !dropdown) return;
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = dropdown.classList.contains("open");
+    if (!isOpen) {
+      renderCorpImgDropdown(); // always refresh from uploadedImages
+      const rect = toggle.getBoundingClientRect();
+      dropdown.style.position = "fixed";
+      dropdown.style.top = (rect.bottom + 6) + "px";
+      dropdown.style.left = rect.left + "px";
+      dropdown.style.zIndex = "2000";
+    }
+    dropdown.classList.toggle("open", !isOpen);
+  });
+
+  document.addEventListener("click", () => dropdown.classList.remove("open"));
+})();
+
+// ═══════════════════════════════════════════════════════
+// LISTAS DE DISTRIBUCIÓN (Exchange)
+// ═══════════════════════════════════════════════════════
+document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btnLoadDist");
+  const select = document.getElementById("distListSelect");
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Cargando…`;
+
+  try {
+    const resp = await fetch("http://localhost:3000/api/listas-distribucion");
+    if (!resp.ok) throw new Error("Error " + resp.status);
+    const listas = await resp.json();
+    select.innerHTML = '<option value="">Selecciona una lista…</option>';
+    listas.forEach(l => {
+      const opt = document.createElement("option");
+      opt.value = l.email || l.id;
+      opt.textContent = l.nombre || l.displayName || l.email;
+      select.appendChild(opt);
+    });
+    showToast("✅ " + listas.length + " listas cargadas");
+  } catch (e) {
+    mostrarErrorValidacion("No se pudieron cargar las listas", "Error al conectar con el servidor Exchange.", "Asegúrate de que el servidor Node.js está activo y configurado.");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg> Cargar listas`;
+  }
+});
+
+// Sync distList selection to email/teams recipient
+document.getElementById("distListSelect")?.addEventListener("change", function() {
+  const val = this.value;
+  if (!val) return;
+  const canal = document.getElementById("canal")?.value;
+  if (canal === "outlook") {
+    const emailsEl = document.getElementById("emails");
+    if (emailsEl) { emailsEl.value = val; emailsEl.dispatchEvent(new Event("input")); }
+  } else if (canal === "teams") {
+    const teamsEl = document.getElementById("teamsRecipient");
+    if (teamsEl) { teamsEl.value = val; teamsEl.dispatchEvent(new Event("input")); }
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// PROGRAMAR ENVÍO
+// ═══════════════════════════════════════════════════════
+document.getElementById("scheduleEnabled")?.addEventListener("change", function() {
+  const input = document.getElementById("scheduleTime");
+  const hint  = document.getElementById("scheduleHint");
+  if (this.checked) {
+    input?.classList.remove("hidden");
+    hint?.classList.remove("hidden");
+    // Set minimum to now
+    if (input) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + 5);
+      input.min = now.toISOString().slice(0,16);
+    }
+  } else {
+    input?.classList.add("hidden");
+    hint?.classList.add("hidden");
+  }
+});
+
+function getScheduledTime() {
+  const enabled = document.getElementById("scheduleEnabled")?.checked;
+  if (!enabled) return null;
+  return document.getElementById("scheduleTime")?.value || null;
+}
+
+// ═══════════════════════════════════════════════════════
+// INFO LIMITACIONES PANEL (toggle)
+// ═══════════════════════════════════════════════════════
+document.getElementById("infoLimToggle")?.addEventListener("click", function() {
+  const body = document.getElementById("infoLimBody");
+  const isOpen = !body.classList.contains("hidden");
+  body.classList.toggle("hidden", isOpen);
+  this.classList.toggle("open", !isOpen);
+});
+
+// ═══════════════════════════════════════════════════════
+// SHOW DISTRIBUTION LIST FIELD ON CANAL CHANGE
+// ═══════════════════════════════════════════════════════
+const _origSyncTab = typeof syncTabToCanal === "function" ? syncTabToCanal : null;
+function showDistListForCanal(val) {
+  const distField = document.getElementById("distListField");
+  const schedField = document.getElementById("scheduleField");
+  if (distField) distField.classList.toggle("hidden", !val);
+  if (schedField) schedField.classList.toggle("hidden", !val);
+}
+document.getElementById("canal")?.addEventListener("change", function() {
+  showDistListForCanal(this.value);
+});

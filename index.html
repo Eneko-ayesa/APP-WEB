@@ -164,6 +164,15 @@
                 name="imagen"
                 placeholder="https://…"
               />
+              <div class="corp-img-row">
+                <span class="corp-img-label">📁 Imágenes corporativas:</span>
+                <div class="corp-img-dropdown-wrap">
+                  <button type="button" class="corp-img-toggle" id="corpImgToggle">Seleccionar imagen ▾</button>
+                  <div class="corp-img-dropdown" id="corpImgDropdown">
+                    <div class="corp-img-grid" id="corpImgGrid"></div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="field-group">
@@ -224,6 +233,62 @@
                 name="teamsRecipient"
                 placeholder="Ej: General o @usuario"
               />
+            </div>
+
+            <!-- Listas de distribución -->
+            <div id="distListField" class="field-group hidden">
+              <div class="field-label-row">
+                <span class="field-num">07</span>
+                <label>Lista de distribución (Exchange)</label>
+              </div>
+              <div class="dist-list-wrap">
+                <div class="select-wrapper">
+                  <select id="distListSelect">
+                    <option value="">Selecciona una lista…</option>
+                  </select>
+                  <span class="select-arrow">▾</span>
+                </div>
+                <button type="button" class="btn-load-dist" id="btnLoadDist">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+                  Cargar listas
+                </button>
+              </div>
+              <p class="field-hint">Las listas se cargan desde Exchange. Requiere conexión al servidor.</p>
+            </div>
+
+            <!-- Programar envío -->
+            <div id="scheduleField" class="field-group hidden">
+              <div class="field-label-row">
+                <span class="field-num">08</span>
+                <label for="scheduleTime">Programar envío</label>
+              </div>
+              <div class="schedule-wrap">
+                <label class="schedule-toggle-label">
+                  <input type="checkbox" id="scheduleEnabled" />
+                  <span>Enviar en un momento específico</span>
+                </label>
+                <input type="datetime-local" id="scheduleTime" class="schedule-input hidden" />
+                <p class="field-hint hidden" id="scheduleHint">⏱ La tarjeta se enviará automáticamente a la hora indicada.</p>
+              </div>
+            </div>
+
+            <!-- Aviso de tiempos y limitaciones -->
+            <div class="info-limitaciones">
+              <div class="info-lim-header" id="infoLimToggle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Tiempos de envío y limitaciones</span>
+                <span class="info-lim-arrow">▾</span>
+              </div>
+              <div class="info-lim-body hidden" id="infoLimBody">
+                <ul>
+                  <li>⏱ <strong>Teams:</strong> El envío tarda entre 5 y 30 segundos según el número de destinatarios.</li>
+                  <li>⏱ <strong>Outlook:</strong> El envío puede tardar entre 1 y 5 minutos dependiendo del servidor.</li>
+                  <li>👥 <strong>Máximo destinatarios:</strong> 500 por envío (límite de Exchange Online).</li>
+                  <li>📎 <strong>Imágenes:</strong> Deben ser URLs públicas accesibles. No se admiten archivos locales.</li>
+                  <li>🔄 <strong>Listas de distribución:</strong> Se sincronizan con Exchange en tiempo real.</li>
+                  <li>🕐 <strong>Envío programado:</strong> Requiere que el servidor Node.js esté activo en el momento del envío.</li>
+                </ul>
+              </div>
             </div>
 
             <div class="form-actions-row">
