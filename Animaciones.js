@@ -1357,14 +1357,6 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
-<<<<<<< HEAD
-            mostrarEnvioExito(getCardState());
-        } else {
-            throw new Error(data.error || "El servidor devolvió un error desconocido");
-        }
-    } catch (error) {
-        mostrarEnvioError(error);
-=======
             alert(`✅ ¡Enviado a ${canal.toUpperCase()} con éxito!`);
         } else {
             alert("❌ Error: " + (data.error || "Desconocido"));
@@ -1372,7 +1364,6 @@ async function dispararEnvios() {
     } catch (error) {
         console.error("Error de conexión:", error);
         alert("❌ No se pudo conectar con el servidor Node.js");
->>>>>>> b7d65d1a74e89ae64ff0ad57b23058a68a21e0e9
     } finally {
         if (botonEnviar) {
             botonEnviar.innerText = textoOriginal;
