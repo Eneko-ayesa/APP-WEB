@@ -78,7 +78,7 @@ app.post('/api/enviar-teams', async (req, res) => {
     res.status(200).json({ mensaje: 'Enviado a Teams' });
 });
 
-// NUEVO ENDPOINT PARA OUTLOOK VÍA GRAPH API
+//  ENDPOINT PARA OUTLOOK VÍA GRAPH API
 app.post('/api/enviar-outlook', async (req, res) => {
     try {
         const { destinatarios, htmlCuerpo, asunto } = req.body;

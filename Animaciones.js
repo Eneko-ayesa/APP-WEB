@@ -2545,3 +2545,16 @@ function seleccionarUsuario(email) {
     suggestionsBox.innerHTML = ""; // Limpiar lista
     emailInput.focus();
 }
+const btnLogout = document.getElementById("topbarLogout");
+
+if (btnLogout) {
+    btnLogout.addEventListener("click", () => {
+        // 1. Borramos todos los datos de sesión de Yako
+        sessionStorage.removeItem("yako_auth");
+        sessionStorage.removeItem("yako_token");
+        sessionStorage.removeItem("yako_user");
+        
+        // 2. Lo mandamos de vuelta al login
+        window.location.replace("login.html");
+    });
+}
