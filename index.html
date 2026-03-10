@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Yako Card Builder</title>
+      <script>
+  // Comprobamos si la llave "yako_auth" existe en la memoria de la sesión
+  if (!sessionStorage.getItem("yako_auth")) {
+      // Si NO existe, lo pateamos de vuelta al login inmediatamente
+      window.location.replace("login.html");
+  }
+</script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -53,6 +60,7 @@
       }
     </style>
     <link rel="stylesheet" href="styles.css" />
+    
   </head>
   <body>
     <script>

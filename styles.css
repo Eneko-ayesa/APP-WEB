@@ -3216,7 +3216,7 @@ input:not(:placeholder-shown):not(:focus) {
 }
 
 #btnLimpiar {
-  background-color: rgb(248, 56, 56) !important;
+  background-color: #FF3184 !important;
   color: white;
   width: 100%;
   margin-top: 1rem;
@@ -3227,17 +3227,17 @@ input:not(:placeholder-shown):not(:focus) {
 }
 
 #btnLimpiar:hover {
-  background-color: rgb(214, 48, 48) !important;
+  background-color: #FF3184 !important;
   transform: translateY(-3px);
 }
 
 #limpiarOK {
-  background-color: rgba(230, 30, 30, 0.906) !important;
+  background-color: #FF3184 !important;
   transition: transform 0.2s ease;
 }
 
 #limpiarOK:hover {
-  background-color: rgba(249, 33, 33, 0.906);
+  background-color: #FF3184;
   transform: translateY(-3px);
 }
 
