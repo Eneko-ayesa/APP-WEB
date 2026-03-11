@@ -304,14 +304,22 @@
                 <div class="corp-img-scroll">
                   <div class="corp-img-grid" id="corpImgGrid"></div>
                 </div>
-                <!-- Zona de subida compacta -->
-                <div class="corp-upload-zone" id="corpUploadZone">
-                  <input type="file" id="corpFileInput" accept="image/*" multiple style="display:none">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <span>Arrastra una imagen o <label for="corpFileInput" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">examinar</label></span>
-                </div>
               </div>
-            </div>
+
+              <!-- Zona de subida SIEMPRE visible, fuera del desplegable -->
+              <div class="corp-upload-zone" id="corpUploadZone" style="margin-top:8px;">
+                <input type="file" id="corpFileInput" accept="image/*" multiple style="display:none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span>Arrastra una imagen o 
+                  <label for="corpFileInput" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">
+                    examinar
+                  </label>
+                </span>
+              </div>
 
             <div class="field-group">
               <div class="field-label-row">

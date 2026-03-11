@@ -241,7 +241,7 @@ textarea::placeholder {
 #editor {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 26px;
 }
 
 .block {
@@ -3746,4 +3746,113 @@ input:not(:placeholder-shown):not(:focus) {
 
 .miembro-email:hover {
   text-decoration: underline;
+}
+/* ═══════════════════════════════════════════════
+   CORP UPLOAD ZONE (campo 02 + bloques imagen)
+   ═══════════════════════════════════════════════ */
+
+.corp-upload-zone {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  margin-bottom: 22px;
+  padding: 8px 12px;
+  border: 1.5px dashed #d0d0e0;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: #fafafa;
+}
+.corp-upload-zone:hover,
+.corp-upload-zone.drag-over {
+  border-color: var(--ms-blue);
+  background: rgba(0, 0, 208, 0.03);
+  border-style: solid;
+}
+
+/* ── GALERÍA DENTRO DE BLOQUE IMAGEN ─────────── */
+.corp-img-panel {
+  border: 1.5px solid var(--paper-rule, #e8e6e0);
+  border-radius: 10px;
+  background: white;
+  overflow: hidden;
+}
+.corp-img-scroll {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  scrollbar-width: thin;
+}
+.corp-img-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+/* ── BLOQUE IMAGEN — sin efecto hover agresivo ── */
+.block:has(.corp-img-toggle):hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: #ebebeb !important;
+}
+.block:has(.corp-img-toggle):focus-within {
+  transform: none !important;
+}
+.block:has(.corp-img-toggle) label {
+  opacity: 1 !important;
+}
+.block .corp-upload-zone {
+  margin-bottom: 4px;
+}
+
+/* Toggle button dentro del bloque — igual de discreto que campo 02 */
+.block .corp-img-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: space-between;
+  font-size: 12px;
+  font-family: var(--sans);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border, #e4e4ef);
+  background: white;
+  cursor: pointer;
+  color: var(--ink-2, #4a4a60);
+  font-weight: 500;
+  transition: border-color 0.15s;
+}
+.block .corp-img-toggle:hover {
+  border-color: var(--ms-blue);
+}
+
+/* Botón eliminar en imágenes de usuario dentro del bloque */
+.corp-img-del-btn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  font-size: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 2;
+}
+.corp-img-item:hover .corp-img-del-btn {
+  opacity: 1;
+}
+.corp-img-del-btn:hover {
+  background: #e53e3e;
 }

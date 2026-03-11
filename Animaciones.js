@@ -429,14 +429,141 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
     block.appendChild(lbl); block.appendChild(area); block.appendChild(botBtn);
 
   } else if (tipo === "imagen") {
+    // Unique ID for this block's elements
+    const uid = "blkimg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     block.innerHTML = `
-      <button type="button" class="add-btn add-top"    title="Añadir arriba">+</button>
-      <button type="button" class="btn-delete"         title="Eliminar">✕</button>
-      <label>URL de imagen</label>
-      <input type="url" placeholder="https://…">
+      <button type="button" class="add-btn add-top" title="Añadir arriba">+</button>
+      <button type="button" class="btn-delete" title="Eliminar">✕</button>
+      <label>Imagen</label>
+
+      <input type="url" placeholder="https://…" style="margin-bottom:8px;">
+
+      <button type="button" class="corp-img-toggle" id="${uid}_toggle" style="width:100%;display:flex;align-items:center;gap:6px;justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Elegir imagen corporativa
+        </span>
+        <svg id="${uid}_chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="corp-img-panel" id="${uid}_panel" style="display:none;margin-top:6px;">
+        <div class="corp-img-scroll">
+          <div class="corp-img-grid" id="${uid}_grid"></div>
+        </div>
+      </div>
+
+      <div class="corp-upload-zone" id="${uid}_zone" style="margin-top:8px;margin-bottom:4px;">
+        <input type="file" id="${uid}_file" accept="image/*" multiple style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Arrastra una imagen o <label for="${uid}_file" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">examinar</label></span>
+      </div>
+
       <button type="button" class="add-btn add-bottom" title="Añadir abajo">+</button>
     `;
-    block.querySelector("input").addEventListener("input", renderPreview);
+
+    const urlInput  = block.querySelector("input[type='url']");
+    const toggle    = block.querySelector(`#${uid}_toggle`);
+    const panel     = block.querySelector(`#${uid}_panel`);
+    const chevron   = block.querySelector(`#${uid}_chev`);
+    const grid      = block.querySelector(`#${uid}_grid`);
+    const zone      = block.querySelector(`#${uid}_zone`);
+    const fileInput = block.querySelector(`#${uid}_file`);
+
+    // Helper: apply URL to this block's input
+    function applyBlockImg(url) {
+      urlInput.value = url;
+      urlInput.dispatchEvent(new Event("input"));
+      panel.style.display = "none";
+      chevron.style.transform = "";
+    }
+
+    // Render the gallery into this block's grid
+    function renderBlockGallery() {
+      grid.innerHTML = "";
+      const allItems = [];
+      if (typeof IMG_LIBRARY !== "undefined") IMG_LIBRARY.forEach(g => allItems.push(g));
+      if (uploadedImages && uploadedImages.length > 0) {
+        allItems.push({ cat: "Mis imágenes", items: uploadedImages.map(img => ({ label: img.label || "Imagen", url: img.url })) });
+      }
+      if (allItems.length === 0) {
+        grid.innerHTML = '<p style="font-size:12px;color:#999;padding:8px 4px;grid-column:1/-1;">Sin imágenes disponibles.</p>';
+        return;
+      }
+      allItems.forEach(group => {
+        const catLabel = document.createElement("div");
+        catLabel.style.cssText = "grid-column:1/-1;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;padding:6px 2px 2px;";
+        catLabel.textContent = group.cat;
+        grid.appendChild(catLabel);
+        group.items.forEach((img) => {
+          const item = document.createElement("div");
+          item.className = "corp-img-item";
+          item.title = img.label;
+          item.innerHTML = `<img src="${img.url}" alt="${img.label}" loading="lazy"><div class="img-thumb-overlay"><span>${img.label}</span></div>`;
+          item.addEventListener("click", () => applyBlockImg(img.url));
+          grid.appendChild(item);
+        });
+      });
+    }
+
+    // Toggle gallery panel
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = panel.style.display !== "none";
+      if (!isOpen) renderBlockGallery();
+      panel.style.display = isOpen ? "none" : "block";
+      chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+    });
+
+    // Upload zone — click
+    zone.addEventListener("click", (e) => { if (e.target.tagName !== "LABEL") fileInput.click(); });
+
+    // Upload zone — drag & drop
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault(); zone.classList.remove("drag-over");
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.dataTransfer.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          applyBlockImg(url);
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Upload zone — file picker
+    fileInput.addEventListener("change", e => {
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.target.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          applyBlockImg(url);
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+      fileInput.value = "";
+    });
+
+    urlInput.addEventListener("input", renderPreview);
   }
 
   if (!referencia) editor.appendChild(block);
