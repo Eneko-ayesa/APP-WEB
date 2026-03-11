@@ -111,6 +111,13 @@ app.post('/api/enviar-teams', async (req, res) => {
     try {
         const { tarjeta, destinatarios } = req.body;
         
+        // ====================================================================
+        // 🎛️ PANEL DE PRUEBAS
+        // ====================================================================
+        const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
+        const MODO_BOMBARDEO  = true; // true = Envía 50 tarjetas reales al destinatario.
+        // ====================================================================
+        
         if (!destinatarios || destinatarios.length === 0) {
             return res.status(400).json({ error: "No hay destinatarios seleccionados." });
         }
@@ -150,16 +157,39 @@ app.post('/api/enviar-teams', async (req, res) => {
             }
         }
 
-        // 3. RESPUESTA INMEDIATA
-        res.status(202).json({ 
-            mensaje: `Procesando envío masivo. Detectados ${targetUserIds.size} usuarios totales. Iniciando entrega...` 
-        });
+        if (referenciasValidas.length === 0) {
+            return res.status(404).json({ error: "No se encontraron usuarios válidos con el bot instalado." });
+        }
+
+        // ====================================================================
+        // 💣 APLICAR EL MODO BOMBARDEO
+        // ====================================================================
+        if (MODO_BOMBARDEO) {
+            const usuarioObjetivo = referenciasValidas[0]; 
+            referenciasValidas.length = 0; 
+            
+            for (let i = 0; i < 50; i++) {
+                referenciasValidas.push(usuarioObjetivo);
+            }
+            console.log("💣 MODO BOMBARDEO ACTIVO: Se generaron 50 envíos para el usuario.");
+        }
+
+        // 3. RESPUESTA INMEDIATA AL FRONTEND
+        if (MODO_SIMULACION) {
+            res.status(202).json({ mensaje: `[SIMULACIÓN] Detectados ${targetUserIds.size} usuarios. Mira la consola (sin envío).` });
+        } else if (MODO_BOMBARDEO) {
+            res.status(202).json({ mensaje: `[MODO TEST] Enviando 50 tarjetas de prueba a tu cuenta...` });
+        } else {
+            res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${targetUserIds.size} usuarios totales. Iniciando entrega...` });
+        }
 
         // 4. PROCESO ASÍNCRONO CON REPORTE DETALLADO
         (async () => {
             try {
                 const TAMANO_LOTE = 20; 
-                const ESPERA_ENTRE_LOTES = 2000; 
+                const ESPERA_ENTRE_LOTES = 2000; // 2 segundos de pausa entre lotes
+                const MICRO_FRENO_MS = 150;      // ⏳ EL MICRO-FRENO: 150ms entre cada mensaje del mismo lote
+
                 let exitos = 0;
                 let fallos = 0;
 
@@ -168,47 +198,66 @@ app.post('/api/enviar-teams', async (req, res) => {
                     lotes.push(referenciasValidas.slice(i, i + TAMANO_LOTE));
                 }
 
-                console.log(`\n🚀 PROCESANDO LISTA: ${targetUserIds.size} usuarios totales.`);
-                console.log(`Usuarios localizados con Bot instalado: ${referenciasValidas.length}`);
-                console.log(`🚫 Usuarios que NO tienen el bot: ${targetUserIds.size - referenciasValidas.length}\n`);
+                console.log(`\n🚀 INICIANDO ENTREGA: ${referenciasValidas.length} tarjetas en cola.`);
 
                 for (let i = 0; i < lotes.length; i++) {
                     const loteActual = lotes[i];
                     
-                    const promesasEnvio = loteActual.map(referencia => {
-                        return adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
-                            await ctx.sendActivity({ 
-                                attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
-                            });
-                            exitos++;
-                        }).catch(err => {
-                            fallos++;
-                            // No mostramos cada error individual para no saturar la consola
+                    // En lugar de disparar todos a la vez, los escalonamos
+                    const promesasEnvio = loteActual.map((referencia, index) => {
+                        return new Promise(resolve => {
+                            
+                            // Multiplicamos el micro-freno por la posición en el lote (0ms, 150ms, 300ms...)
+                            setTimeout(async () => {
+                                if (MODO_SIMULACION) {
+                                    exitos++;
+                                    resolve();
+                                    return;
+                                }
+
+                                try {
+                                    await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
+                                        await ctx.sendActivity({ 
+                                            attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
+                                        });
+                                    });
+                                    exitos++;
+                                } catch (err) {
+                                    fallos++;
+                                }
+                                
+                                resolve(); // Terminamos la promesa individual
+                            }, index * MICRO_FRENO_MS);
+
                         });
                     });
 
+                    // Esperamos a que todo el lote escalonado termine
                     await Promise.all(promesasEnvio);
                     
-                    console.log(`Lote ${i + 1}/${lotes.length} | Éxitos: ${exitos} | Fallos: ${fallos}`);
+                    console.log(`📦 Lote ${i + 1}/${lotes.length} | Éxitos: ${exitos} | Fallos: ${fallos}`);
 
                     if (i < lotes.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
+                        const tiempoEspera = MODO_SIMULACION ? 100 : ESPERA_ENTRE_LOTES;
+                        await new Promise(resolve => setTimeout(resolve, tiempoEspera));
                     }
                 }
                 
-                console.log(`\nREPORTE FINAL DE ENVÍO:`);
+                console.log(`\n🏁 REPORTE FINAL DE ENVÍO:`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                 console.log(`✅ Entregas confirmadas: ${exitos}`);
-                console.log(`❌ Errores (Bot no activo): ${fallos}`);
-                console.log(`📈 Efectividad: ${((exitos / (exitos + fallos)) * 100).toFixed(1)}%`);
+                console.log(`❌ Errores (Bot no activo / Bloqueos): ${fallos}`);
+                
+                const totalIntentos = exitos + fallos;
+                const efectividad = totalIntentos > 0 ? ((exitos / totalIntentos) * 100).toFixed(1) : 0;
+                
+                console.log(`📈 Efectividad: ${efectividad}%`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
             } catch (errAsync) {
                 console.error("❌ Error en el proceso de fondo:", errAsync);
             }
         })();
-
-        return;
 
     } catch (error) {
         console.error("Error al preparar envío:", error.message);
