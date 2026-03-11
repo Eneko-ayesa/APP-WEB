@@ -2594,57 +2594,69 @@ function seleccionarUsuario(email) {
 // ── IMÁGENES CORPORATIVAS: usa las imágenes subidas por el usuario ──────────
 function renderCorpImgDropdown() {
   const grid = document.getElementById("corpImgGrid");
-  const toggle = document.getElementById("corpImgToggle");
-  if (!grid || !toggle) return;
+  if (!grid) return;
 
   grid.innerHTML = "";
 
-  if (!uploadedImages || uploadedImages.length === 0) {
-    grid.innerHTML = '<p style="font-size:12px;color:#999;padding:8px;text-align:center;grid-column:1/-1;">Sin imágenes subidas.<br>Añádelas en la pestaña <strong>Imágenes</strong>.</p>';
-    toggle.textContent = "Sin imágenes ▾";
+  // Build all images from IMG_LIBRARY (same SharePoint images as the right panel)
+  // plus any user-uploaded images at the top
+  const allItems = [];
+
+  if (uploadedImages && uploadedImages.length > 0) {
+    allItems.push({ cat: "Mis imágenes", items: uploadedImages.map(img => ({ label: img.label || "Imagen", url: img.url })) });
+  }
+
+  if (typeof IMG_LIBRARY !== "undefined") {
+    IMG_LIBRARY.forEach(group => allItems.push(group));
+  }
+
+  if (allItems.length === 0) {
+    grid.innerHTML = '<p style="font-size:12px;color:#999;padding:8px 4px;grid-column:1/-1;">Sin imágenes disponibles.</p>';
     return;
   }
 
-  toggle.textContent = "Seleccionar imagen ▾";
-  uploadedImages.forEach(img => {
-    const item = document.createElement("div");
-    item.className = "corp-img-item";
-    const label = img.label || "Imagen";
-    item.innerHTML = `<img src="${img.url}" alt="${label}" loading="lazy"><span>${label}</span>`;
-    item.addEventListener("click", () => {
-      const imagenInput = document.getElementById("imagen");
-      const dropdown = document.getElementById("corpImgDropdown");
-      if (imagenInput) {
-        imagenInput.value = img.url;
-        imagenInput.dispatchEvent(new Event("input"));
-        renderPreview();
-      }
-      dropdown?.classList.remove("open");
+  allItems.forEach(group => {
+    // Category label
+    const catLabel = document.createElement("div");
+    catLabel.style.cssText = "grid-column:1/-1;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;padding:6px 2px 2px;";
+    catLabel.textContent = group.cat;
+    grid.appendChild(catLabel);
+
+    group.items.forEach(img => {
+      const item = document.createElement("div");
+      item.className = "corp-img-item";
+      item.title = img.label;
+      item.innerHTML = `<img src="${img.url}" alt="${img.label}" loading="lazy">`;
+      item.addEventListener("click", () => {
+        const imagenInput = document.getElementById("imagen");
+        const panel = document.getElementById("corpImgDropdown");
+        if (imagenInput) {
+          imagenInput.value = img.url;
+          imagenInput.dispatchEvent(new Event("input"));
+          renderPreview();
+        }
+        panel?.classList.remove("open");
+        const chev = document.getElementById("corpImgChevron");
+        if (chev) chev.classList.remove("open");
+      });
+      grid.appendChild(item);
     });
-    grid.appendChild(item);
   });
 }
 
 (function initCorpImages() {
   const toggle = document.getElementById("corpImgToggle");
-  const dropdown = document.getElementById("corpImgDropdown");
-  if (!toggle || !dropdown) return;
+  const panel  = document.getElementById("corpImgDropdown");
+  const chevron = document.getElementById("corpImgChevron");
+  if (!toggle || !panel) return;
 
   toggle.addEventListener("click", (e) => {
     e.stopPropagation();
-    const isOpen = dropdown.classList.contains("open");
-    if (!isOpen) {
-      renderCorpImgDropdown(); // always refresh from uploadedImages
-      const rect = toggle.getBoundingClientRect();
-      dropdown.style.position = "fixed";
-      dropdown.style.top = (rect.bottom + 6) + "px";
-      dropdown.style.left = rect.left + "px";
-      dropdown.style.zIndex = "2000";
-    }
-    dropdown.classList.toggle("open", !isOpen);
+    const isOpen = panel.classList.contains("open");
+    if (!isOpen) renderCorpImgDropdown();
+    panel.classList.toggle("open", !isOpen);
+    if (chevron) chevron.classList.toggle("open", !isOpen);
   });
-
-  document.addEventListener("click", () => dropdown.classList.remove("open"));
 })();
 
 // ═══════════════════════════════════════════════════════
