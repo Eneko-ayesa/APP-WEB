@@ -889,6 +889,13 @@ function mostrarErrorValidacion(titulo, mensaje, ayuda) {
   btn.addEventListener("click", () => modal.remove());
   btn.addEventListener("mouseenter", () => { btn.style.background="#0000aa"; btn.style.transform="translateY(-1px)"; });
   btn.addEventListener("mouseleave", () => { btn.style.background="#0000D0"; btn.style.transform=""; });
+
+  // Barra de progreso autocierre
+  const barContainerVal = document.createElement("div");
+  barContainerVal.style.cssText = "position:absolute;bottom:0;left:0;width:100%;height:3px;background:rgba(0,0,0,.08);border-radius:0 0 20px 20px;overflow:hidden;";
+  barContainerVal.innerHTML = '<div class="autoclose-bar" style="height:100%;width:0%;background:#f97316;transition:none;border-radius:inherit;"></div>';
+  modal.querySelector("div").appendChild(barContainerVal);
+  autoCloseModal(modal, 5);
 }
 
 function mostrarConfirmEnvio() {
@@ -1079,8 +1086,37 @@ function mostrarEnvioError(err) {
   retryBtn.addEventListener("click", () => { modal.remove(); ejecutarEnvio(); });
   retryBtn.addEventListener("mouseenter", () => { retryBtn.style.background = "#0000aa"; retryBtn.style.transform = "translateY(-1px)"; });
   retryBtn.addEventListener("mouseleave", () => { retryBtn.style.background = "#0000D0"; retryBtn.style.transform = ""; });
+
+  // Barra de progreso autocierre
+  const barContainerError = document.createElement("div");
+  barContainerError.style.cssText = "position:absolute;bottom:0;left:0;width:100%;height:3px;background:rgba(0,0,0,.08);border-radius:0 0 20px 20px;overflow:hidden;";
+  barContainerError.innerHTML = '<div class="autoclose-bar" style="height:100%;width:0%;background:#ef4444;transition:none;border-radius:inherit;"></div>';
+  modal.querySelector("div").appendChild(barContainerError);
+  autoCloseModal(modal, 5);
 }
 
+
+// ── Autocierre compartido para todos los modales ─────────────────────────────
+function autoCloseModal(modal, segundos) {
+  const bar = modal.querySelector(".autoclose-bar");
+  let elapsed = 0;
+  const interval = 50; // ms
+  const steps = (segundos * 1000) / interval;
+
+  const timer = setInterval(() => {
+    elapsed++;
+    const pct = (elapsed / steps) * 100;
+    if (bar) bar.style.width = pct + "%";
+    if (elapsed >= steps) {
+      clearInterval(timer);
+      modal.style.animation = "fadeInBg .2s ease reverse";
+      setTimeout(() => modal.remove(), 180);
+    }
+  }, interval);
+
+  // Si el usuario interactúa, cancelar el temporizador
+  modal.addEventListener("mouseenter", () => clearInterval(timer), { once: true });
+}
 function mostrarEnvioExito(state) {
   document.getElementById("envioExitoModal")?.remove();
 
@@ -1185,6 +1221,13 @@ function mostrarEnvioExito(state) {
   closeBtn.addEventListener("mouseenter", () => { closeBtn.style.background = "#0000aa"; closeBtn.style.transform = "translateY(-1px)"; });
   closeBtn.addEventListener("mouseleave", () => { closeBtn.style.background = "#0000D0"; closeBtn.style.transform = ""; });
   closeBtn.addEventListener("click", () => modal.remove());
+
+  // Barra de progreso autocierre
+  const barContainerExito = document.createElement("div");
+  barContainerExito.style.cssText = "position:absolute;bottom:0;left:0;width:100%;height:3px;background:rgba(0,0,0,.08);border-radius:0 0 20px 20px;overflow:hidden;";
+  barContainerExito.innerHTML = '<div class="autoclose-bar" style="height:100%;width:0%;background:#0000D0;transition:none;border-radius:inherit;"></div>';
+  modal.querySelector("div").appendChild(barContainerExito);
+  autoCloseModal(modal, 5);
 }
 
 function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
