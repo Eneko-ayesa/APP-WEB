@@ -169,7 +169,7 @@ app.post('/api/enviar-teams', async (req, res) => {
                 }
 
                 console.log(`\n🚀 PROCESANDO LISTA: ${targetUserIds.size} usuarios totales.`);
-                console.log(`📡 Usuarios localizados con Bot instalado: ${referenciasValidas.length}`);
+                console.log(`Usuarios localizados con Bot instalado: ${referenciasValidas.length}`);
                 console.log(`🚫 Usuarios que NO tienen el bot: ${targetUserIds.size - referenciasValidas.length}\n`);
 
                 for (let i = 0; i < lotes.length; i++) {
@@ -189,14 +189,14 @@ app.post('/api/enviar-teams', async (req, res) => {
 
                     await Promise.all(promesasEnvio);
                     
-                    console.log(`📦 Lote ${i + 1}/${lotes.length} | Éxitos: ${exitos} | Fallos: ${fallos}`);
+                    console.log(`Lote ${i + 1}/${lotes.length} | Éxitos: ${exitos} | Fallos: ${fallos}`);
 
                     if (i < lotes.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
                     }
                 }
                 
-                console.log(`\n🏁 REPORTE FINAL DE ENVÍO:`);
+                console.log(`\nREPORTE FINAL DE ENVÍO:`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                 console.log(`✅ Entregas confirmadas: ${exitos}`);
                 console.log(`❌ Errores (Bot no activo): ${fallos}`);
@@ -278,6 +278,50 @@ app.get('/api/grupos', async (req, res) => {
         res.status(500).json({ error: 'Fallo al obtener las listas de distribución.' });
     }
 });
+// =======================================================
+// RUTA PARA OBTENER LOS MIEMBROS DE UN GRUPO (PARA EL EXPLORADOR)
+// =======================================================
+app.get('/api/miembros-grupo', async (req, res) => {
+    try {
+        // Cogemos el ID que nos envía el frontend (ej: ?id=5c9fa30c...)
+        const groupId = req.query.id; 
+        
+        if (!groupId) {
+            return res.status(400).json({ error: "Falta el ID del grupo." });
+        }
+
+        // Le pedimos a Microsoft Graph los miembros de ese grupo
+        const miembros = await graphClient.api(`/groups/${groupId}/members`)
+            .select('displayName,mail,userPrincipalName,jobTitle')
+            .top(999) // Trae hasta 999 personas
+            .get();
+            
+        // Devolvemos el array de personas al frontend
+        res.status(200).json(miembros.value);
+        
+    } catch (error) {
+        console.error("Error al obtener los miembros del grupo:", error.message);
+        res.status(500).json({ error: "Fallo interno al cargar los miembros." });
+    }
+});
+// Ruta para obtener los miembros de un grupo específico
+app.get('/api/grupos/:id/miembros', async (req, res) => {
+    try {
+        const groupId = req.params.id;
+        
+        // Pedimos a Graph API los miembros del grupo seleccionado
+        const miembros = await graphClient.api(`/groups/${groupId}/members`)
+            .select('displayName,mail,jobTitle')
+            .top(999) // Trae hasta 999 miembros (puedes ajustarlo si necesitas más)
+            .get();
+            
+        res.status(200).json(miembros.value);
+    } catch (error) {
+        console.error("Error al obtener miembros:", error.message);
+        res.status(500).json({ error: "Fallo al cargar los miembros del grupo." });
+    }
+});
+
 
 app.post('/api/enviar-teams-grupo', async (req, res) => {
     try {

@@ -2341,18 +2341,63 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 }
 
 // ── RENDER IMAGES PANEL ────────────────────────
+// ── RENDER IMAGES PANEL ────────────────────────
 function renderMiembrosPanel(panel) {
-  const grupoEl = document.getElementById("distListSelect");
-  const grupoNombre = grupoEl?.options[grupoEl.selectedIndex]?.text || "";
-  const grupoId = grupoEl?.value || "";
-
+  // 1. Estructura base: Cabecera + Desplegable independiente + Contenedor de tabla
   panel.innerHTML = `
     <div class="panel-section-hdr">
-      <h2>&#x1F465; Miembros del grupo</h2>
-      <p>${grupoNombre ? "Grupo: <strong>" + grupoNombre + "</strong>" : "Selecciona un grupo de distribuci\u00f3n para ver sus miembros"}</p>
+      <h2>👥 Explorador de Listas</h2>
+      <p>Selecciona una lista de distribución para ver sus miembros</p>
     </div>
-    <div id="miembrosContent">
-      ${!grupoId ? `
+    
+    <div style="padding: 0 20px 20px 20px;">
+        <div style="margin-bottom: 20px;">
+            <select id="exploradorGruposSelect" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--ms-border-dark); font-family: inherit; background: var(--ms-surface); outline: none;">
+                <option value="">Cargando listas de Microsoft 365... ⏳</option>
+            </select>
+        </div>
+
+        <div id="miembrosContent">
+            <div class="miembros-empty">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <p>Selecciona un grupo en el desplegable de arriba</p>
+            </div>
+        </div>
+    </div>
+  `;
+
+  const selectGrupos = panel.querySelector("#exploradorGruposSelect");
+  const content = panel.querySelector("#miembrosContent");
+
+  // 2. Pedimos TODAS las listas a tu servidor para llenar el desplegable
+  fetch("/api/grupos")
+    .then(r => r.json())
+    .then(grupos => {
+      selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
+      grupos.forEach(g => {
+        const option = document.createElement("option");
+        option.value = g.id;
+        option.textContent = g.displayName + (g.mail ? ` (${g.mail})` : "");
+        selectGrupos.appendChild(option);
+      });
+    })
+    .catch(err => {
+      console.error("Error cargando grupos:", err);
+      selectGrupos.innerHTML = '<option value="">⚠️ Error al cargar las listas</option>';
+    });
+
+  // 3. Detectamos cuando el usuario elige una lista en el desplegable
+  selectGrupos.addEventListener("change", function() {
+    const grupoId = this.value;
+
+    if (!grupoId) {
+      // Si vuelve a la opción por defecto, ocultamos la tabla
+      content.innerHTML = `
         <div class="miembros-empty">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -2360,53 +2405,55 @@ function renderMiembrosPanel(panel) {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
-          <p>Selecciona primero un grupo<br>en el campo de Lista de distribuci\u00f3n</p>
+          <p>Selecciona un grupo en el desplegable de arriba</p>
         </div>
-      ` : `
-        <div class="miembros-loading">
-          <div class="miembros-spinner"></div>
-          <span>Cargando miembros...</span>
-        </div>
-      `}
-    </div>
-  `;
+      `;
+      return;
+    }
 
-  if (!grupoId) return;
+    // Ponemos el spinner de carga usando tus clases CSS originales
+    content.innerHTML = `
+      <div class="miembros-loading">
+        <div class="miembros-spinner"></div>
+        <span>Cargando miembros...</span>
+      </div>
+    `;
 
-  fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      const content = panel.querySelector("#miembrosContent");
-      if (!content) return;
-      const miembros = Array.isArray(data) ? data : (data.miembros || []);
+    // 4. Llamamos a tu servidor para que nos dé los miembros exactos de esa lista
+    fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        const miembros = Array.isArray(data) ? data : (data.miembros || []);
 
-      if (miembros.length === 0) {
-        content.innerHTML = '<div class="miembros-empty"><p>Este grupo no tiene miembros</p></div>';
-        return;
-      }
+        if (miembros.length === 0) {
+          content.innerHTML = '<div class="miembros-empty"><p>Este grupo no tiene miembros</p></div>';
+          return;
+        }
 
-      let rows = miembros.map(function(m) {
-        const nombre = m.nombre || m.displayName || "\u2014";
-        const email  = m.correo  || m.mail || m.userPrincipalName || "\u2014";
-        const inicial = nombre.charAt(0).toUpperCase();
-        return '<tr>'
-          + '<td><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
-          + '<td><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
-          + '</tr>';
-      }).join("");
+        // Generamos las filas de la tabla con tus estilos
+        let rows = miembros.map(function(m) {
+          const nombre = m.nombre || m.displayName || "—";
+          const email  = m.correo  || m.mail || m.userPrincipalName || "—";
+          const inicial = nombre.charAt(0).toUpperCase();
+          return '<tr>'
+            + '<td><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
+            + '<td><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
+            + '</tr>';
+        }).join("");
 
-      content.innerHTML = ''
-        + '<div class="miembros-meta"><span class="miembros-count">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span></div>'
-        + '<div class="miembros-table-wrap">'
-        + '<table class="miembros-table">'
-        + '<thead><tr><th>NOMBRE</th><th>CORREO</th></tr></thead>'
-        + '<tbody>' + rows + '</tbody>'
-        + '</table></div>';
-    })
-    .catch(function() {
-      const content = panel.querySelector("#miembrosContent");
-      if (content) content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">&#x26A0;&#xFE0F;</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexi\u00f3n con el servidor.</p></div>';
-    });
+        // Inyectamos la tabla terminada
+        content.innerHTML = ''
+          + '<div class="miembros-meta" style="margin-bottom: 10px; text-align: right;"><span class="miembros-count" style="background: var(--ms-blue-light); color: var(--ms-blue); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span></div>'
+          + '<div class="miembros-table-wrap" style="border: 1px solid var(--ms-border); border-radius: 8px; overflow: hidden;">'
+          + '<table class="miembros-table" style="width: 100%; border-collapse: collapse; text-align: left;">'
+          + '<thead style="background: var(--ms-surface-alt); border-bottom: 2px solid var(--ms-border);"><tr><th style="padding: 10px;">NOMBRE</th><th style="padding: 10px;">CORREO</th></tr></thead>'
+          + '<tbody>' + rows + '</tbody>'
+          + '</table></div>';
+      })
+      .catch(function() {
+        content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">⚠️</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexión con el servidor.</p></div>';
+      });
+  });
 }
 
 function renderImagenesPanel(panel) {
