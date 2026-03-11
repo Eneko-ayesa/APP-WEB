@@ -2671,16 +2671,15 @@ function renderCorpImgDropdown() {
 
   grid.innerHTML = "";
 
-  // Build all images from IMG_LIBRARY (same SharePoint images as the right panel)
-  // plus any user-uploaded images at the top
+  // Primero imágenes corporativas, luego las del usuario al final
   const allItems = [];
-
-  if (uploadedImages && uploadedImages.length > 0) {
-    allItems.push({ cat: "Mis imágenes", items: uploadedImages.map(img => ({ label: img.label || "Imagen", url: img.url })) });
-  }
 
   if (typeof IMG_LIBRARY !== "undefined") {
     IMG_LIBRARY.forEach(group => allItems.push(group));
+  }
+
+  if (uploadedImages && uploadedImages.length > 0) {
+    allItems.push({ cat: "Mis imágenes", items: uploadedImages.map(img => ({ label: img.label || "Imagen", url: img.url })) });
   }
 
   if (allItems.length === 0) {
@@ -2695,12 +2694,29 @@ function renderCorpImgDropdown() {
     catLabel.textContent = group.cat;
     grid.appendChild(catLabel);
 
-    group.items.forEach(img => {
+    group.items.forEach((img, localIdx) => {
       const item = document.createElement("div");
       item.className = "corp-img-item";
       item.title = img.label;
-      item.innerHTML = `<img src="${img.url}" alt="${img.label}" loading="lazy">`;
-      item.addEventListener("click", () => {
+
+      // Si es imagen del usuario, añadir botón X
+      const isUserImg = group.cat === "Mis imágenes";
+      const globalIdx = isUserImg ? uploadedImages.findIndex(u => u.url === img.url) : -1;
+
+      item.innerHTML = `<img src="${img.url}" alt="${img.label}" loading="lazy">${isUserImg ? `<button class="corp-img-del-btn" data-idx="${globalIdx}" title="Eliminar">✕</button>` : ""}`;
+
+      if (isUserImg) {
+        item.querySelector(".corp-img-del-btn")?.addEventListener("click", e => {
+          e.stopPropagation();
+          const idx = +e.currentTarget.dataset.idx;
+          uploadedImages.splice(idx, 1);
+          saveUploadedImages();
+          renderCorpImgDropdown();
+        });
+      }
+
+      item.addEventListener("click", e => {
+        if (e.target.closest(".corp-img-del-btn")) return;
         const imagenInput = document.getElementById("imagen");
         const panel = document.getElementById("corpImgDropdown");
         if (imagenInput) {
@@ -2730,6 +2746,59 @@ function renderCorpImgDropdown() {
     panel.classList.toggle("open", !isOpen);
     if (chevron) chevron.classList.toggle("open", !isOpen);
   });
+
+  // Wire compact upload zone
+  const zone = document.getElementById("corpUploadZone");
+  const fileInput = document.getElementById("corpFileInput");
+  if (zone && fileInput) {
+    zone.addEventListener("click", (e) => { if (e.target.tagName !== "LABEL") fileInput.click(); });
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault(); zone.classList.remove("drag-over");
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.dataTransfer.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          renderCorpImgDropdown();
+          // Aplicar directamente a la tarjeta
+          const imagenInput = document.getElementById("imagen");
+          if (imagenInput) { imagenInput.value = url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
+          document.getElementById("corpImgDropdown")?.classList.remove("open");
+          document.getElementById("corpImgChevron")?.classList.remove("open");
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    fileInput.addEventListener("change", e => {
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.target.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          renderCorpImgDropdown();
+          // Aplicar directamente a la tarjeta
+          const imagenInput = document.getElementById("imagen");
+          if (imagenInput) { imagenInput.value = url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
+          document.getElementById("corpImgDropdown")?.classList.remove("open");
+          document.getElementById("corpImgChevron")?.classList.remove("open");
+        };
+        reader.readAsDataURL(file);
+      });
+      fileInput.value = "";
+    });
+  }
 })();
 
 // ═══════════════════════════════════════════════════════
