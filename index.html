@@ -221,17 +221,16 @@
               </div>
             </div>
 
-            <div id="teamsRecipientField" class="field-group hidden">
-              <div class="field-label-row">
-                <span class="field-num">06</span>
-                <label for="teamsRecipient">Canal o Usuario de Teams</label>
+            <div class="form-group hidden" id="teamsRecipientField">
+              <label>Canal o Usuario de Teams</label>
+              <div style="position: relative;">
+                <input
+                  type="text"
+                  id="teamsRecipient"
+                  placeholder="Ej: usuario@ittm.es, general..."
+                />
+                <div class="suggestions-box" id="suggestionsBoxTeams"></div>
               </div>
-              <input
-                type="text"
-                id="teamsRecipient"
-                name="teamsRecipient"
-                placeholder="Ej: General o @usuario"
-              />
             </div>
 
             <div class="form-actions-row">

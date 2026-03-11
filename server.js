@@ -57,8 +57,35 @@ const adapter = new CloudAdapter(botFrameworkAuthentication);
 let conversationReferences = cargarUsuarios();
 
 // --- 5. ENDPOINTS ---
-app.post('/api/messages', (req, res) => {
-    adapter.process(req, res, async (context) => {
+app.post('/api/messages', async (req, res) => {
+    await adapter.process(req, res, async (context) => {
+        // 1. Detectar si el evento es de "Actualización de Conversación" (alguien instaló el bot)
+        if (context.activity.type === 'conversationUpdate') {
+            const membersAdded = context.activity.membersAdded;
+            
+            if (membersAdded) {
+                for (let member of membersAdded) {
+                    // Ignorar al propio bot, solo queremos guardar a los humanos
+                    if (member.id !== context.activity.recipient.id) {
+                        
+                        // Extraemos la referencia mágica para poder hablarle luego
+                        const referencia = TurnContext.getConversationReference(context.activity);
+                        
+                        // En Teams, el identificador único de Azure es aadObjectId
+                        const azureId = referencia.user.aadObjectId;
+
+                        if (azureId) {
+                            // Guardamos en la memoria RAM
+                            conversationReferences[azureId] = referencia;
+                            
+                            // Y lo guardamos en tu archivo usuarios.json
+                            fs.writeFileSync(PATH_DB, JSON.stringify(conversationReferences, null, 2));
+                            console.log(`✅ Nuevo usuario registrado automáticamente: ${azureId}`);
+                        }
+                    }
+                }
+            }
+        }
         if (context.activity.type === 'message') {
             const reference = TurnContext.getConversationReference(context.activity);
             conversationReferences[reference.conversation.id] = reference;
@@ -68,58 +95,227 @@ app.post('/api/messages', (req, res) => {
     });
 });
 
-app.post('/api/enviar-teams', async (req, res) => {
-    const { tarjeta } = req.body;
-    for (const id of Object.keys(conversationReferences)) {
-        await adapter.continueConversationAsync(process.env.CLIENT_ID, conversationReferences[id], async (ctx) => {
-            await ctx.sendActivity({ attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] });
-        });
+// Función auxiliar para crear pausas de tiempo en el código
+const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Función auxiliar para dividir una lista grande en grupos (lotes) más pequeños
+function dividirEnLotes(array, tamaño) {
+    const lotes = [];
+    for (let i = 0; i < array.length; i += tamaño) {
+        lotes.push(array.slice(i, i + tamaño));
     }
-    res.status(200).json({ mensaje: 'Enviado a Teams' });
-});
+    return lotes;
+}
 
-//  ENDPOINT PARA OUTLOOK VÍA GRAPH API
-app.post('/api/enviar-outlook', async (req, res) => {
+app.post('/api/enviar-teams', async (req, res) => {
     try {
-        const { destinatarios, htmlCuerpo, asunto } = req.body;
-
-        const sendMail = {
-            message: {
-                subject: asunto || "Nuevo Comunicado",
-                body: { contentType: "HTML", content: htmlCuerpo },
-                toRecipients: destinatarios.map(email => ({ emailAddress: { address: email } }))
-            }
-        };
-
-        // Envía el correo usando la identidad de la App
-        await graphClient.api(`/users/${process.env.EMAIL_USER}/sendMail`).post(sendMail);
+        const { tarjeta, destinatarios } = req.body;
         
-        res.status(200).json({ mensaje: 'Correo enviado por Microsoft Graph' });
+        if (!destinatarios || destinatarios.length === 0) {
+            return res.status(400).json({ error: "No hay destinatarios seleccionados." });
+        }
+
+        let targetUserIds = new Set(); 
+
+        // 1. Fase de desglose de destinatarios
+        for (const email of destinatarios) {
+            const groupSearch = await graphClient.api(`/groups`)
+                .filter(`mail eq '${email}'`)
+                .select('id').get();
+
+            if (groupSearch.value && groupSearch.value.length > 0) {
+                const groupId = groupSearch.value[0].id;
+                const members = await graphClient.api(`/groups/${groupId}/members`).select('id').get();
+                members.value.forEach(m => {
+                    if (m['@odata.type'] === '#microsoft.graph.user') targetUserIds.add(m.id);
+                });
+                continue; 
+            }
+
+            const userSearch = await graphClient.api(`/users`)
+                .filter(`mail eq '${email}' or userPrincipalName eq '${email}'`)
+                .select('id').get();
+
+            if (userSearch.value && userSearch.value.length > 0) {
+                targetUserIds.add(userSearch.value[0].id);
+            }
+        }
+
+        // 2. Preparamos las referencias
+        const referenciasValidas = [];
+        for (const id of Object.keys(conversationReferences)) {
+            const referencia = conversationReferences[id];
+            if (referencia.user && referencia.user.aadObjectId && targetUserIds.has(referencia.user.aadObjectId)) {
+                referenciasValidas.push(referencia);
+            }
+        }
+
+        // 3. RESPUESTA INMEDIATA
+        res.status(202).json({ 
+            mensaje: `Procesando envío masivo. Detectados ${targetUserIds.size} usuarios totales. Iniciando entrega...` 
+        });
+
+        // 4. PROCESO ASÍNCRONO CON REPORTE DETALLADO
+        (async () => {
+            try {
+                const TAMANO_LOTE = 20; 
+                const ESPERA_ENTRE_LOTES = 2000; 
+                let exitos = 0;
+                let fallos = 0;
+
+                const lotes = [];
+                for (let i = 0; i < referenciasValidas.length; i += TAMANO_LOTE) {
+                    lotes.push(referenciasValidas.slice(i, i + TAMANO_LOTE));
+                }
+
+                console.log(`\n🚀 PROCESANDO LISTA: ${targetUserIds.size} usuarios totales.`);
+                console.log(`📡 Usuarios localizados con Bot instalado: ${referenciasValidas.length}`);
+                console.log(`🚫 Usuarios que NO tienen el bot: ${targetUserIds.size - referenciasValidas.length}\n`);
+
+                for (let i = 0; i < lotes.length; i++) {
+                    const loteActual = lotes[i];
+                    
+                    const promesasEnvio = loteActual.map(referencia => {
+                        return adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
+                            await ctx.sendActivity({ 
+                                attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
+                            });
+                            exitos++;
+                        }).catch(err => {
+                            fallos++;
+                            // No mostramos cada error individual para no saturar la consola
+                        });
+                    });
+
+                    await Promise.all(promesasEnvio);
+                    
+                    console.log(`📦 Lote ${i + 1}/${lotes.length} | Éxitos: ${exitos} | Fallos: ${fallos}`);
+
+                    if (i < lotes.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
+                    }
+                }
+                
+                console.log(`\n🏁 REPORTE FINAL DE ENVÍO:`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`✅ Entregas confirmadas: ${exitos}`);
+                console.log(`❌ Errores (Bot no activo): ${fallos}`);
+                console.log(`📈 Efectividad: ${((exitos / (exitos + fallos)) * 100).toFixed(1)}%`);
+                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
+            } catch (errAsync) {
+                console.error("❌ Error en el proceso de fondo:", errAsync);
+            }
+        })();
+
+        return;
+
     } catch (error) {
-        console.error("Error Graph API:", error.message);
-        res.status(500).json({ error: 'Fallo al enviar correo. Verifica permisos de Mail.Send en Azure.' });
+        console.error("Error al preparar envío:", error.message);
+        if (!res.headersSent) res.status(500).json({ error: 'Error interno.' });
     }
 });
 
 app.get('/api/buscar-usuarios', async (req, res) => {
     const query = req.query.q;
     try {
-        // Buscamos tanto en 'users' como en 'groups'
+        // 1. Hacemos una búsqueda MUY simple por nombre para que Microsoft NO devuelva error.
+        // Quitamos el ConsistencyLevel y los "or/and" complicados.
         const [users, groups] = await Promise.all([
-            graphClient.api('/users').filter(`startswith(displayName, '${query}')`).select('displayName,mail').top(5).get(),
-            graphClient.api('/groups').filter(`startswith(displayName, '${query}')`).select('displayName,mail').top(5).get()
+            graphClient.api('/users')
+                .filter(`startswith(displayName, '${query}')`)
+                .select('displayName,mail,userPrincipalName')
+                .top(10)
+                .get(),
+            
+            graphClient.api('/groups')
+                .filter(`startswith(displayName, '${query}')`)
+                .select('displayName,mail,mailEnabled')
+                .top(50) // Pedimos hasta 50 grupos para asegurar que el tuyo no se quede fuera
+                .get()
         ]);
 
-        // Combinamos resultados
+        // 2. Combinamos resultados y filtramos las Listas de Distribución aquí en local
         const resultados = [
-            ...users.value.map(u => ({ name: u.displayName, mail: u.mail || "Sin email", tipo: "👤 Usuario" })),
-            ...groups.value.map(g => ({ name: g.displayName, mail: g.mail || "Grupo", tipo: "👥 Grupo" }))
+            // Mapeamos los usuarios
+            ...users.value.map(u => ({ 
+                name: u.displayName, 
+                // Si el usuario no tiene 'mail', cogemos su userPrincipalName
+                mail: u.mail || u.userPrincipalName, 
+                tipo: "👤 Usuario" 
+            })),
+            
+            // Mapeamos los grupos, pero filtramos con JavaScript SÓLO los que tienen correo habilitado
+            ...groups.value
+                .filter(g => g.mailEnabled === true) // <--- Esta es la clave para que salgan
+                .map(g => ({ 
+                    name: g.displayName, 
+                    mail: g.mail || "Sin correo", 
+                    tipo: "👥 Grupo LD" 
+                }))
         ];
         
         res.json(resultados);
     } catch (error) {
-        console.error("Error Graph API:", error);
-        res.status(500).json({ error: 'Error al buscar' });
+        console.error("Error Graph API Búsqueda:", error.message);
+        res.status(500).json({ error: 'Error al buscar en el directorio' });
+    }
+});
+
+// Ruta para obtener los grupos y mostrarlos en el frontend
+app.get('/api/grupos', async (req, res) => {
+    try {
+        // Pedimos los grupos de Office 365 / Listas de distribución
+        const grupos = await graphClient.api('/groups')
+            // Filtramos para traer los más relevantes (opcional, puedes quitar el filter si quieres todos)
+            .filter("mailEnabled eq true") 
+            .select('id,displayName,mail') // Traemos solo lo importante
+            .get();
+
+        res.status(200).json(grupos.value);
+    } catch (error) {
+        console.error("Error al obtener grupos:", error.message);
+        res.status(500).json({ error: 'Fallo al obtener las listas de distribución.' });
+    }
+});
+
+app.post('/api/enviar-teams-grupo', async (req, res) => {
+    try {
+        // Asumo que envías la 'tarjeta' (Adaptive Card) igual que en tu endpoint normal de Teams
+        const { groupId, tarjeta } = req.body; 
+
+        // 1. Obtener los miembros del grupo seleccionado usando Graph API
+        const miembros = await graphClient.api(`/groups/${groupId}/members`)
+            .select('id,userPrincipalName')
+            .get();
+
+        // Extraemos un array solo con los IDs de Azure de esa gente
+        const idsMiembros = miembros.value.map(usuario => usuario.id);
+        let enviados = 0;
+
+        // 2. Recorremos los usuarios que tu bot ya conoce (tu base de datos usuarios.json)
+        for (const id of Object.keys(conversationReferences)) {
+            const referencia = conversationReferences[id];
+
+            // En Teams, la referencia del bot guarda el ID de Azure del usuario en 'referencia.user.aadObjectId'
+            // Comprobamos si el usuario de esta conversación está dentro de la lista de miembros del grupo
+            if (referencia.user && idsMiembros.includes(referencia.user.aadObjectId)) {
+                
+                // ¡Bingo! Está en la lista. Le enviamos la tarjeta usando tu Bot Framework
+                await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
+                    await ctx.sendActivity({ 
+                        attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
+                    });
+                });
+                enviados++;
+            }
+        }
+
+        res.status(200).json({ mensaje: `Enviado a ${enviados} integrantes de la lista por Teams.` });
+
+    } catch (error) {
+        console.error("Error al enviar a grupo por Teams:", error.message);
+        res.status(500).json({ error: 'Fallo al procesar o enviar a los integrantes del grupo.' });
     }
 });
 // --- Iniciacion ---
