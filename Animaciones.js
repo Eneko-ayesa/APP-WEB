@@ -699,9 +699,9 @@ document.querySelectorAll(".tab").forEach(tab => {
       ensurePreviewPanel("historial");
       return;
     }
-    if (val === "imagenes") {
+    if (val === "miembros") {
       document.getElementById("channelSubtabs")?.classList.add("hidden");
-      ensurePreviewPanel("imagenes");
+      ensurePreviewPanel("miembros");
       return;
     }
     // "teams" tab = Vista previa — restore chrome
@@ -859,7 +859,7 @@ function mostrarErrorValidacion(titulo, mensaje, ayuda) {
   ].join(";");
 
   modal.innerHTML =
-    '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;' +
+    '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;position:relative;' +
     'box-shadow:0 40px 100px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);' +
     'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
     'overflow:hidden;text-align:center;">' +
@@ -1034,7 +1034,7 @@ function mostrarEnvioError(err) {
   const errMsg = (err && err.message) ? err.message : "Error desconocido";
 
   modal.innerHTML =
-    '<div style="background:#fff;border-radius:20px;max-width:420px;width:100%;' +
+    '<div style="background:#fff;border-radius:20px;max-width:420px;width:100%;position:relative;' +
     'box-shadow:0 40px 100px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);' +
     'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
     'overflow:hidden;text-align:center;">' +
@@ -1099,23 +1099,28 @@ function mostrarEnvioError(err) {
 // ── Autocierre compartido para todos los modales ─────────────────────────────
 function autoCloseModal(modal, segundos) {
   const bar = modal.querySelector(".autoclose-bar");
-  let elapsed = 0;
-  const interval = 50; // ms
-  const steps = (segundos * 1000) / interval;
 
-  const timer = setInterval(() => {
-    elapsed++;
-    const pct = (elapsed / steps) * 100;
-    if (bar) bar.style.width = pct + "%";
-    if (elapsed >= steps) {
-      clearInterval(timer);
-      modal.style.animation = "fadeInBg .2s ease reverse";
-      setTimeout(() => modal.remove(), 180);
-    }
-  }, interval);
+  // Barra: empieza llena (100%) y se vacía hasta 0%
+  if (bar) {
+    bar.style.transition = "none";
+    bar.style.width = "100%";
+    setTimeout(() => {
+      bar.style.transition = "width " + segundos + "s linear";
+      bar.style.width = "0%";
+    }, 32);
+  }
 
-  // Si el usuario interactúa, cancelar el temporizador
-  modal.addEventListener("mouseenter", () => clearInterval(timer), { once: true });
+  // Cierre automático usando referencia directa
+  const timer = setTimeout(() => {
+    modal.style.transition = "opacity .25s ease";
+    modal.style.opacity = "0";
+    setTimeout(() => {
+      if (modal.parentNode) modal.parentNode.removeChild(modal);
+    }, 260);
+  }, segundos * 1000);
+
+  // Cancelar timer si el usuario cierra manualmente
+  modal.addEventListener("click", () => clearTimeout(timer), { once: true });
 }
 function mostrarEnvioExito(state) {
   document.getElementById("envioExitoModal")?.remove();
@@ -1137,7 +1142,7 @@ function mostrarEnvioExito(state) {
   modal.innerHTML = `
     <div style="
       background:#fff; border-radius:20px;
-      max-width:420px; width:100%;
+      max-width:420px; width:100%; position:relative;
       box-shadow:0 40px 100px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.06);
       font-family:var(--sans,'Segoe UI',sans-serif);
       animation:msDropIn .25s cubic-bezier(.22,1,.36,1);
@@ -2202,6 +2207,74 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 }
 
 // ── RENDER IMAGES PANEL ────────────────────────
+function renderMiembrosPanel(panel) {
+  const grupoEl = document.getElementById("distListSelect");
+  const grupoNombre = grupoEl?.options[grupoEl.selectedIndex]?.text || "";
+  const grupoId = grupoEl?.value || "";
+
+  panel.innerHTML = `
+    <div class="panel-section-hdr">
+      <h2>&#x1F465; Miembros del grupo</h2>
+      <p>${grupoNombre ? "Grupo: <strong>" + grupoNombre + "</strong>" : "Selecciona un grupo de distribuci\u00f3n para ver sus miembros"}</p>
+    </div>
+    <div id="miembrosContent">
+      ${!grupoId ? `
+        <div class="miembros-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <p>Selecciona primero un grupo<br>en el campo de Lista de distribuci\u00f3n</p>
+        </div>
+      ` : `
+        <div class="miembros-loading">
+          <div class="miembros-spinner"></div>
+          <span>Cargando miembros...</span>
+        </div>
+      `}
+    </div>
+  `;
+
+  if (!grupoId) return;
+
+  fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      const content = panel.querySelector("#miembrosContent");
+      if (!content) return;
+      const miembros = Array.isArray(data) ? data : (data.miembros || []);
+
+      if (miembros.length === 0) {
+        content.innerHTML = '<div class="miembros-empty"><p>Este grupo no tiene miembros</p></div>';
+        return;
+      }
+
+      let rows = miembros.map(function(m) {
+        const nombre = m.nombre || m.displayName || "\u2014";
+        const email  = m.correo  || m.mail || m.userPrincipalName || "\u2014";
+        const inicial = nombre.charAt(0).toUpperCase();
+        return '<tr>'
+          + '<td><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
+          + '<td><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
+          + '</tr>';
+      }).join("");
+
+      content.innerHTML = ''
+        + '<div class="miembros-meta"><span class="miembros-count">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span></div>'
+        + '<div class="miembros-table-wrap">'
+        + '<table class="miembros-table">'
+        + '<thead><tr><th>NOMBRE</th><th>CORREO</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody>'
+        + '</table></div>';
+    })
+    .catch(function() {
+      const content = panel.querySelector("#miembrosContent");
+      if (content) content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">&#x26A0;&#xFE0F;</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexi\u00f3n con el servidor.</p></div>';
+    });
+}
+
 function renderImagenesPanel(panel) {
   panel.innerHTML = `
     <div class="panel-section-hdr">
@@ -2322,10 +2395,10 @@ function handleFiles(files, panel) {
   });
 }
 
-// ── PATCH ensurePreviewPanel for "imagenes" ────
+// ── PATCH ensurePreviewPanel for "miembros" ────
 const _origEnsure = ensurePreviewPanel;
 ensurePreviewPanel = function (type) {
-  if (type !== "imagenes") { _origEnsure(type); return; }
+  if (type !== "miembros") { _origEnsure(type); return; }
 
   const screen = document.getElementById("previewScreen");
   screen.querySelectorAll(".app-chrome").forEach(c => c.classList.add("hidden"));
@@ -2334,7 +2407,7 @@ ensurePreviewPanel = function (type) {
   panel = document.createElement("div");
   panel.className = "preview-side-panel active";
   screen.appendChild(panel);
-  renderImagenesPanel(panel);
+  renderMiembrosPanel(panel);
 };
 // ═══════════════════════════════════════════════
 // TOPBAR USER MENU

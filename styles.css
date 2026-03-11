@@ -3627,3 +3627,123 @@ input:not(:placeholder-shown):not(:focus) {
   color: #78350f;
   line-height: 1.5;
 }
+/* ── MIEMBROS PANEL ─────────────────────────────────────────────── */
+.miembros-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: #aaa;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.miembros-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: #888;
+  font-size: 13px;
+}
+
+.miembros-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border, #e0e0e0);
+  border-top-color: var(--ms-blue, #0000D0);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.miembros-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 0 8px;
+}
+
+.miembros-count {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
+.miembros-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.miembros-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.miembros-table thead tr {
+  background: var(--ms-blue, #0000D0);
+}
+
+.miembros-table thead th {
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.miembros-table tbody tr {
+  border-bottom: 1px solid var(--border, #f0f0f0);
+  transition: background 0.1s;
+}
+
+.miembros-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.miembros-table tbody tr:hover {
+  background: var(--ms-blue-xlight, #f0f0ff);
+}
+
+.miembros-table td {
+  padding: 9px 14px;
+  vertical-align: middle;
+}
+
+.miembro-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.miembro-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ms-blue, #0000D0);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.miembro-email {
+  color: var(--ms-blue, #0000D0);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.miembro-email:hover {
+  text-decoration: underline;
+}
