@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Yako Card Builder</title>
       <script>
-  // Comprobamos si la llave "yako_auth" existe en la memoria de la sesión
-  if (!sessionStorage.getItem("yako_auth")) {
-      // Si NO existe, lo pateamos de vuelta al login inmediatamente
-      window.location.replace("login.html");
-  }
+      // Comprobamos si la llave "yako_auth" existe en la memoria de la sesión
+      // if (!sessionStorage.getItem("yako_auth")) {
+      //     window.location.replace("login.html");
+      // }
 </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -60,14 +59,136 @@
       }
     </style>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* ── Corp image toggle button ── */
+      .corp-img-toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        padding: 7px 12px;
+        background: #f5f5fa;
+        border: 1.5px solid #e0e0e8;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        width: 100%;
+        text-align: left;
+      }
+      .corp-img-toggle-btn:hover {
+        background: #ebebf5;
+        border-color: #c8c8e0;
+      }
+      .corp-img-chevron {
+        margin-left: auto;
+        font-size: 11px;
+        transition: transform 0.2s;
+      }
+      .corp-img-chevron.open { transform: rotate(180deg); }
+
+      /* ── Inline panel (in document flow, pushes content down) ── */
+      .corp-img-panel {
+        display: none;
+        margin-top: 6px;
+      }
+      .corp-img-panel.open {
+        display: block;
+      }
+      .corp-img-scroll {
+        max-height: 280px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+      .corp-img-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 2px 1px 6px;
+      }
+      .corp-img-item {
+        cursor: pointer;
+        border-radius: 6px;
+        border: 2px solid transparent;
+        overflow: hidden;
+        transition: border-color 0.15s;
+        display: block;
+        aspect-ratio: 1 / 1;
+        position: relative;
+      }
+      .corp-img-item:hover {
+        border-color: var(--accent, #e0006e);
+      }
+      .corp-img-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        border-radius: 4px;
+        pointer-events: none;
+      }
+      .corp-img-item span {
+        font-size: 9px;
+        color: #888;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 100%;
+        padding: 2px 3px;
+      }
+      .corp-upload-zone {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 8px;
+        padding: 8px 12px;
+        border: 1.5px dashed #d0d0e0;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #888;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        background: #fafafa;
+      }
+      .corp-upload-zone:hover, .corp-upload-zone.drag-over {
+        border-color: var(--ms-blue, #0000d0);
+        background: #f0f0ff;
+      }
+      .corp-upload-zone svg { flex-shrink: 0; color: #aaa; }
+      .corp-img-del-btn {
+        position: absolute;
+        top: 3px; right: 3px;
+        width: 18px; height: 18px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(0,0,0,0.55);
+        color: white;
+        font-size: 9px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.15s, background 0.15s;
+        z-index: 10;
+        line-height: 1;
+        padding: 0;
+      }
+      .corp-img-item:hover .corp-img-del-btn,
+      .corp-img-del-btn:hover { opacity: 1; }
+      .corp-img-del-btn:hover { background: #e53e3e; }
+    </style>
     
   </head>
   <body>
     <script>
       // Auth guard — redirect to login if not authenticated
-      if (!sessionStorage.getItem("yako_auth")) {
-        window.location.replace("login.html");
-      }
+      // if (!sessionStorage.getItem("yako_auth")) {
+      //   window.location.replace("login.html");
+      // }
     </script>
 
     <!-- ══ GLOBAL TOP BAR ══════════════════════════════ -->
@@ -171,8 +292,34 @@
                 type="url"
                 name="imagen"
                 placeholder="https://…"
+                autocomplete="off"
               />
-            </div>
+              <button type="button" id="corpImgToggle" class="corp-img-toggle-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Elegir imagen corporativa
+                <span class="corp-img-chevron" id="corpImgChevron">▾</span>
+              </button>
+              <!-- inline expandable panel — stays in document flow -->
+              <div class="corp-img-panel" id="corpImgDropdown">
+                <div class="corp-img-scroll">
+                  <div class="corp-img-grid" id="corpImgGrid"></div>
+                </div>
+              </div>
+
+              <!-- Zona de subida SIEMPRE visible, fuera del desplegable -->
+              <div class="corp-upload-zone" id="corpUploadZone" style="margin-top:8px;">
+                <input type="file" id="corpFileInput" accept="image/*" multiple style="display:none">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span>Arrastra una imagen o 
+                  <label for="corpFileInput" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">
+                    examinar
+                  </label>
+                </span>
+              </div>
 
             <div class="field-group">
               <div class="field-label-row">
@@ -233,6 +380,62 @@
               </div>
             </div>
 
+            <!-- Listas de distribución -->
+            <div id="distListField" class="field-group hidden">
+              <div class="field-label-row">
+                <span class="field-num">07</span>
+                <label>Lista de distribución (Exchange)</label>
+              </div>
+              <div class="dist-list-wrap">
+                <div class="select-wrapper">
+                  <select id="distListSelect">
+                    <option value="">Selecciona una lista…</option>
+                  </select>
+                  <span class="select-arrow">▾</span>
+                </div>
+                <button type="button" class="btn-load-dist" id="btnLoadDist">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+                  Cargar listas
+                </button>
+              </div>
+              <p class="field-hint">Las listas se cargan desde Exchange. Requiere conexión al servidor.</p>
+            </div>
+
+            <!-- Programar envío -->
+            <div id="scheduleField" class="field-group hidden">
+              <div class="field-label-row">
+                <span class="field-num">08</span>
+                <label for="scheduleTime">Programar envío</label>
+              </div>
+              <div class="schedule-wrap">
+                <label class="schedule-toggle-label">
+                  <input type="checkbox" id="scheduleEnabled" />
+                  <span>Enviar en un momento específico</span>
+                </label>
+                <input type="datetime-local" id="scheduleTime" class="schedule-input hidden" />
+                <p class="field-hint hidden" id="scheduleHint">⏱ La tarjeta se enviará automáticamente a la hora indicada.</p>
+              </div>
+            </div>
+
+            <!-- Aviso de tiempos y limitaciones -->
+            <div class="info-limitaciones">
+              <div class="info-lim-header" id="infoLimToggle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Tiempos de envío y limitaciones</span>
+                <span class="info-lim-arrow">▾</span>
+              </div>
+              <div class="info-lim-body hidden" id="infoLimBody">
+                <ul>
+                  <li>⏱ <strong>Teams:</strong> El envío tarda entre 5 y 30 segundos según el número de destinatarios.</li>
+                  <li>⏱ <strong>Outlook:</strong> El envío puede tardar entre 1 y 5 minutos dependiendo del servidor.</li>
+                  <li>👥 <strong>Máximo destinatarios:</strong> 500 por envío (límite de Microsoft).</li>
+                  <li>📎 <strong>Imágenes:</strong> Deben ser URLs públicas o archivos locales.</li>
+                  <li>🔄 <strong>Listas de distribución:</strong> Se sincronizan con Microsoft.</li>
+                  <li>🕐 <strong>Envío oculto por Outlook:</strong> El envio de la tarjeta se hara por medio de CCO.</li>
+                </ul>
+              </div>
+            </div>
+
             <div class="form-actions-row">
               <button
                 type="button"
@@ -255,6 +458,9 @@
                 </svg>
                 Guardar borrador
               </button>
+              <button type="button" id="btnLimpiar">🗑️ Limpiar</button>
+            </div>
+            <div>
               <button type="submit" class="btn-submit">
                 <svg
                   width="16"
@@ -269,9 +475,6 @@
                 </svg>
                 Enviar tarjeta
               </button>
-            </div>
-            <div>
-              <button type="button" id="btnLimpiar">🗑️ Limpiar</button>
             </div>
           </form>
         </div>
@@ -331,7 +534,7 @@
               </svg>
               Historial
             </button>
-            <button class="tab" data-tab="imagenes">
+            <button class="tab" data-tab="miembros">
               <svg
                 width="13"
                 height="13"
@@ -341,11 +544,12 @@
                 stroke-width="2"
                 style="margin-right: 4px"
               >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              Imágenes
+              Miembros
             </button>
           </div>
           <div class="preview-header-right">

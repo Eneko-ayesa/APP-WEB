@@ -436,14 +436,141 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
     block.appendChild(lbl); block.appendChild(area); block.appendChild(botBtn);
 
   } else if (tipo === "imagen") {
+    // Unique ID for this block's elements
+    const uid = "blkimg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     block.innerHTML = `
-      <button type="button" class="add-btn add-top"    title="Añadir arriba">+</button>
-      <button type="button" class="btn-delete"         title="Eliminar">✕</button>
-      <label>URL de imagen</label>
-      <input type="url" placeholder="https://…">
+      <button type="button" class="add-btn add-top" title="Añadir arriba">+</button>
+      <button type="button" class="btn-delete" title="Eliminar">✕</button>
+      <label>Imagen</label>
+
+      <input type="url" placeholder="https://…" style="margin-bottom:8px;">
+
+      <button type="button" class="corp-img-toggle" id="${uid}_toggle" style="width:100%;display:flex;align-items:center;gap:6px;justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Elegir imagen corporativa
+        </span>
+        <svg id="${uid}_chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+
+      <div class="corp-img-panel" id="${uid}_panel" style="display:none;margin-top:6px;">
+        <div class="corp-img-scroll">
+          <div class="corp-img-grid" id="${uid}_grid"></div>
+        </div>
+      </div>
+
+      <div class="corp-upload-zone" id="${uid}_zone" style="margin-top:8px;margin-bottom:4px;">
+        <input type="file" id="${uid}_file" accept="image/*" multiple style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Arrastra una imagen o <label for="${uid}_file" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">examinar</label></span>
+      </div>
+
       <button type="button" class="add-btn add-bottom" title="Añadir abajo">+</button>
     `;
-    block.querySelector("input").addEventListener("input", renderPreview);
+
+    const urlInput  = block.querySelector("input[type='url']");
+    const toggle    = block.querySelector(`#${uid}_toggle`);
+    const panel     = block.querySelector(`#${uid}_panel`);
+    const chevron   = block.querySelector(`#${uid}_chev`);
+    const grid      = block.querySelector(`#${uid}_grid`);
+    const zone      = block.querySelector(`#${uid}_zone`);
+    const fileInput = block.querySelector(`#${uid}_file`);
+
+    // Helper: apply URL to this block's input
+    function applyBlockImg(url) {
+      urlInput.value = url;
+      urlInput.dispatchEvent(new Event("input"));
+      panel.style.display = "none";
+      chevron.style.transform = "";
+    }
+
+    // Render the gallery into this block's grid
+    function renderBlockGallery() {
+      grid.innerHTML = "";
+      const allItems = [];
+      if (typeof IMG_LIBRARY !== "undefined") IMG_LIBRARY.forEach(g => allItems.push(g));
+      if (uploadedImages && uploadedImages.length > 0) {
+        allItems.push({ cat: "Mis imágenes", items: uploadedImages.map(img => ({ label: img.label || "Imagen", url: img.url })) });
+      }
+      if (allItems.length === 0) {
+        grid.innerHTML = '<p style="font-size:12px;color:#999;padding:8px 4px;grid-column:1/-1;">Sin imágenes disponibles.</p>';
+        return;
+      }
+      allItems.forEach(group => {
+        const catLabel = document.createElement("div");
+        catLabel.style.cssText = "grid-column:1/-1;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;padding:6px 2px 2px;";
+        catLabel.textContent = group.cat;
+        grid.appendChild(catLabel);
+        group.items.forEach((img) => {
+          const item = document.createElement("div");
+          item.className = "corp-img-item";
+          item.title = img.label;
+          item.innerHTML = `<img src="${img.url}" alt="${img.label}" loading="lazy"><div class="img-thumb-overlay"><span>${img.label}</span></div>`;
+          item.addEventListener("click", () => applyBlockImg(img.url));
+          grid.appendChild(item);
+        });
+      });
+    }
+
+    // Toggle gallery panel
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = panel.style.display !== "none";
+      if (!isOpen) renderBlockGallery();
+      panel.style.display = isOpen ? "none" : "block";
+      chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+    });
+
+    // Upload zone — click
+    zone.addEventListener("click", (e) => { if (e.target.tagName !== "LABEL") fileInput.click(); });
+
+    // Upload zone — drag & drop
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault(); zone.classList.remove("drag-over");
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.dataTransfer.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          applyBlockImg(url);
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Upload zone — file picker
+    fileInput.addEventListener("change", e => {
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.target.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          applyBlockImg(url);
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+      fileInput.value = "";
+    });
+
+    urlInput.addEventListener("input", renderPreview);
   }
 
   if (!referencia) editor.appendChild(block);
@@ -706,9 +833,9 @@ document.querySelectorAll(".tab").forEach(tab => {
       ensurePreviewPanel("historial");
       return;
     }
-    if (val === "imagenes") {
+    if (val === "miembros") {
       document.getElementById("channelSubtabs")?.classList.add("hidden");
-      ensurePreviewPanel("imagenes");
+      ensurePreviewPanel("miembros");
       return;
     }
     // "teams" tab = Vista previa — restore chrome
@@ -866,7 +993,7 @@ function mostrarErrorValidacion(titulo, mensaje, ayuda) {
   ].join(";");
 
   modal.innerHTML =
-    '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;' +
+    '<div style="background:#fff;border-radius:20px;max-width:400px;width:100%;position:relative;' +
     'box-shadow:0 40px 100px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06);' +
     'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
     'overflow:hidden;text-align:center;">' +
@@ -896,6 +1023,13 @@ function mostrarErrorValidacion(titulo, mensaje, ayuda) {
   btn.addEventListener("click", () => modal.remove());
   btn.addEventListener("mouseenter", () => { btn.style.background="#0000aa"; btn.style.transform="translateY(-1px)"; });
   btn.addEventListener("mouseleave", () => { btn.style.background="#0000D0"; btn.style.transform=""; });
+
+  // Barra de progreso autocierre
+  const barContainerVal = document.createElement("div");
+  barContainerVal.style.cssText = "position:absolute;bottom:0;left:0;width:100%;height:3px;background:rgba(0,0,0,.08);border-radius:0 0 20px 20px;overflow:hidden;";
+  barContainerVal.innerHTML = '<div class="autoclose-bar" style="height:100%;width:0%;background:#f97316;transition:none;border-radius:inherit;"></div>';
+  modal.querySelector("div").appendChild(barContainerVal);
+  autoCloseModal(modal, 5);
 }
 
 function mostrarConfirmEnvio() {
@@ -1034,7 +1168,7 @@ function mostrarEnvioError(err) {
   const errMsg = (err && err.message) ? err.message : "Error desconocido";
 
   modal.innerHTML =
-    '<div style="background:#fff;border-radius:20px;max-width:420px;width:100%;' +
+    '<div style="background:#fff;border-radius:20px;max-width:420px;width:100%;position:relative;' +
     'box-shadow:0 40px 100px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);' +
     'font-family:var(--sans,sans-serif);animation:msDropIn .25s cubic-bezier(.22,1,.36,1);' +
     'overflow:hidden;text-align:center;">' +
@@ -1086,8 +1220,42 @@ function mostrarEnvioError(err) {
   retryBtn.addEventListener("click", () => { modal.remove(); ejecutarEnvio(); });
   retryBtn.addEventListener("mouseenter", () => { retryBtn.style.background = "#0000aa"; retryBtn.style.transform = "translateY(-1px)"; });
   retryBtn.addEventListener("mouseleave", () => { retryBtn.style.background = "#0000D0"; retryBtn.style.transform = ""; });
+
+  // Barra de progreso autocierre
+  const barContainerError = document.createElement("div");
+  barContainerError.style.cssText = "position:absolute;bottom:0;left:0;width:100%;height:3px;background:rgba(0,0,0,.08);border-radius:0 0 20px 20px;overflow:hidden;";
+  barContainerError.innerHTML = '<div class="autoclose-bar" style="height:100%;width:0%;background:#ef4444;transition:none;border-radius:inherit;"></div>';
+  modal.querySelector("div").appendChild(barContainerError);
+  autoCloseModal(modal, 5);
 }
 
+
+// ── Autocierre compartido para todos los modales ─────────────────────────────
+function autoCloseModal(modal, segundos) {
+  const bar = modal.querySelector(".autoclose-bar");
+
+  // Barra: empieza llena (100%) y se vacía hasta 0%
+  if (bar) {
+    bar.style.transition = "none";
+    bar.style.width = "100%";
+    setTimeout(() => {
+      bar.style.transition = "width " + segundos + "s linear";
+      bar.style.width = "0%";
+    }, 32);
+  }
+
+  // Cierre automático usando referencia directa
+  const timer = setTimeout(() => {
+    modal.style.transition = "opacity .25s ease";
+    modal.style.opacity = "0";
+    setTimeout(() => {
+      if (modal.parentNode) modal.parentNode.removeChild(modal);
+    }, 260);
+  }, segundos * 1000);
+
+  // Cancelar timer si el usuario cierra manualmente
+  modal.addEventListener("click", () => clearTimeout(timer), { once: true });
+}
 function mostrarEnvioExito(state) {
   document.getElementById("envioExitoModal")?.remove();
 
@@ -1108,7 +1276,7 @@ function mostrarEnvioExito(state) {
   modal.innerHTML = `
     <div style="
       background:#fff; border-radius:20px;
-      max-width:420px; width:100%;
+      max-width:420px; width:100%; position:relative;
       box-shadow:0 40px 100px rgba(0,0,0,.28), 0 0 0 1px rgba(0,0,0,.06);
       font-family:var(--sans,'Segoe UI',sans-serif);
       animation:msDropIn .25s cubic-bezier(.22,1,.36,1);
@@ -1192,6 +1360,13 @@ function mostrarEnvioExito(state) {
   closeBtn.addEventListener("mouseenter", () => { closeBtn.style.background = "#0000aa"; closeBtn.style.transform = "translateY(-1px)"; });
   closeBtn.addEventListener("mouseleave", () => { closeBtn.style.background = "#0000D0"; closeBtn.style.transform = ""; });
   closeBtn.addEventListener("click", () => modal.remove());
+
+  // Barra de progreso autocierre
+  const barContainerExito = document.createElement("div");
+  barContainerExito.style.cssText = "position:absolute;bottom:0;left:0;width:100%;height:3px;background:rgba(0,0,0,.08);border-radius:0 0 20px 20px;overflow:hidden;";
+  barContainerExito.innerHTML = '<div class="autoclose-bar" style="height:100%;width:0%;background:#0000D0;transition:none;border-radius:inherit;"></div>';
+  modal.querySelector("div").appendChild(barContainerExito);
+  autoCloseModal(modal, 5);
 }
 
 function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
@@ -1294,7 +1469,7 @@ async function dispararEnvios() {
         .filter(email => email !== "");
 
     if (destinatariosArray.length === 0) {
-        alert("⚠️ Por favor, escribe al menos un destinatario en el campo correspondiente.");
+        mostrarErrorValidacion("Destinatario requerido", "Escribe al menos un destinatario antes de enviar.", "Rellena el campo de destinatarios con un email o canal válido.");
         return;
     }
 
@@ -1364,13 +1539,12 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
-            alert(`✅ ¡Enviado a ${canal.toUpperCase()} con éxito!`);
+            mostrarEnvioExito(getCardState());
         } else {
-            alert("❌ Error: " + (data.error || "Desconocido"));
+            throw new Error(data.error || "El servidor devolvió un error desconocido");
         }
     } catch (error) {
-        console.error("Error de conexión:", error);
-        alert("❌ No se pudo conectar con el servidor Node.js");
+        mostrarEnvioError(error);
     } finally {
         if (botonEnviar) {
             botonEnviar.innerText = textoOriginal;
@@ -2167,6 +2341,74 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 }
 
 // ── RENDER IMAGES PANEL ────────────────────────
+function renderMiembrosPanel(panel) {
+  const grupoEl = document.getElementById("distListSelect");
+  const grupoNombre = grupoEl?.options[grupoEl.selectedIndex]?.text || "";
+  const grupoId = grupoEl?.value || "";
+
+  panel.innerHTML = `
+    <div class="panel-section-hdr">
+      <h2>&#x1F465; Miembros del grupo</h2>
+      <p>${grupoNombre ? "Grupo: <strong>" + grupoNombre + "</strong>" : "Selecciona un grupo de distribuci\u00f3n para ver sus miembros"}</p>
+    </div>
+    <div id="miembrosContent">
+      ${!grupoId ? `
+        <div class="miembros-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <p>Selecciona primero un grupo<br>en el campo de Lista de distribuci\u00f3n</p>
+        </div>
+      ` : `
+        <div class="miembros-loading">
+          <div class="miembros-spinner"></div>
+          <span>Cargando miembros...</span>
+        </div>
+      `}
+    </div>
+  `;
+
+  if (!grupoId) return;
+
+  fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      const content = panel.querySelector("#miembrosContent");
+      if (!content) return;
+      const miembros = Array.isArray(data) ? data : (data.miembros || []);
+
+      if (miembros.length === 0) {
+        content.innerHTML = '<div class="miembros-empty"><p>Este grupo no tiene miembros</p></div>';
+        return;
+      }
+
+      let rows = miembros.map(function(m) {
+        const nombre = m.nombre || m.displayName || "\u2014";
+        const email  = m.correo  || m.mail || m.userPrincipalName || "\u2014";
+        const inicial = nombre.charAt(0).toUpperCase();
+        return '<tr>'
+          + '<td><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
+          + '<td><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
+          + '</tr>';
+      }).join("");
+
+      content.innerHTML = ''
+        + '<div class="miembros-meta"><span class="miembros-count">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span></div>'
+        + '<div class="miembros-table-wrap">'
+        + '<table class="miembros-table">'
+        + '<thead><tr><th>NOMBRE</th><th>CORREO</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody>'
+        + '</table></div>';
+    })
+    .catch(function() {
+      const content = panel.querySelector("#miembrosContent");
+      if (content) content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">&#x26A0;&#xFE0F;</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexi\u00f3n con el servidor.</p></div>';
+    });
+}
+
 function renderImagenesPanel(panel) {
   panel.innerHTML = `
     <div class="panel-section-hdr">
@@ -2287,10 +2529,10 @@ function handleFiles(files, panel) {
   });
 }
 
-// ── PATCH ensurePreviewPanel for "imagenes" ────
+// ── PATCH ensurePreviewPanel for "miembros" ────
 const _origEnsure = ensurePreviewPanel;
 ensurePreviewPanel = function (type) {
-  if (type !== "imagenes") { _origEnsure(type); return; }
+  if (type !== "miembros") { _origEnsure(type); return; }
 
   const screen = document.getElementById("previewScreen");
   screen.querySelectorAll(".app-chrome").forEach(c => c.classList.add("hidden"));
@@ -2299,7 +2541,7 @@ ensurePreviewPanel = function (type) {
   panel = document.createElement("div");
   panel.className = "preview-side-panel active";
   screen.appendChild(panel);
-  renderImagenesPanel(panel);
+  renderMiembrosPanel(panel);
 };
 // ═══════════════════════════════════════════════
 // TOPBAR USER MENU
@@ -2574,14 +2816,236 @@ window.seleccionarUsuarioLocal = function(email) {
 
 const btnLogout = document.getElementById("topbarLogout");
 
-if (btnLogout) {
-    btnLogout.addEventListener("click", () => {
-        // 1. Borramos todos los datos de sesión de Yako
-        sessionStorage.removeItem("yako_auth");
-        sessionStorage.removeItem("yako_token");
-        sessionStorage.removeItem("yako_user");
-        
-        // 2. Lo mandamos de vuelta al login
-        window.location.replace("login.html");
+// ═══════════════════════════════════════════════════════
+// IMÁGENES CORPORATIVAS
+// ═══════════════════════════════════════════════════════
+// ── IMÁGENES CORPORATIVAS: usa las imágenes subidas por el usuario ──────────
+function renderCorpImgDropdown() {
+  const grid = document.getElementById("corpImgGrid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+
+  // Primero imágenes corporativas, luego las del usuario al final
+  const allItems = [];
+
+  if (typeof IMG_LIBRARY !== "undefined") {
+    IMG_LIBRARY.forEach(group => allItems.push(group));
+  }
+
+  if (uploadedImages && uploadedImages.length > 0) {
+    allItems.push({ cat: "Mis imágenes", items: uploadedImages.map(img => ({ label: img.label || "Imagen", url: img.url })) });
+  }
+
+  if (allItems.length === 0) {
+    grid.innerHTML = '<p style="font-size:12px;color:#999;padding:8px 4px;grid-column:1/-1;">Sin imágenes disponibles.</p>';
+    return;
+  }
+
+  allItems.forEach(group => {
+    // Category label
+    const catLabel = document.createElement("div");
+    catLabel.style.cssText = "grid-column:1/-1;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;padding:6px 2px 2px;";
+    catLabel.textContent = group.cat;
+    grid.appendChild(catLabel);
+
+    group.items.forEach((img, localIdx) => {
+      const item = document.createElement("div");
+      item.className = "corp-img-item";
+      item.title = img.label;
+
+      // Si es imagen del usuario, añadir botón X
+      const isUserImg = group.cat === "Mis imágenes";
+      const globalIdx = isUserImg ? uploadedImages.findIndex(u => u.url === img.url) : -1;
+
+      item.innerHTML = `<img src="${img.url}" alt="${img.label}" loading="lazy">${isUserImg ? `<button class="corp-img-del-btn" data-idx="${globalIdx}" title="Eliminar">✕</button>` : ""}`;
+
+      if (isUserImg) {
+        item.querySelector(".corp-img-del-btn")?.addEventListener("click", e => {
+          e.stopPropagation();
+          const idx = +e.currentTarget.dataset.idx;
+          uploadedImages.splice(idx, 1);
+          saveUploadedImages();
+          renderCorpImgDropdown();
+        });
+      }
+
+      item.addEventListener("click", e => {
+        if (e.target.closest(".corp-img-del-btn")) return;
+        const imagenInput = document.getElementById("imagen");
+        const panel = document.getElementById("corpImgDropdown");
+        if (imagenInput) {
+          imagenInput.value = img.url;
+          imagenInput.dispatchEvent(new Event("input"));
+          renderPreview();
+        }
+        panel?.classList.remove("open");
+        const chev = document.getElementById("corpImgChevron");
+        if (chev) chev.classList.remove("open");
+      });
+      grid.appendChild(item);
     });
+  });
 }
+
+(function initCorpImages() {
+  const toggle = document.getElementById("corpImgToggle");
+  const panel  = document.getElementById("corpImgDropdown");
+  const chevron = document.getElementById("corpImgChevron");
+  if (!toggle || !panel) return;
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = panel.classList.contains("open");
+    if (!isOpen) renderCorpImgDropdown();
+    panel.classList.toggle("open", !isOpen);
+    if (chevron) chevron.classList.toggle("open", !isOpen);
+  });
+
+  // Wire compact upload zone
+  const zone = document.getElementById("corpUploadZone");
+  const fileInput = document.getElementById("corpFileInput");
+  if (zone && fileInput) {
+    zone.addEventListener("click", (e) => { if (e.target.tagName !== "LABEL") fileInput.click(); });
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault(); zone.classList.remove("drag-over");
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.dataTransfer.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          renderCorpImgDropdown();
+          // Aplicar directamente a la tarjeta
+          const imagenInput = document.getElementById("imagen");
+          if (imagenInput) { imagenInput.value = url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
+          document.getElementById("corpImgDropdown")?.classList.remove("open");
+          document.getElementById("corpImgChevron")?.classList.remove("open");
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    fileInput.addEventListener("change", e => {
+      const MAX = 5 * 1024 * 1024;
+      Array.from(e.target.files).forEach(file => {
+        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
+        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const url = ev.target.result;
+          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
+          saveUploadedImages();
+          showToast(`✅ ${file.name} subida`);
+          renderCorpImgDropdown();
+          // Aplicar directamente a la tarjeta
+          const imagenInput = document.getElementById("imagen");
+          if (imagenInput) { imagenInput.value = url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
+          document.getElementById("corpImgDropdown")?.classList.remove("open");
+          document.getElementById("corpImgChevron")?.classList.remove("open");
+        };
+        reader.readAsDataURL(file);
+      });
+      fileInput.value = "";
+    });
+  }
+})();
+
+// ═══════════════════════════════════════════════════════
+// LISTAS DE DISTRIBUCIÓN (Exchange)
+// ═══════════════════════════════════════════════════════
+document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
+  const btn = document.getElementById("btnLoadDist");
+  const select = document.getElementById("distListSelect");
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Cargando…`;
+
+  try {
+    const resp = await fetch("http://localhost:3000/api/listas-distribucion");
+    if (!resp.ok) throw new Error("Error " + resp.status);
+    const listas = await resp.json();
+    select.innerHTML = '<option value="">Selecciona una lista…</option>';
+    listas.forEach(l => {
+      const opt = document.createElement("option");
+      opt.value = l.email || l.id;
+      opt.textContent = l.nombre || l.displayName || l.email;
+      select.appendChild(opt);
+    });
+    showToast("✅ " + listas.length + " listas cargadas");
+  } catch (e) {
+    mostrarErrorValidacion("No se pudieron cargar las listas", "Error al conectar con el servidor Exchange.", "Asegúrate de que el servidor Node.js está activo y configurado.");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg> Cargar listas`;
+  }
+});
+
+// Sync distList selection to email/teams recipient
+document.getElementById("distListSelect")?.addEventListener("change", function() {
+  const val = this.value;
+  if (!val) return;
+  const canal = document.getElementById("canal")?.value;
+  if (canal === "outlook") {
+    const emailsEl = document.getElementById("emails");
+    if (emailsEl) { emailsEl.value = val; emailsEl.dispatchEvent(new Event("input")); }
+  } else if (canal === "teams") {
+    const teamsEl = document.getElementById("teamsRecipient");
+    if (teamsEl) { teamsEl.value = val; teamsEl.dispatchEvent(new Event("input")); }
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// PROGRAMAR ENVÍO
+// ═══════════════════════════════════════════════════════
+document.getElementById("scheduleEnabled")?.addEventListener("change", function() {
+  const input = document.getElementById("scheduleTime");
+  const hint  = document.getElementById("scheduleHint");
+  if (this.checked) {
+    input?.classList.remove("hidden");
+    hint?.classList.remove("hidden");
+    // Set minimum to now
+    if (input) {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + 5);
+      input.min = now.toISOString().slice(0,16);
+    }
+  } else {
+    input?.classList.add("hidden");
+    hint?.classList.add("hidden");
+  }
+});
+
+function getScheduledTime() {
+  const enabled = document.getElementById("scheduleEnabled")?.checked;
+  if (!enabled) return null;
+  return document.getElementById("scheduleTime")?.value || null;
+}
+
+// ═══════════════════════════════════════════════════════
+// INFO LIMITACIONES PANEL (toggle)
+// ═══════════════════════════════════════════════════════
+document.getElementById("infoLimToggle")?.addEventListener("click", function() {
+  const body = document.getElementById("infoLimBody");
+  const isOpen = !body.classList.contains("hidden");
+  body.classList.toggle("hidden", isOpen);
+  this.classList.toggle("open", !isOpen);
+});
+
+// ═══════════════════════════════════════════════════════
+// SHOW DISTRIBUTION LIST FIELD ON CANAL CHANGE
+// ═══════════════════════════════════════════════════════
+const _origSyncTab = typeof syncTabToCanal === "function" ? syncTabToCanal : null;
+function showDistListForCanal(val) {
+  const distField = document.getElementById("distListField");
+  const schedField = document.getElementById("scheduleField");
+  if (distField) distField.classList.toggle("hidden", !val);
+  if (schedField) schedField.classList.toggle("hidden", !val);
+}
+document.getElementById("canal")?.addEventListener("change", function() {
+  showDistListForCanal(this.value);
+});
