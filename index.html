@@ -91,46 +91,43 @@
 
       /* ── Inline panel (in document flow, pushes content down) ── */
       .corp-img-panel {
-        display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows 0.25s ease;
-        overflow: hidden;
-      }
-      .corp-img-panel.open {
-        grid-template-rows: 1fr;
+        display: none;
         margin-top: 6px;
       }
+      .corp-img-panel.open {
+        display: block;
+      }
+      .corp-img-scroll {
+        max-height: 280px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
       .corp-img-grid {
-        min-height: 0;
         display: grid;
-        grid-template-columns: repeat(4, 1fr) !important;
+        grid-template-columns: repeat(4, 1fr);
         gap: 6px;
         padding: 2px 1px 6px;
-        max-height: 320px;
-        overflow-y: auto;
       }
       .corp-img-item {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        gap: 3px;
         cursor: pointer;
         border-radius: 6px;
-        padding: 0 !important;
         border: 2px solid transparent;
         overflow: hidden;
-        transition: border-color 0.15s, background 0.15s;
+        transition: border-color 0.15s;
+        display: block;
+        aspect-ratio: 1 / 1;
+        position: relative;
       }
       .corp-img-item:hover {
         border-color: var(--accent, #e0006e);
       }
       .corp-img-item img {
-        width: 100% !important;
-        height: auto !important;
-        aspect-ratio: 1 / 1 !important;
-        object-fit: cover !important;
-        border-radius: 0 !important;
-        display: block !important;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        border-radius: 4px;
+        pointer-events: none;
       }
       .corp-img-item span {
         font-size: 9px;
@@ -142,6 +139,47 @@
         width: 100%;
         padding: 2px 3px;
       }
+      .corp-upload-zone {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 8px;
+        padding: 8px 12px;
+        border: 1.5px dashed #d0d0e0;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #888;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        background: #fafafa;
+      }
+      .corp-upload-zone:hover, .corp-upload-zone.drag-over {
+        border-color: var(--ms-blue, #0000d0);
+        background: #f0f0ff;
+      }
+      .corp-upload-zone svg { flex-shrink: 0; color: #aaa; }
+      .corp-img-del-btn {
+        position: absolute;
+        top: 3px; right: 3px;
+        width: 18px; height: 18px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(0,0,0,0.55);
+        color: white;
+        font-size: 9px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.15s, background 0.15s;
+        z-index: 10;
+        line-height: 1;
+        padding: 0;
+      }
+      .corp-img-item:hover .corp-img-del-btn,
+      .corp-img-del-btn:hover { opacity: 1; }
+      .corp-img-del-btn:hover { background: #e53e3e; }
     </style>
     
   </head>
@@ -263,7 +301,15 @@
               </button>
               <!-- inline expandable panel — stays in document flow -->
               <div class="corp-img-panel" id="corpImgDropdown">
-                <div class="corp-img-grid" id="corpImgGrid"></div>
+                <div class="corp-img-scroll">
+                  <div class="corp-img-grid" id="corpImgGrid"></div>
+                </div>
+                <!-- Zona de subida compacta -->
+                <div class="corp-upload-zone" id="corpUploadZone">
+                  <input type="file" id="corpFileInput" accept="image/*" multiple style="display:none">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Arrastra una imagen o <label for="corpFileInput" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">examinar</label></span>
+                </div>
               </div>
             </div>
 
@@ -405,6 +451,9 @@
                 </svg>
                 Guardar borrador
               </button>
+              <button type="button" id="btnLimpiar">🗑️ Limpiar</button>
+            </div>
+            <div>
               <button type="submit" class="btn-submit">
                 <svg
                   width="16"
@@ -419,9 +468,6 @@
                 </svg>
                 Enviar tarjeta
               </button>
-            </div>
-            <div>
-              <button type="button" id="btnLimpiar">🗑️ Limpiar</button>
             </div>
           </form>
         </div>
