@@ -22,6 +22,61 @@ let cajaSugerenciasActiva = null;
 // maps block element → { width, headerHeight }
 const imgSizes = new WeakMap();
 
+// ── IMAGE VALIDATION ──────────────────────────
+const IMG_MAX_BYTES = 5 * 1024 * 1024;   // 5 MB
+const IMG_MAX_W     = 1920;               // px
+const IMG_MAX_H     = 1080;               // px
+
+/**
+ * Valida peso y dimensiones de un File imagen.
+ * Devuelve una Promise que resuelve con:
+ *   { ok: true, url, w, h }           → imagen aceptada
+ *   { ok: false, reason, url?, w?, h? }→ rechazada o con aviso
+ * El campo `warn` (boolean) indica aviso no bloqueante (dimensiones grandes).
+ */
+function validarImagen(file) {
+  return new Promise(resolve => {
+    if (!file.type.startsWith("image/")) {
+      return resolve({ ok: false, reason: "tipo", msg: "Solo se admiten imágenes." });
+    }
+    if (file.size > IMG_MAX_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      return resolve({ ok: false, reason: "peso", msg: `"${file.name}" pesa ${mb} MB. El límite es 5 MB.` });
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const url = ev.target.result;
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (w > IMG_MAX_W || h > IMG_MAX_H) {
+          resolve({ ok: true, warn: true, url, w, h,
+            msg: `Imagen grande (${w}×${h} px). El máximo recomendado es ${IMG_MAX_W}×${IMG_MAX_H} px — puede verse recortada o reducida.` });
+        } else {
+          resolve({ ok: true, warn: false, url, w, h });
+        }
+      };
+      img.onerror = () => resolve({ ok: false, reason: "lectura", msg: "No se pudo leer la imagen." });
+      img.src = url;
+    };
+    reader.onerror = () => resolve({ ok: false, reason: "lectura", msg: "Error al leer el archivo." });
+    reader.readAsDataURL(file);
+  });
+}
+
+/** Muestra u oculta el aviso de dimensiones dentro de una zona de upload */
+function setZoneWarn(zone, msg) {
+  let warn = zone.querySelector(".upload-zone-warn");
+  if (!msg) { if (warn) warn.remove(); return; }
+  if (!warn) {
+    warn = document.createElement("div");
+    warn.className = "upload-zone-warn";
+    zone.appendChild(warn);
+  }
+  warn.textContent = msg;
+}
+
 // ── SVG ICONS ─────────────────────────────────
 const I = {
   bold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 0 8H6zm0 8h9a4 4 0 0 1 0 8H6z"/></svg>`,
@@ -466,7 +521,8 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
           <polyline points="17 8 12 3 7 8"/>
           <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
-        <span>Arrastra una imagen o <label for="${uid}_file" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline">examinar</label></span>
+        <span>Arrastra una imagen o <label for="${uid}_file" style="color:var(--ms-blue);cursor:pointer;font-weight:600;text-decoration:underline"> examinar </label></span>
+        <span class="upload-zone-limits">Máx. 5 MB · 1920×1080 px recomendado</span>
       </div>
 
       <button type="button" class="add-btn add-bottom" title="Añadir abajo">+</button>
@@ -533,40 +589,32 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
     zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
     zone.addEventListener("drop", e => {
       e.preventDefault(); zone.classList.remove("drag-over");
-      const MAX = 5 * 1024 * 1024;
-      Array.from(e.dataTransfer.files).forEach(file => {
-        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
-        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const url = ev.target.result;
-          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
-          saveUploadedImages();
-          showToast(`✅ ${file.name} subida`);
-          applyBlockImg(url);
-          renderPreview();
-        };
-        reader.readAsDataURL(file);
+      Array.from(e.dataTransfer.files).forEach(async file => {
+        const res = await validarImagen(file);
+        if (!res.ok) { showToast(`⚠️ ${res.msg}`, "error"); return; }
+        if (res.warn) { showToast(`⚠️ ${res.msg}`, "warn"); setZoneWarn(zone, `⚠️ ${res.msg}`); }
+        else { setZoneWarn(zone, null); }
+        uploadedImages.unshift({ url: res.url, label: file.name.replace(/\.[^.]+$/, "") });
+        saveUploadedImages();
+        showToast(`✅ ${file.name} subida`);
+        applyBlockImg(res.url);
+        renderPreview();
       });
     });
 
     // Upload zone — file picker
-    fileInput.addEventListener("change", e => {
-      const MAX = 5 * 1024 * 1024;
-      Array.from(e.target.files).forEach(file => {
-        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
-        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const url = ev.target.result;
-          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
-          saveUploadedImages();
-          showToast(`✅ ${file.name} subida`);
-          applyBlockImg(url);
-          renderPreview();
-        };
-        reader.readAsDataURL(file);
-      });
+    fileInput.addEventListener("change", async e => {
+      for (const file of Array.from(e.target.files)) {
+        const res = await validarImagen(file);
+        if (!res.ok) { showToast(`⚠️ ${res.msg}`, "error"); continue; }
+        if (res.warn) { showToast(`⚠️ ${res.msg}`, "warn"); setZoneWarn(zone, `⚠️ ${res.msg}`); }
+        else { setZoneWarn(zone, null); }
+        uploadedImages.unshift({ url: res.url, label: file.name.replace(/\.[^.]+$/, "") });
+        saveUploadedImages();
+        showToast(`✅ ${file.name} subida`);
+        applyBlockImg(res.url);
+        renderPreview();
+      }
       fileInput.value = "";
     });
 
@@ -618,7 +666,7 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
         });
 
         const urlInput2 = document.createElement("input");
-        urlInput2.type = "text";
+        urlInput2.type = "url";
         urlInput2.className = "btn-block-url";
         urlInput2.value = btn.url;
         urlInput2.placeholder = "URL opcional (https://…)";
@@ -698,15 +746,15 @@ function renderPreview() {
   editor.querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
     const url = block.querySelector("input[type='url']");
-    if (block._botonesData) {
-      blocks.push({ tipo: "botones", items: block._botonesData.map(b => ({ label: b.label, url: b.url })) });
-    } else if (rich && rich.dataset.singleline) {
+    if (rich && rich.dataset.singleline) {
       blocks.push({ tipo: "titulo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (rich) {
       blocks.push({ tipo: "parrafo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (url) {
       const saved = imgSizes.get(block) || {};
       blocks.push({ tipo: "imagen", value: url.value.trim(), width: saved.width || null, blockEl: block });
+    } else if (block._botonesData) {
+      blocks.push({ tipo: "botones", items: block._botonesData.map(b => ({ label: b.label, url: b.url })) });
     }
   });
 
@@ -942,11 +990,64 @@ function ensurePreviewPanel(type) {
 
   if (type === "plantillas") {
     panel.innerHTML = `<div class="panel-section-hdr">
-      <h2>✦ Plantillas predefinidas</h2>
+      <h2>✦ Plantillas</h2>
       <p>Selecciona una para rellenar el formulario automáticamente</p>
+    </div>
+    <div id="misTplSection"></div>
+    <div class="panel-section-hdr panel-section-hdr--sub">
+      <h3>Predefinidas</h3>
     </div>
     <div class="tpl-grid" id="tplGridInline"></div>`;
     screen.appendChild(panel);
+
+    // ── MIS PLANTILLAS ──────────────────────────
+    function renderMisPlantillas() {
+      const section = panel.querySelector("#misTplSection");
+      const mias = getStorage("yako_mis_plantillas");
+      if (!mias.length) { section.innerHTML = ""; return; }
+      section.innerHTML = `<div class="panel-section-hdr panel-section-hdr--sub" style="margin-top:0"><h3>Mis plantillas <span class="mis-tpl-count">${mias.length}</span></h3></div>`;
+      const grid = document.createElement("div");
+      grid.className = "tpl-grid tpl-grid--saved";
+      mias.forEach(item => {
+        const s = item.state;
+        const card = document.createElement("div");
+        card.className = "tpl-card tpl-card--saved";
+        card.innerHTML = `
+          <button class="tpl-del-btn" data-id="${item.id}" title="Eliminar plantilla">✕</button>
+          <span class="tpl-icon">📌</span>
+          <div class="tpl-name">${s.titulo || "(sin título)"}</div>
+          <div class="tpl-desc">${s.canal === "outlook" ? "📧 Outlook" : "📤 Teams"} · ${item.fecha}</div>`;
+        card.addEventListener("click", e => {
+          if (e.target.closest(".tpl-del-btn")) return;
+          mostrarPreviewPlantilla({
+            titulo:    s.titulo    || "",
+            subtitulo: s.subtitulo || "",
+            imagenUrl: s.imagen   || "",
+            blocks:    s.blocks    || [],
+            canal:     s.canal     || "",
+            badge:     "📌 " + (s.titulo || "Mi plantilla"),
+            btnLabel:  "Usar plantilla",
+            onConfirm: () => {
+              cargarEstado(s);
+              document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+              document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+              document.getElementById("channelSubtabs")?.classList.remove("hidden");
+              showPreviewChrome(activeChannel);
+            }
+          });
+        });
+        card.querySelector(".tpl-del-btn").addEventListener("click", e => {
+          e.stopPropagation();
+          borrarMiPlantilla(item.id);
+          renderMisPlantillas();
+        });
+        grid.appendChild(card);
+      });
+      section.appendChild(grid);
+    }
+    renderMisPlantillas();
+
+    // ── PLANTILLAS PREDEFINIDAS ──────────────────
     const grid = panel.querySelector("#tplGridInline");
     PLANTILLAS.forEach(p => {
       const card = document.createElement("div");
@@ -1004,19 +1105,36 @@ function renderHistPanelInline() {
     panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
     return;
   }
-  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => `
+  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => {
+    const canal = item.state?.canal || "teams";
+    const canalLabel = canal === "outlook" ? "Outlook" : "Teams";
+    const destinatario = canal === "outlook"
+      ? (item.state?.emails || "").trim()
+      : (item.state?.teamsRecipient || "").trim();
+    const destHtml = destinatario
+      ? `<div class="hist-recipient">→ ${destinatario}</div>`
+      : "";
+    const mias = getStorage("yako_mis_plantillas");
+    const yaGuardada = mias.some(p => p.state?.titulo === item.state?.titulo);
+    const btnPlantilla = currentHistTab === "enviadas"
+      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
+      : "";
+    return `
     <div class="hist-item">
-      <div class="hist-dot ${item.state?.canal || "teams"}"></div>
+      <div class="hist-dot ${canal}"></div>
       <div class="hist-info">
         <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
-        <div class="hist-meta">${item.state?.canal === "outlook" ? "Outlook" : "Teams"} · ${item.fecha}</div>
+        <div class="hist-meta">${canalLabel} · ${item.fecha}</div>
+        ${destHtml}
       </div>
       <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
+        ${btnPlantilla}
         ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}">📂</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}">🔁</button>`}
         <button class="hist-btn hist-btn--del" data-action="borrar" data-i="${i}">🗑</button>
       </div>
-    </div>`).join("")}</div>`;
+    </div>`;
+  }).join("")}</div>`;
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.i;
@@ -1024,6 +1142,16 @@ function renderHistPanelInline() {
       if (btn.dataset.action === "borrar") {
         items2.splice(idx, 1);
         setStorage(key, items2);
+        renderHistPanelInline();
+      } else if (btn.dataset.action === "plantilla") {
+        const estado = items2[idx].state;
+        const mias = getStorage("yako_mis_plantillas");
+        if (mias.some(p => p.state?.titulo === estado.titulo)) {
+          showToast("ℹ️ Esta tarjeta ya está guardada como plantilla");
+          return;
+        }
+        guardarMiPlantilla(estado);
+        showToast("📌 Guardada en Mis plantillas");
         renderHistPanelInline();
       } else {
         const estado = items2[idx].state;
@@ -1213,6 +1341,7 @@ function ejecutarEnvio() {
     const state = getCardState();
     if (state.titulo) {
       guardarEnviada(state);
+      guardarMiPlantilla(state);
       const histPanel = document.getElementById("histPanelInline");
       if (histPanel) {
         currentHistTab = "enviadas";
@@ -2039,6 +2168,20 @@ function guardarEnviada(state) {
   setStorage("yako_enviadas", enviadas.slice(0, 30));
 }
 
+function guardarMiPlantilla(state) {
+  const mias = getStorage("yako_mis_plantillas");
+  // Evitar duplicados exactos por título
+  const yaExiste = mias.some(p => p.state?.titulo === state.titulo);
+  if (yaExiste) return;
+  mias.unshift({ id: Date.now(), fecha: new Date().toLocaleString("es-ES"), state });
+  setStorage("yako_mis_plantillas", mias.slice(0, 20));
+}
+
+function borrarMiPlantilla(id) {
+  const mias = getStorage("yako_mis_plantillas");
+  setStorage("yako_mis_plantillas", mias.filter(p => p.id !== id));
+}
+
 function cargarEstado(state) {
   const tituloEl = document.getElementById("titulo");
   const subEl = document.getElementById("subtitulo");
@@ -2636,18 +2779,14 @@ function renderUploadedGrid(panel) {
 }
 
 function handleFiles(files, panel) {
-  const MAX = 5 * 1024 * 1024;
-  Array.from(files).forEach(file => {
-    if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
-    if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      uploadedImages.unshift({ url: e.target.result, label: file.name.replace(/\.[^.]+$/, "") });
-      saveUploadedImages();
-      renderUploadedGrid(panel);
-      showToast(`✅ ${file.name} subida`);
-    };
-    reader.readAsDataURL(file);
+  Array.from(files).forEach(async file => {
+    const res = await validarImagen(file);
+    if (!res.ok) { showToast(`⚠️ ${res.msg}`, "error"); return; }
+    if (res.warn) showToast(`⚠️ ${res.msg}`, "warn");
+    uploadedImages.unshift({ url: res.url, label: file.name.replace(/\.[^.]+$/, "") });
+    saveUploadedImages();
+    renderUploadedGrid(panel);
+    showToast(`✅ ${file.name} subida`);
   });
 }
 
@@ -3033,46 +3172,36 @@ function renderCorpImgDropdown() {
     zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
     zone.addEventListener("drop", e => {
       e.preventDefault(); zone.classList.remove("drag-over");
-      const MAX = 5 * 1024 * 1024;
-      Array.from(e.dataTransfer.files).forEach(file => {
-        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
-        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const url = ev.target.result;
-          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
-          saveUploadedImages();
-          showToast(`✅ ${file.name} subida`);
-          renderCorpImgDropdown();
-          // Aplicar directamente a la tarjeta
-          const imagenInput = document.getElementById("imagen");
-          if (imagenInput) { imagenInput.value = url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
-          document.getElementById("corpImgDropdown")?.classList.remove("open");
-          document.getElementById("corpImgChevron")?.classList.remove("open");
-        };
-        reader.readAsDataURL(file);
+      Array.from(e.dataTransfer.files).forEach(async file => {
+        const res = await validarImagen(file);
+        if (!res.ok) { showToast(`⚠️ ${res.msg}`, "error"); return; }
+        if (res.warn) { showToast(`⚠️ ${res.msg}`, "warn"); setZoneWarn(zone, `⚠️ ${res.msg}`); }
+        else { setZoneWarn(zone, null); }
+        uploadedImages.unshift({ url: res.url, label: file.name.replace(/\.[^.]+$/, "") });
+        saveUploadedImages();
+        showToast(`✅ ${file.name} subida`);
+        renderCorpImgDropdown();
+        const imagenInput = document.getElementById("imagen");
+        if (imagenInput) { imagenInput.value = res.url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
+        document.getElementById("corpImgDropdown")?.classList.remove("open");
+        document.getElementById("corpImgChevron")?.classList.remove("open");
       });
     });
-    fileInput.addEventListener("change", e => {
-      const MAX = 5 * 1024 * 1024;
-      Array.from(e.target.files).forEach(file => {
-        if (!file.type.startsWith("image/")) { showToast("⚠️ Solo se admiten imágenes", "error"); return; }
-        if (file.size > MAX) { showToast(`⚠️ ${file.name} supera los 5MB`, "error"); return; }
-        const reader = new FileReader();
-        reader.onload = ev => {
-          const url = ev.target.result;
-          uploadedImages.unshift({ url, label: file.name.replace(/\.[^.]+$/, "") });
-          saveUploadedImages();
-          showToast(`✅ ${file.name} subida`);
-          renderCorpImgDropdown();
-          // Aplicar directamente a la tarjeta
-          const imagenInput = document.getElementById("imagen");
-          if (imagenInput) { imagenInput.value = url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
-          document.getElementById("corpImgDropdown")?.classList.remove("open");
-          document.getElementById("corpImgChevron")?.classList.remove("open");
-        };
-        reader.readAsDataURL(file);
-      });
+    fileInput.addEventListener("change", async e => {
+      for (const file of Array.from(e.target.files)) {
+        const res = await validarImagen(file);
+        if (!res.ok) { showToast(`⚠️ ${res.msg}`, "error"); continue; }
+        if (res.warn) { showToast(`⚠️ ${res.msg}`, "warn"); setZoneWarn(zone, `⚠️ ${res.msg}`); }
+        else { setZoneWarn(zone, null); }
+        uploadedImages.unshift({ url: res.url, label: file.name.replace(/\.[^.]+$/, "") });
+        saveUploadedImages();
+        showToast(`✅ ${file.name} subida`);
+        renderCorpImgDropdown();
+        const imagenInput = document.getElementById("imagen");
+        if (imagenInput) { imagenInput.value = res.url; imagenInput.dispatchEvent(new Event("input")); renderPreview(); }
+        document.getElementById("corpImgDropdown")?.classList.remove("open");
+        document.getElementById("corpImgChevron")?.classList.remove("open");
+      }
       fileInput.value = "";
     });
   }
