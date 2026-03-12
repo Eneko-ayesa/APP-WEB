@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Yako Card Builder</title>
+    <title>Yako Broadcasting System</title>
       <script>
       // Comprobamos si la llave "yako_auth" existe en la memoria de la sesión
       // if (!sessionStorage.getItem("yako_auth")) {
@@ -180,6 +180,82 @@
       .corp-img-item:hover .corp-img-del-btn,
       .corp-img-del-btn:hover { opacity: 1; }
       .corp-img-del-btn:hover { background: #e53e3e; }
+
+      /* ── Icon-only buttons ── */
+      .btn-icon-only {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        padding: 0 !important;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s, transform 0.1s;
+        position: relative;
+        flex: none !important;
+      }
+
+      .btn-icon-only::after {
+        content: attr(title);
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: #fff;
+        font-size: 11px;
+        white-space: nowrap;
+        padding: 4px 8px;
+        border-radius: 5px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+        z-index: 999;
+      }
+      .btn-icon-only:hover::after { opacity: 1; }
+
+      /* ── form-actions-bottom: agrupa los dos filas de botones ── */
+      .form-actions-bottom {
+        margin-top: 28px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .form-actions-bottom .btn-submit {
+        margin-top: 0;
+        width: 100%;
+      }
+      .form-actions-row {
+        display: flex;
+        width: 100%;
+        gap: 10px;
+      }
+      .btn-secondary-action {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 10px 14px;
+        height: auto;
+        background: var(--ms-surface, #fff);
+        border: 1.5px solid var(--border, #e4e4ef);
+        border-radius: var(--radius, 14px);
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink-2, #4a4a60);
+        cursor: pointer;
+        transition: border-color 0.18s, color 0.18s, background 0.18s;
+      }
+      .btn-secondary-action:hover {
+        border-color: var(--accent, #ff3184);
+        color: var(--accent, #ff3184);
+        background: var(--accent-light, #ffe0ef);
+      }
     </style>
     
   </head>
@@ -211,7 +287,7 @@
               font-weight: 500;
               letter-spacing: 0.02em;
             "
-            >Card Builder</span
+            >Broadcasting System</span
           >
         </div>
 
@@ -407,39 +483,57 @@
                 <ul>
                   <li>⏱ <strong>Teams:</strong> El envío tarda entre 5 y 30 segundos según el número de destinatarios.</li>
                   <li>⏱ <strong>Outlook:</strong> El envío puede tardar entre 1 y 5 minutos dependiendo del servidor.</li>
-                  <li>👥 <strong>Máximo destinatarios:</strong> 500 por envío (límite de Microsoft).</li>
+                  <li>👥 <strong>Máximo destinatarios:</strong> 500 por envío (límite de Microsoft) Y SOLO SE PUEDE MANDAR A UN GRUPO SIMULTANEAMENTE.</li>
                   <li>📎 <strong>Imágenes:</strong> Deben ser URLs públicas o archivos locales.</li>
                   <li>🔄 <strong>Listas de distribución:</strong> Se sincronizan con Microsoft.</li>
                   <li>🕐 <strong>Envío oculto por Outlook:</strong> El envio de la tarjeta se hara por medio de CCO.</li>
                 </ul>
+
+                <div style="margin-top:12px; border-top:1px solid #ffe08a; padding-top:12px;">
+                  <p style="font-size:12px; font-weight:700; color:#7a5000; margin:0 0 6px 0;">📋 Licenciamiento según número de usuarios</p>
+                  <ul>
+                    <li>✅ <strong>Hasta 500 destinatarios:</strong> Incluido en cualquier plan Microsoft 365 sin coste adicional.</li>
+                    <li>⚠️ <strong>500 – 1.000 destinatarios:</strong> Requiere <em>Exchange Online Plan 1</em> o superior. Posibles restricciones anti-spam.</li>
+                    <li>🔶 <strong>1.000 – 10.000 destinatarios:</strong> Se recomienda <em>Exchange Online Plan 2</em> o <em>Microsoft 365 E3/E5</em>. Necesario configurar límites de envío con el administrador.</li>
+                    <li>🔴 <strong>Más de 10.000 destinatarios:</strong> Requiere un conector SMTP dedicado o servicios como <em>Microsoft Dynamics 365 Marketing</em> / <em>Exchange Online Protection (EOP)</em>.</li>
+                    <li>ℹ️ Consulta con tu administrador de Microsoft 365 antes de superar estos umbrales para evitar bloqueos de cuenta.</li>
+                  </ul>
+                </div>
               </div>
             </div>
 
-            <div class="form-actions-row">
-              <button
-                type="button"
-                class="btn-save-draft"
-                id="btnGuardarBorrador"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
+            <div class="form-actions-bottom">
+              <div class="form-actions-row">
+                <button
+                  type="button"
+                  class="btn-save-draft btn-secondary-action"
+                  id="btnGuardarBorrador"
+                  title="Guardar borrador"
+                  aria-label="Guardar borrador"
                 >
-                  <path
-                    d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
-                  />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                Guardar borrador
-              </button>
-              <button type="button" id="btnLimpiar">🗑️ Limpiar</button>
-            </div>
-            <div>
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+                    />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  Guardar borrador
+                </button>
+                <button type="button" id="btnLimpiar" class="btn-secondary-action" title="Limpiar formulario" aria-label="Limpiar formulario">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                  </svg>
+                  Limpiar
+                </button>
+              </div>
               <button type="submit" class="btn-submit">
                 <svg
                   width="16"
@@ -668,7 +762,7 @@
                     <div class="ts-channel-name" id="previewTeamsChannel">
                       General
                     </div>
-                    <div class="ts-app-name">Adaptive Card Builder</div>
+                    <div class="ts-app-name">Broadcasting System</div>
                   </div>
                 </div>
               </div>
