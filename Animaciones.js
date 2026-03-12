@@ -573,6 +573,69 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
     urlInput.addEventListener("input", renderPreview);
   }
 
+  // ── BLOQUE BOTONES ────────────────────────────
+  if (tipo === "botones") {
+    // Estado vivo: array de objetos {label, url}
+    const botonesData = [
+      { label: "✅ Confirmar asistencia", url: "" },
+      { label: "❌ No puedo asistir",     url: "" },
+      { label: "❓ Más información",      url: "" },
+    ];
+    // Guardamos referencia en el propio nodo para que renderPreview la lea
+    block._botonesData = botonesData;
+
+    // Estructura base del bloque
+    const topBtn = document.createElement("button");
+    topBtn.type = "button"; topBtn.className = "add-btn add-top"; topBtn.title = "Añadir arriba"; topBtn.textContent = "+";
+    const delBtn = document.createElement("button");
+    delBtn.type = "button"; delBtn.className = "btn-delete"; delBtn.title = "Eliminar"; delBtn.textContent = "✕";
+    const lbl = document.createElement("label"); lbl.textContent = "Botones de respuesta";
+    const list = document.createElement("div"); list.className = "btn-block-list";
+    const botBtn = document.createElement("button");
+    botBtn.type = "button"; botBtn.className = "add-btn add-bottom"; botBtn.title = "Añadir abajo"; botBtn.textContent = "+";
+
+    block.appendChild(topBtn);
+    block.appendChild(delBtn);
+    block.appendChild(lbl);
+    block.appendChild(list);
+    block.appendChild(botBtn);
+
+    function renderBtnRows() {
+      list.innerHTML = "";
+      botonesData.forEach((btn, i) => {
+        const row = document.createElement("div");
+        row.className = "btn-block-row";
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.className = "btn-block-label";
+        labelInput.value = btn.label;
+        labelInput.placeholder = "Texto del botón…";
+        labelInput.maxLength = 60;
+        labelInput.addEventListener("input", e => {
+          botonesData[i].label = e.target.value;
+          renderPreview();
+        });
+
+        const urlInput2 = document.createElement("input");
+        urlInput2.type = "text";
+        urlInput2.className = "btn-block-url";
+        urlInput2.value = btn.url;
+        urlInput2.placeholder = "URL opcional (https://…)";
+        urlInput2.addEventListener("input", e => {
+          botonesData[i].url = e.target.value;
+          renderPreview();
+        });
+
+        row.appendChild(labelInput);
+        row.appendChild(urlInput2);
+        list.appendChild(row);
+      });
+    }
+
+    renderBtnRows();
+  }
+
   if (!referencia) editor.appendChild(block);
   else posicion === "arriba"
     ? referencia.parentNode.insertBefore(block, referencia)
@@ -596,11 +659,12 @@ function mostrarDropdown(bloqueRef, posicion, btnPulsado) {
   eliminarDropdownExistente();
   const dd = document.createElement("div");
   dd.classList.add("dropdown");
-  dd.style.top = btnPulsado.classList.contains("add-top") ? "-96px" : "32px";
+  dd.style.top = btnPulsado.classList.contains("add-top") ? "-116px" : "32px";
   dd.innerHTML = `
     <button type="button" data-tipo="parrafo">📝 Párrafo</button>
     <button type="button" data-tipo="titulo"><b>T</b> Título</button>
     <button type="button" data-tipo="imagen">🖼️ Imagen</button>
+    <button type="button" data-tipo="botones">🔘 Botones</button>
   `;
   btnPulsado.parentElement.appendChild(dd);
   dd.querySelectorAll("button").forEach(btn => {
@@ -634,7 +698,9 @@ function renderPreview() {
   editor.querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
     const url = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) {
+    if (block._botonesData) {
+      blocks.push({ tipo: "botones", items: block._botonesData.map(b => ({ label: b.label, url: b.url })) });
+    } else if (rich && rich.dataset.singleline) {
       blocks.push({ tipo: "titulo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (rich) {
       blocks.push({ tipo: "parrafo", html: rich.innerHTML, text: rich.innerText.trim() });
@@ -677,7 +743,7 @@ function renderPreview() {
 }
 
 function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal, forModal = false }) {
-  const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text);
+  const hasContent = titulo.text || imagenUrl || blocks.some(b => b.value || b.text || b.tipo === "botones");
   if (!hasContent) return `<div class="card-placeholder"><div class="ph-icon">✦</div><p>Empieza a escribir en el panel izquierdo y tu tarjeta tomará forma aquí</p></div>`;
 
   const headerPct = imgSizes.get("header") || 100;
@@ -700,6 +766,15 @@ function buildCardHTML({ titulo, subtitulo, imagenUrl, blocks, canal, forModal =
     else if (b.tipo === "imagen" && b.value)
       html += `<div class="card-block"><img class="card-block-img" src="${esc(b.value)}"
         onerror="this.outerHTML='<div class=\\'card-block-img-err\\'>🖼️ URL no válida</div>'" alt=""></div>`;
+    else if (b.tipo === "botones" && b.items && b.items.length) {
+      const btnsHtml = b.items
+        .filter(btn => btn.label && btn.label.trim())
+        .map(btn => btn.url
+          ? `<a href="${esc(btn.url)}" target="_blank" class="card-action-btn">${esc(btn.label)}</a>`
+          : `<span class="card-action-btn">${esc(btn.label)}</span>`
+        ).join("");
+      if (btnsHtml) html += `<div class="card-block card-block--actions"><div class="card-actions-row">${btnsHtml}</div></div>`;
+    }
   });
 
   if (canal) {

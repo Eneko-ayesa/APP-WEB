@@ -1437,6 +1437,7 @@ div.rich-field a {
 .btn-save-draft {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 10px 16px;
   border-radius: 12px;
@@ -3855,4 +3856,92 @@ input:not(:placeholder-shown):not(:focus) {
 }
 .corp-img-del-btn:hover {
   background: #e53e3e;
+}
+
+/* ═══════════════════════════════════════════════
+   BLOQUE BOTONES DE RESPUESTA
+   ═══════════════════════════════════════════════ */
+
+.btn-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.btn-block-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.btn-block-label {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--ms-blue-light, #c0c0ff);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-blue);
+  background: var(--ms-blue-xlight, #f0f0ff);
+  outline: none;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn-block-label:focus {
+  border-color: var(--ms-blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,0,208,0.07);
+}
+
+.btn-block-url {
+  width: 100%;
+  padding: 5px 10px;
+  border: 1.5px solid var(--paper-rule, #e8e6e0);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--ms-ink-3);
+  background: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.btn-block-url:focus {
+  border-color: var(--ms-blue);
+}
+
+/* Botones en la vista previa de la tarjeta */
+.card-block--actions {
+  margin-top: 12px !important;
+}
+.card-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+}
+.card-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  border-radius: 4px;
+  background: var(--ms-blue-xlight, #f0f0ff);
+  color: var(--ms-blue);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1.5px solid #c0c0ff;
+  white-space: nowrap;
+  cursor: default;
+}
+a.card-action-btn {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+a.card-action-btn:hover {
+  background: #d0d0ff;
+  border-color: var(--ms-blue);
 }
