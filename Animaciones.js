@@ -668,7 +668,7 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
         });
 
         const urlInput2 = document.createElement("input");
-        urlInput2.type = "url";
+        urlInput2.type = "text";
         urlInput2.className = "btn-block-url";
         urlInput2.value = btn.url;
         urlInput2.placeholder = "URL opcional (https://…)";
@@ -748,15 +748,15 @@ function renderPreview() {
   editor.querySelectorAll(".block").forEach(block => {
     const rich = block.querySelector(".rich-editor-area");
     const url = block.querySelector("input[type='url']");
-    if (rich && rich.dataset.singleline) {
+    if (block._botonesData) {
+      blocks.push({ tipo: "botones", items: block._botonesData.map(b => ({ label: b.label, url: b.url })) });
+    } else if (rich && rich.dataset.singleline) {
       blocks.push({ tipo: "titulo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (rich) {
       blocks.push({ tipo: "parrafo", html: rich.innerHTML, text: rich.innerText.trim() });
     } else if (url) {
       const saved = imgSizes.get(block) || {};
       blocks.push({ tipo: "imagen", value: url.value.trim(), width: saved.width || null, blockEl: block });
-    } else if (block._botonesData) {
-      blocks.push({ tipo: "botones", items: block._botonesData.map(b => ({ label: b.label, url: b.url })) });
     }
   });
 
