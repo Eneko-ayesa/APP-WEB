@@ -2001,6 +2001,14 @@ const PLANTILLAS = [
     cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
     imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
+
+  // {
+  //   icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
+  //   titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
+  //   cuerpo: "#UnaiPaganos 😘",
+  //   imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
+  // },
+
   {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
@@ -2545,6 +2553,18 @@ function renderMiembrosPanel(panel) {
             </select>
         </div>
 
+        <!-- Mini buscador de usuarios -->
+        <div id="miembrosSearchWrap" style="display:none; margin-bottom:14px; position:relative;">
+          <div style="display:flex; align-items:center; background:#f5f5fa; border:1.5px solid #e0e0e8; border-radius:8px; padding:6px 12px; gap:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input id="miembrosSearchInput" type="text" placeholder="Buscar usuario por nombre o email..." 
+              style="border:none; background:transparent; outline:none; font-size:13px; width:100%; font-family:inherit; color:#333;" />
+            <button id="miembrosSearchClear" style="border:none; background:none; cursor:pointer; color:#aaa; font-size:16px; line-height:1; padding:0; display:none;" title="Limpiar búsqueda">✕</button>
+          </div>
+        </div>
+
         <div id="miembrosContent">
             <div class="miembros-empty">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
@@ -2556,11 +2576,45 @@ function renderMiembrosPanel(panel) {
               <p>Selecciona un grupo en el desplegable de arriba</p>
             </div>
         </div>
+
     </div>
   `;
 
   const selectGrupos = panel.querySelector("#exploradorGruposSelect");
   const content = panel.querySelector("#miembrosContent");
+  const searchWrap = panel.querySelector("#miembrosSearchWrap");
+  const searchInput = panel.querySelector("#miembrosSearchInput");
+  const searchClear = panel.querySelector("#miembrosSearchClear");
+
+  // Variable para guardar todos los miembros cargados (para filtrar sin re-fetch)
+  let allMiembros = [];
+
+  // Función para renderizar la tabla filtrada
+  function renderTabla(miembros) {
+    if (miembros.length === 0) {
+      content.innerHTML = '<div class="miembros-empty"><p>No se encontraron miembros que coincidan con la búsqueda.</p></div>';
+      return;
+    }
+    let rows = miembros.map(function(m, idx) {
+      const nombre  = m.nombre || m.displayName || "—";
+      const email   = m.correo  || m.mail || m.userPrincipalName || "—";
+      const userId  = m.id || m.userId || m.objectId || ("USR-" + String(idx + 1).padStart(4, "0"));
+      const inicial = nombre.charAt(0).toUpperCase();
+      return '<tr>'
+        + '<td style="padding:8px 10px; font-size:11px; color:#999; font-family:monospace;">' + userId + '</td>'
+        + '<td style="padding:8px 10px;"><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
+        + '<td style="padding:8px 10px;"><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
+        + '</tr>';
+    }).join("");
+
+    content.innerHTML = ''
+      + '<div class="miembros-meta" style="margin-bottom: 10px; text-align: right;"><span class="miembros-count" style="background: var(--ms-blue-light); color: var(--ms-blue); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span></div>'
+      + '<div class="miembros-table-wrap" style="border: 1px solid var(--ms-border); border-radius: 8px; overflow: hidden;">'
+      + '<table class="miembros-table" style="width: 100%; border-collapse: collapse; text-align: left;">'
+      + '<thead style="background: var(--ms-surface-alt); border-bottom: 2px solid var(--ms-border);"><tr><th style="padding: 10px; font-size:11px; color:#888; width:110px;">ID</th><th style="padding: 10px;">NOMBRE</th><th style="padding: 10px;">CORREO</th></tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+      + '</table></div>';
+  }
 
   // 2. Pedimos TODAS las listas a tu servidor para llenar el desplegable
   fetch("/api/grupos")
@@ -2587,9 +2641,12 @@ function renderMiembrosPanel(panel) {
   // 3. Detectamos cuando el usuario elige una lista en el desplegable
   selectGrupos.addEventListener("change", function() {
     const grupoId = this.value;
+    searchInput.value = "";
+    searchClear.style.display = "none";
+    allMiembros = [];
 
     if (!grupoId) {
-      // Si vuelve a la opción por defecto, ocultamos la tabla
+      searchWrap.style.display = "none";
       content.innerHTML = `
         <div class="miembros-empty">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
@@ -2616,13 +2673,16 @@ function renderMiembrosPanel(panel) {
     fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        const miembros = Array.isArray(data) ? data : (data.miembros || []);
+        allMiembros = Array.isArray(data) ? data : (data.miembros || []);
 
-        if (miembros.length === 0) {
+        if (allMiembros.length === 0) {
+          searchWrap.style.display = "none";
           content.innerHTML = '<div class="miembros-empty"><p>Este grupo no tiene miembros</p></div>';
           return;
         }
 
+        searchWrap.style.display = "block";
+        renderTabla(allMiembros);
         // Generamos las filas de la tabla con la clase "fila-miembro"
         let rows = miembros.map(function(m) {
           const nombre = m.nombre || m.displayName || "—";
@@ -2674,8 +2734,32 @@ function renderMiembrosPanel(panel) {
 
       })
       .catch(function() {
+        searchWrap.style.display = "none";
         content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">⚠️</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexión con el servidor.</p></div>';
       });
+  });
+
+  // 5. Buscador en tiempo real
+  searchInput.addEventListener("input", function() {
+    const q = this.value.trim().toLowerCase();
+    searchClear.style.display = q ? "block" : "none";
+    if (!allMiembros.length) return;
+    const filtrados = q
+      ? allMiembros.filter(function(m) {
+          const nombre = (m.nombre || m.displayName || "").toLowerCase();
+          const email  = (m.correo || m.mail || m.userPrincipalName || "").toLowerCase();
+          const id     = (m.id || m.userId || m.objectId || "").toLowerCase();
+          return nombre.includes(q) || email.includes(q) || id.includes(q);
+        })
+      : allMiembros;
+    renderTabla(filtrados);
+  });
+
+  searchClear.addEventListener("click", function() {
+    searchInput.value = "";
+    searchClear.style.display = "none";
+    renderTabla(allMiembros);
+    searchInput.focus();
   });
 }
 
