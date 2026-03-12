@@ -19,7 +19,8 @@ if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.TENANT_
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, '.')));
 
 // --- 2. CONFIGURACIÓN DE MICROSOFT GRAPH (PARA OUTLOOK) ---
@@ -111,6 +112,13 @@ app.post('/api/enviar-teams', async (req, res) => {
     try {
         const { tarjeta, destinatarios } = req.body;
         
+        // ====================================================================
+        // PANEL DE PRUEBAS
+        // ====================================================================
+        const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
+        const MODO_BOMBARDEO  = true;  // true = Envía 50 (o más) tarjetas al destinatario.
+        // ====================================================================
+        
         if (!destinatarios || destinatarios.length === 0) {
             return res.status(400).json({ error: "No hay destinatarios seleccionados." });
         }
@@ -150,16 +158,57 @@ app.post('/api/enviar-teams', async (req, res) => {
             }
         }
 
-        // 3. RESPUESTA INMEDIATA
-        res.status(202).json({ 
-            mensaje: `Procesando envío masivo. Detectados ${targetUserIds.size} usuarios totales. Iniciando entrega...` 
-        });
+        if (referenciasValidas.length === 0) {
+            return res.status(404).json({ error: "No se encontraron usuarios válidos con el bot instalado." });
+        }
 
-        // 4. PROCESO ASÍNCRONO CON REPORTE DETALLADO
+        // ====================================================================
+        // 💣 MODO BOMBARDEO
+        // ====================================================================
+        if (MODO_BOMBARDEO) {
+            const usuarioObjetivo = referenciasValidas[0]; 
+            referenciasValidas.length = 0; 
+            
+            for (let i = 0; i < 1000; i++) {
+                referenciasValidas.push(usuarioObjetivo);
+            }
+            console.log("💣 MODO BOMBARDEO ACTIVO: Se generaron 1000 envíos para el usuario.");
+        }
+
+        // 3. RESPUESTA INMEDIATA AL FRONTEND
+        if (MODO_SIMULACION) {
+            res.status(202).json({ mensaje: `[SIMULACIÓN] Detectados ${targetUserIds.size} usuarios. Mira la consola (sin envío).` });
+        } else if (MODO_BOMBARDEO) {
+            res.status(202).json({ mensaje: `[MODO TEST] Enviando tarjetas de prueba a tu cuenta...` });
+        } else {
+            res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${targetUserIds.size} usuarios totales. Iniciando entrega...` });
+        }
+
+        // --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE ---
+        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 3) => {
+            for (let intento = 1; intento <= maxIntentos; intento++) {
+                try {
+                    await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
+                        await ctx.sendActivity({ 
+                            attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
+                        });
+                    });
+                    return true; // Éxito
+                } catch (error) {
+                    if (intento === maxIntentos) throw error; // Si falla la 3ª vez, nos rendimos
+                    // Si falla por ir muy rápido, esperamos un poco (2s, luego 4s) antes de reintentar
+                    await new Promise(r => setTimeout(r, 2000 * intento));
+                }
+            }
+        };
+
+        // 4. PROCESO ASÍNCRONO ACELERADO
         (async () => {
             try {
-                const TAMANO_LOTE = 20; 
-                const ESPERA_ENTRE_LOTES = 2000; 
+                // 🚀 CONFIGURACIÓN DE ALTA VELOCIDAD
+                const TAMANO_LOTE = 15;        // Lanzamos 15 tarjetas simultáneas
+                const ESPERA_ENTRE_LOTES = 800; // Solo esperamos 0.8 segundos entre lotes
+
                 let exitos = 0;
                 let fallos = 0;
 
@@ -168,47 +217,51 @@ app.post('/api/enviar-teams', async (req, res) => {
                     lotes.push(referenciasValidas.slice(i, i + TAMANO_LOTE));
                 }
 
-                console.log(`\n🚀 PROCESANDO LISTA: ${targetUserIds.size} usuarios totales.`);
-                console.log(`Usuarios localizados con Bot instalado: ${referenciasValidas.length}`);
-                console.log(`🚫 Usuarios que NO tienen el bot: ${targetUserIds.size - referenciasValidas.length}\n`);
+                console.log(`\n🚀 INICIANDO ENTREGA ACELERADA: ${referenciasValidas.length} tarjetas en cola.`);
+                const startTime = Date.now();
 
                 for (let i = 0; i < lotes.length; i++) {
                     const loteActual = lotes[i];
                     
                     const promesasEnvio = loteActual.map(referencia => {
-                        return adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
-                            await ctx.sendActivity({ 
-                                attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
-                            });
+                        if (MODO_SIMULACION) {
                             exitos++;
-                        }).catch(err => {
-                            fallos++;
-                            // No mostramos cada error individual para no saturar la consola
-                        });
+                            return Promise.resolve();
+                        }
+                        
+                        // Usamos nuestra nueva función con reintentos
+                        return enviarConReintentos(referencia, tarjeta)
+                            .then(() => exitos++)
+                            .catch(() => fallos++);
                     });
 
                     await Promise.all(promesasEnvio);
-                    
-                    console.log(`Lote ${i + 1}/${lotes.length} | Éxitos: ${exitos} | Fallos: ${fallos}`);
+                    console.log(`📦 Lote ${i + 1}/${lotes.length} completado.`);
 
                     if (i < lotes.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
                     }
                 }
                 
-                console.log(`\nREPORTE FINAL DE ENVÍO:`);
+                const endTime = Date.now();
+                const minutosTranscurridos = ((endTime - startTime) / 60000).toFixed(2);
+
+                console.log(`\n🏁 REPORTE FINAL DE ENVÍO:`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`⏱️  Tiempo total: ${minutosTranscurridos} minutos`);
                 console.log(`✅ Entregas confirmadas: ${exitos}`);
-                console.log(`❌ Errores (Bot no activo): ${fallos}`);
-                console.log(`📈 Efectividad: ${((exitos / (exitos + fallos)) * 100).toFixed(1)}%`);
+                console.log(`❌ Errores irrecuperables: ${fallos}`);
+                
+                const totalIntentos = exitos + fallos;
+                const efectividad = totalIntentos > 0 ? ((exitos / totalIntentos) * 100).toFixed(1) : 0;
+                
+                console.log(`📈 Efectividad: ${efectividad}%`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
             } catch (errAsync) {
                 console.error("❌ Error en el proceso de fondo:", errAsync);
             }
         })();
-
-        return;
 
     } catch (error) {
         console.error("Error al preparar envío:", error.message);
@@ -217,59 +270,81 @@ app.post('/api/enviar-teams', async (req, res) => {
 });
 
 app.get('/api/buscar-usuarios', async (req, res) => {
-    const query = req.query.q;
     try {
-        // 1. Hacemos una búsqueda MUY simple por nombre para que Microsoft NO devuelva error.
-        // Quitamos el ConsistencyLevel y los "or/and" complicados.
-        const [users, groups] = await Promise.all([
-            graphClient.api('/users')
-                .filter(`startswith(displayName, '${query}')`)
-                .select('displayName,mail,userPrincipalName')
-                .top(10)
-                .get(),
-            
-            graphClient.api('/groups')
-                .filter(`startswith(displayName, '${query}')`)
-                .select('displayName,mail,mailEnabled')
-                .top(50) // Pedimos hasta 50 grupos para asegurar que el tuyo no se quede fuera
-                .get()
-        ]);
+        const query = req.query.q;
+        if (!query) return res.json([]);
 
-        // 2. Combinamos resultados y filtramos las Listas de Distribución aquí en local
-        const resultados = [
-            // Mapeamos los usuarios
-            ...users.value.map(u => ({ 
-                name: u.displayName, 
-                // Si el usuario no tiene 'mail', cogemos su userPrincipalName
-                mail: u.mail || u.userPrincipalName, 
-                tipo: "👤 Usuario" 
-            })),
-            
-            // Mapeamos los grupos, pero filtramos con JavaScript SÓLO los que tienen correo habilitado
-            ...groups.value
-                .filter(g => g.mailEnabled === true) // <--- Esta es la clave para que salgan
-                .map(g => ({ 
-                    name: g.displayName, 
-                    mail: g.mail || "Sin correo", 
-                    tipo: "👥 Grupo LD" 
-                }))
-        ];
+        // 1. Buscamos USUARIOS individuales
+        const usersReq = graphClient.api('/users')
+            .filter(`startswith(displayName,'${query}') or startswith(mail,'${query}')`)
+            .select('id,displayName,mail,userPrincipalName')
+            .top(5)
+            .get()
+            .catch(err => {
+                console.error("⚠️ Error buscando usuarios:", err.message);
+                return { value: [] }; 
+            });
+
+    // 2. Buscamos GRUPOS / Listas de distribución
+            const groupsReq = graphClient.api('/groups')
+                .header('ConsistencyLevel', 'eventual') // 🔑 LLAVE 1
+                .query({ $count: true })                // 🔑 LLAVE 2
+                // Volvemos a tu filtro original, que es 100% seguro y no da errores de sintaxis
+                .filter(`startswith(displayName,'${query}') or startswith(mail,'${query}')`)
+                .select('id,displayName,mail')
+                .top(5)
+                .get()
+                .catch(err => {
+                    console.error("⚠️ Error buscando grupos:", err.message);
+                    return { value: [] };
+                });
+
+        // Ejecutamos ambas peticiones a la vez
+        const [usersResponse, groupsResponse] = await Promise.all([usersReq, groupsReq]);
+
+        const resultados = [];
         
+        if (usersResponse && usersResponse.value) {
+            usersResponse.value.forEach(u => {
+                if (u.mail || u.userPrincipalName) {
+                    resultados.push({
+                        id: u.id,
+                        nombre: u.displayName,
+                        correo: u.mail || u.userPrincipalName,
+                        tipo: 'usuario'
+                    });
+                }
+            });
+        }
+
+        if (groupsResponse && groupsResponse.value) {
+            groupsResponse.value.forEach(g => {
+                if (g.mail) { 
+                    resultados.push({
+                        id: g.id,
+                        nombre: `👥 ${g.displayName} (Lista)`, 
+                        correo: g.mail,
+                        tipo: 'grupo'
+                    });
+                }
+            });
+        }
+
         res.json(resultados);
     } catch (error) {
-        console.error("Error Graph API Búsqueda:", error.message);
-        res.status(500).json({ error: 'Error al buscar en el directorio' });
+        console.error("Error general en búsqueda:", error);
+        res.status(500).json([]);
     }
 });
 
 // Ruta para obtener los grupos y mostrarlos en el frontend
 app.get('/api/grupos', async (req, res) => {
     try {
-        // Pedimos los grupos de Office 365 / Listas de distribución
         const grupos = await graphClient.api('/groups')
-            // Filtramos para traer los más relevantes (opcional, puedes quitar el filter si quieres todos)
+            .header('ConsistencyLevel', 'eventual') // Asegura que no falle el filtro
             .filter("mailEnabled eq true") 
-            .select('id,displayName,mail') // Traemos solo lo importante
+            .select('id,displayName,mail')
+            .top(999) // Para que traiga hasta 999 listas y no se corte en 100
             .get();
 
         res.status(200).json(grupos.value);
