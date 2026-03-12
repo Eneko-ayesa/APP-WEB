@@ -58,6 +58,8 @@ function convertirInputAEditable(inputEl, claseExtra = "") {
   div.id = inputEl.id;
   div.className = inputEl.className + " rich-field " + claseExtra;
   div.setAttribute("spellcheck", "true");
+  inputEmails?.addEventListener("input", manejarBusqueda);
+  inputTeams?.addEventListener("input", manejarBusqueda);
   // copy inline styles / data attrs if any
   inputEl.parentNode.replaceChild(div, inputEl);
   registrarCampoEditable(div);
@@ -1821,12 +1823,6 @@ const PLANTILLAS = [
     imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
   {
-    icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
-    titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
-    cuerpo: "#UnaiPaganos 😘",
-    imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
-  },
-  {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
     cuerpo: "Como parte de nuestro compromiso medioambiental, lanzamos una nueva iniciativa para reducir nuestra huella de carbono. Te invitamos a participar y a compartir tus ideas con el equipo.",
@@ -2341,7 +2337,6 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 }
 
 // ── RENDER IMAGES PANEL ────────────────────────
-// ── RENDER IMAGES PANEL ────────────────────────
 function renderMiembrosPanel(panel) {
   // 1. Estructura base: Cabecera + Desplegable independiente + Contenedor de tabla
   panel.innerHTML = `
@@ -2385,6 +2380,11 @@ function renderMiembrosPanel(panel) {
         option.textContent = g.displayName + (g.mail ? ` (${g.mail})` : "");
         selectGrupos.appendChild(option);
       });
+      if (window.grupoPendienteDeSeleccion) {
+          selectGrupos.value = window.grupoPendienteDeSeleccion;
+          selectGrupos.dispatchEvent(new Event("change"));
+          window.grupoPendienteDeSeleccion = null;
+      }
     })
     .catch(err => {
       console.error("Error cargando grupos:", err);
@@ -2430,25 +2430,55 @@ function renderMiembrosPanel(panel) {
           return;
         }
 
-        // Generamos las filas de la tabla con tus estilos
+        // Generamos las filas de la tabla con la clase "fila-miembro"
         let rows = miembros.map(function(m) {
           const nombre = m.nombre || m.displayName || "—";
           const email  = m.correo  || m.mail || m.userPrincipalName || "—";
           const inicial = nombre.charAt(0).toUpperCase();
-          return '<tr>'
+          return '<tr class="fila-miembro">'
             + '<td><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
             + '<td><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
             + '</tr>';
         }).join("");
 
-        // Inyectamos la tabla terminada
+        // 5. Inyectamos LA BARRA DE BÚSQUEDA y la tabla terminada
         content.innerHTML = ''
-          + '<div class="miembros-meta" style="margin-bottom: 10px; text-align: right;"><span class="miembros-count" style="background: var(--ms-blue-light); color: var(--ms-blue); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold;">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span></div>'
-          + '<div class="miembros-table-wrap" style="border: 1px solid var(--ms-border); border-radius: 8px; overflow: hidden;">'
+          + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px;">'
+          + '  <div style="position: relative; flex-grow: 1;">'
+          + '    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="position: absolute; left: 10px; top: 10px; color: #888;">'
+          + '      <circle cx="11" cy="11" r="8"></circle>'
+          + '      <path stroke-linecap="round" d="M21 21l-4.35-4.35"></path>'
+          + '    </svg>'
+          + '    <input type="text" id="buscadorFiltroMiembros" placeholder="Buscar por nombre o correo..." style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid var(--ms-border-dark); border-radius: 6px; font-family: inherit; background: var(--ms-surface); outline: none; box-sizing: border-box;">'
+          + '  </div>'
+          + '  <span class="miembros-count" style="background: var(--ms-blue-light); color: var(--ms-blue); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; white-space: nowrap;">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span>'
+          + '</div>'
+          + '<div class="miembros-table-wrap" style="border: 1px solid var(--ms-border); border-radius: 8px; overflow: hidden; max-height: 500px; overflow-y: auto;">'
           + '<table class="miembros-table" style="width: 100%; border-collapse: collapse; text-align: left;">'
-          + '<thead style="background: var(--ms-surface-alt); border-bottom: 2px solid var(--ms-border);"><tr><th style="padding: 10px;">NOMBRE</th><th style="padding: 10px;">CORREO</th></tr></thead>'
+          + '<thead style="background: var(--ms-surface-alt); border-bottom: 2px solid var(--ms-border); position: sticky; top: 0; z-index: 10;"><tr><th style="padding: 10px;">NOMBRE</th><th style="padding: 10px;">CORREO</th></tr></thead>'
           + '<tbody>' + rows + '</tbody>'
           + '</table></div>';
+
+        // 6. 🚀 ACTIVAMOS LA LÓGICA DEL BUSCADOR
+        const inputBuscador = content.querySelector("#buscadorFiltroMiembros");
+        const filasMiembros = content.querySelectorAll(".fila-miembro");
+
+        inputBuscador.addEventListener("input", function(e) {
+            const terminoBusqueda = e.target.value.toLowerCase();
+            
+            filasMiembros.forEach(fila => {
+                // Sacamos todo el texto de la fila (nombre + email)
+                const textoFila = fila.textContent.toLowerCase();
+                
+                // Comparamos
+                if (textoFila.includes(terminoBusqueda)) {
+                    fila.style.display = ""; // Mostramos la fila
+                } else {
+                    fila.style.display = "none"; // Ocultamos la fila
+                }
+            });
+        });
+
       })
       .catch(function() {
         content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">⚠️</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexión con el servidor.</p></div>';
@@ -2804,62 +2834,121 @@ let buscadorActivo = null;
 let cajaActiva = null;
 
 async function manejarBusqueda(e) {
-    buscadorActivo = e.target;
-    
-    // Identificamos en qué caja estamos buscando
+    const buscadorActivo = e.target;
+    let cajaActiva = null;
+
+    // Identificar la caja de sugerencias correcta
     if (buscadorActivo.id === "emails") {
-        cajaActiva = document.getElementById("suggestionsBox");
+        cajaActiva = document.getElementById("suggestions");
     } else {
         cajaActiva = document.getElementById("suggestionsBoxTeams");
     }
 
+    if (!cajaActiva) return;
+
     const busqueda = buscadorActivo.value.split(',').pop().trim();
 
     if (busqueda.length < 3) {
-        if(cajaActiva) cajaActiva.innerHTML = '';
+        cajaActiva.innerHTML = '';
+        cajaActiva.classList.add("hidden");
         return;
     }
 
     try {
-        const respuesta = await fetch(`/api/buscar-usuarios?q=${busqueda}`);
-        const usuarios = await respuesta.json();
+        const respuesta = await fetch(`/api/buscar-usuarios?q=${encodeURIComponent(busqueda)}`);
+        const resultados = await respuesta.json();
 
-        if (usuarios.length > 0) {
-            cajaActiva.innerHTML = usuarios.map(u => `
-                <div class="sug-item" onclick="seleccionarUsuarioLocal('${u.mail}')" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;">
-                    <div style="font-weight: 600;">${u.name} <span style="font-size:10px; color:#888;">(${u.tipo})</span></div>
-                    <div style="font-size: 12px; color: #666;">${u.mail}</div>
-                </div>
-            `).join('');
+        if (resultados && resultados.length > 0) {
+            cajaActiva.classList.remove("hidden");
+            cajaActiva.innerHTML = resultados.map(item => {
+                const nombre = item.nombre || item.displayName || "Sin nombre";
+                const correo = item.correo || item.mail || item.userPrincipalName || "";
+                const tipo = item.tipo || 'usuario';
+                const idGrupo = item.id || ""; // Necesitamos el ID para el panel de miembros
+
+                return `
+                    <div class="sug-item" 
+                        onclick="seleccionarYVerMiembros('${correo}', '${idGrupo}', '${tipo}')" 
+                        style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;">
+                        <div style="font-weight: 600;">
+                            ${nombre} 
+                            <span style="font-size: 10px; color: ${tipo === 'grupo' ? '#e81123' : '#0078d4'};"> [${tipo.toUpperCase()}]</span>
+                        </div>
+                        <div style="font-size: 11px; color: #666;">${correo}</div>
+                    </div>
+                `;
+            }).join('');
         } else {
-            cajaActiva.innerHTML = "<div style='padding:10px;'>Sin resultados</div>";
+            cajaActiva.innerHTML = '<div style="padding:10px; color:#999;">Sin resultados</div>';
         }
     } catch (error) {
-        console.error("Error al buscar:", error);
+        console.error("Error en la búsqueda:", error);
     }
 }
 
-// Usamos el objeto document directamente para evitar duplicar variables globales
-if (document.getElementById("emails")) {
-    document.getElementById("emails").addEventListener('input', manejarBusqueda);
-}
-if (document.getElementById("teamsRecipient")) {
-    document.getElementById("teamsRecipient").addEventListener('input', manejarBusqueda);
-}
-
 // Función con nombre único para evitar cualquier choque
-window.seleccionarUsuarioLocal = function(email) {
-    if (!buscadorActivo || !cajaActiva) return;
+window.seleccionarUsuarioLocal = function(valor) {
+    if (!valor || valor === "undefined" || valor === "") {
+        console.warn("El elemento seleccionado no tiene un email válido.");
+        // Opcional: podrías mostrar una alerta si prefieres
+        return;
+    }
+
+    // 1. Identificamos qué input estamos usando
+    const inputEmails = document.getElementById('emails');
+    const inputTeams = document.getElementById('teamsRecipient');
     
-    let valores = buscadorActivo.value.split(',');
-    valores.pop(); 
-    valores.push(email); 
+    // Si la caja de Teams está visible, es que estamos usando Teams
+    const cajaTeams = document.getElementById("suggestionsBoxTeams");
+    const esTeams = cajaTeams && !cajaTeams.classList.contains("hidden") && cajaTeams.innerHTML !== "";
     
-    buscadorActivo.value = valores.join(', ') + ', ';
-    cajaActiva.innerHTML = ""; 
-    buscadorActivo.focus(); 
+    const input = esTeams ? inputTeams : inputEmails;
+
+    if (!input) return;
+
+    // 2. Insertamos el valor respetando los correos anteriores
+    let partes = input.value.split(',');
+    partes.pop(); // Quitamos lo que se estaba escribiendo (ej: "rrhh")
+    partes.push(valor); // Añadimos el email real
+    
+    // Limpiamos espacios y unimos con comas
+    input.value = partes.map(p => p.trim()).filter(p => p !== "").join(', ') + ', ';
+
+    // 3. Cerramos y limpiamos TODAS las cajas de sugerencias
+    const cajas = [
+        document.getElementById("suggestions"),
+        document.getElementById("suggestionsBox"),
+        document.getElementById("suggestionsBoxTeams")
+    ];
+    
+    cajas.forEach(c => {
+        if (c) {
+            c.innerHTML = "";
+            c.classList.add("hidden");
+        }
+    });
+
+    // 4. Devolvemos el foco al campo para que el usuario pueda seguir
+    input.focus();
 };
 
+window.seleccionarYVerMiembros = function(email, idGrupo, tipo) {
+    // 1. Primero hacemos el autocompletado del email (lo que ya funcionaba)
+    // Llamamos a la función que ya tenemos, pasándole solo el email
+    if (email && email !== "undefined") {
+        seleccionarUsuarioLocal(email);
+    }
+
+    // 2. Si es un grupo, abrimos el panel de miembros automáticamente
+    if (tipo === 'grupo' && idGrupo) {        
+        // Usamos la función que ya tienes definida en tu Animaciones.js
+        if (typeof window.abrirPanelMiembrosConGrupo === "function") {
+            window.abrirPanelMiembrosConGrupo(idGrupo);
+        } else {
+            console.error("No se encontró la función abrirPanelMiembrosConGrupo");
+        }
+    }
+};
 
 const btnLogout = document.getElementById("topbarLogout");
 
@@ -3036,6 +3125,9 @@ document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
 document.getElementById("distListSelect")?.addEventListener("change", function() {
   const val = this.value;
   if (!val) return;
+  if (typeof abrirPanelMiembrosConGrupo === "function") {
+        abrirPanelMiembrosConGrupo(val);
+  }
   const canal = document.getElementById("canal")?.value;
   if (canal === "outlook") {
     const emailsEl = document.getElementById("emails");
@@ -3090,9 +3182,37 @@ const _origSyncTab = typeof syncTabToCanal === "function" ? syncTabToCanal : nul
 function showDistListForCanal(val) {
   const distField = document.getElementById("distListField");
   const schedField = document.getElementById("scheduleField");
-  if (distField) distField.classList.toggle("hidden", !val);
-  if (schedField) schedField.classList.toggle("hidden", !val);
+  
+  if (distField) {
+      distField.classList.remove("hidden");
+      distField.style.display = "block";
+  }
+  if (schedField) {
+      schedField.classList.remove("hidden");
+  }
 }
 document.getElementById("canal")?.addEventListener("change", function() {
   showDistListForCanal(this.value);
 });
+
+window.abrirPanelMiembrosConGrupo = function(grupoId) {
+    // 1. Guardamos el ID en memoria por si el desplegable tarda en cargar de la API
+    window.grupoPendienteDeSeleccion = grupoId;
+
+    // 2. Activamos la pestaña "Miembros" automáticamente
+    const tabMiembros = document.querySelector('.tab[data-tab="miembros"]');
+    if (tabMiembros) {
+        tabMiembros.click();
+    }
+
+    // 3. Comprobamos si el desplegable ya estaba cargado previamente
+    setTimeout(() => {
+        const selectGrupos = document.getElementById("exploradorGruposSelect");
+        // Si tiene más de 1 opción, significa que la API ya los cargó
+        if (selectGrupos && selectGrupos.options.length > 1) {
+            selectGrupos.value = grupoId;
+            selectGrupos.dispatchEvent(new Event("change")); // Lanza la búsqueda de miembros
+            window.grupoPendienteDeSeleccion = null; // Limpiamos la memoria
+        }
+    }, 150);
+};
