@@ -1664,69 +1664,37 @@ async function dispararEnvios() {
     // 1. Detectar el Canal seleccionado
     const canal = document.getElementById("canal")?.value;
     
-    // Outlook usa el input con id="emails"
-    // Teams usa el input con id="teamsRecipient"
+    // 2. Obtener los destinatarios (aquí definimos la variable que te falta)
+    // Outlook usa "emails", Teams usa "teamsRecipient"
     const inputID = (canal === "teams") ? 'teamsRecipient' : 'emails';
     const inputDestinatarios = document.getElementById(inputID)?.value || ""; 
-    
-    const destinatariosArray = inputDestinatarios
-        .split(',')
-        .map(email => email.trim())
-        .filter(email => email !== "");
 
-    if (destinatariosArray.length === 0) {
-        mostrarErrorValidacion("Destinatario requerido", "Escribe al menos un destinatario antes de enviar.", "Rellena el campo de destinatarios con un email o canal válido.");
+    // Validación rápida
+    if (!inputDestinatarios.trim()) {
+        alert("Por favor, introduce al menos un destinatario.");
         return;
     }
 
-    // 3. Recoger datos del editor (Título, Subtítulo, Imagen)
-    const textoTitulo = document.getElementById("titulo")?.innerText || document.getElementById("titulo")?.value || "";
-    const textoSubtitulo = document.getElementById("subtitulo")?.innerText || document.getElementById("subtitulo")?.value || "";
-    const urlImagen = document.getElementById("imagen")?.value || null;
+    // 3. Obtener el JSON de la tarjeta y el asunto
+    // Usamos la función envoltorio que creamos en el paso anterior
+    const tarjetaJSON = window.generarCuerpoTarjeta(); 
+    const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
 
-    // Recorremos los bloques dinámicos del editor
-    const blocks = [];
-    const editorContenedor = document.getElementById("editor");
-    
-    if (editorContenedor) {
-        editorContenedor.querySelectorAll(".block").forEach(block => {
-            const rich = block.querySelector(".rich-editor-area");
-            const url = block.querySelector("input[type='url']");
-            
-            if (rich) {
-                const texto = rich.innerText || "";
-                blocks.push({
-                    tipo: rich.dataset.singleline ? "titulo" : "parrafo",
-                    text: String(texto)
-                });
-            } else if (url) {
-                blocks.push({ tipo: "imagen", value: String(url.value || "") });
-            }
-        });
-    }
-
-    const datosReales = {
-        titulo: { text: String(textoTitulo) },       
-        subtitulo: { text: String(textoSubtitulo) }, 
-        imagenUrl: urlImagen,
-        blocks: blocks
+    // 4. Configurar el endpoint y el cuerpo del mensaje
+    let endpoint = "";
+    let bodyPayload = {
+        destinatarios: inputDestinatarios,
+        asunto: textoAsunto,
+        tarjeta: tarjetaJSON
     };
 
-    // 4. Preparar el cuerpo del mensaje según el canal
-    let bodyPayload = { destinatarios: destinatariosArray };
-    let endpoint = "";
-
     if (canal === "teams") {
-        endpoint = "/api/enviar-teams";
-        const mensajeCompleto = buildCardJSON(datosReales);
-        bodyPayload.tarjeta = mensajeCompleto.attachments[0].content;
+        endpoint = "/api/enviar-grupo-teams";
     } else {
         endpoint = "/api/enviar-outlook";
-        bodyPayload.asunto = textoTitulo || "Nuevo Comunicado Yako";
-        bodyPayload.htmlCuerpo = generarHTMLParaEmail(datosReales);
     }
 
-    // 5. Feedback visual en el botón
+    // 5. Feedback visual: Bloquear el botón
     const botonEnviar = document.getElementById('btnEnviar');
     const textoOriginal = botonEnviar ? botonEnviar.innerText : "Enviar";
     if (botonEnviar) {
@@ -1736,7 +1704,7 @@ async function dispararEnvios() {
 
     // 6. Llamada al servidor
     try {
-        const respuesta = await fetch(`http://localhost:3000${endpoint}`, {
+        const respuesta = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyPayload)
@@ -1745,13 +1713,20 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
-            mostrarEnvioExito(getCardState());
+            // Si tienes una función para mostrar éxito, úsala, si no, un alert
+            if (typeof mostrarEnvioExito === "function") {
+                mostrarEnvioExito();
+            } else {
+                alert("✅ " + (data.mensaje || "Enviado con éxito"));
+            }
         } else {
-            throw new Error(data.error || "El servidor devolvió un error desconocido");
+            throw new Error(data.error || "El servidor devolvió un error");
         }
     } catch (error) {
-        mostrarEnvioError(error);
+        console.error("Error al enviar:", error);
+        alert("❌ Error: " + error.message);
     } finally {
+        // Restaurar botón
         if (botonEnviar) {
             botonEnviar.innerText = textoOriginal;
             botonEnviar.disabled = false;
@@ -3419,4 +3394,44 @@ window.abrirPanelMiembrosConGrupo = function(grupoId) {
             window.grupoPendienteDeSeleccion = null; // Limpiamos la memoria
         }
     }, 150);
+};
+
+// Añade esto al final de Animaciones.js
+window.generarCuerpoTarjeta = function() {
+    // 1. Recoger datos del editor (lo que ya tenías en dispararEnvios)
+    const textoTitulo = document.getElementById("titulo")?.innerText || "";
+    const textoSubtitulo = document.getElementById("subtitulo")?.innerText || "";
+    const urlImagen = document.getElementById("imagen")?.value || null;
+
+    const blocks = [];
+    const editorContenedor = document.getElementById("editor");
+    
+    if (editorContenedor) {
+        editorContenedor.querySelectorAll(".block").forEach(block => {
+            const rich = block.querySelector(".rich-editor-area");
+            const urlInput = block.querySelector("input[type='url']");
+            
+            if (rich) {
+                blocks.push({
+                    tipo: rich.dataset.singleline ? "titulo" : "parrafo",
+                    text: String(rich.innerText || "")
+                });
+            } else if (urlInput) {
+                blocks.push({ tipo: "imagen", value: String(urlInput.value || "") });
+            }
+        });
+    }
+
+    const datosReales = {
+        titulo: { text: String(textoTitulo) },       
+        subtitulo: { text: String(textoSubtitulo) }, 
+        imagenUrl: urlImagen,
+        blocks: blocks
+    };
+
+    // 2. Usamos tu función buildCardJSON que YA existe en tu archivo
+    const cardCompleta = buildCardJSON(datosReales);
+    
+    // Devolvemos solo el contenido de la tarjeta
+    return cardCompleta.attachments[0].content;
 };
