@@ -1751,6 +1751,15 @@ div.rich-field a {
   color: var(--ms-ink-3);
   margin-top: 2px;
 }
+.hist-recipient {
+  font-size: 11px;
+  color: var(--ms-ink-3);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
 .hist-badge {
   font-size: 10px;
   font-weight: 700;
@@ -3776,7 +3785,7 @@ input:not(:placeholder-shown):not(:focus) {
   padding: 8px 12px;
   border: 1.5px dashed #d0d0e0;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: #888;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -3871,4 +3880,217 @@ input:not(:placeholder-shown):not(:focus) {
 }
 .corp-img-del-btn:hover {
   background: #e53e3e;
+}
+
+/* ═══════════════════════════════════════════════
+   BLOQUE BOTONES DE RESPUESTA
+   ═══════════════════════════════════════════════ */
+
+.btn-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.btn-block-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.btn-block-label {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--ms-blue-light, #c0c0ff);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-blue);
+  background: var(--ms-blue-xlight, #f0f0ff);
+  outline: none;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn-block-label:focus {
+  border-color: var(--ms-blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,0,208,0.07);
+}
+
+.btn-block-url {
+  width: 100%;
+  padding: 5px 10px;
+  border: 1.5px solid var(--paper-rule, #e8e6e0);
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--ms-ink-3);
+  background: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.btn-block-url:focus {
+  border-color: var(--ms-blue);
+}
+
+/* Botones en la vista previa de la tarjeta */
+.card-block--actions {
+  margin-top: 12px !important;
+}
+.card-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.card-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 16px;
+  border-radius: 4px;
+  background: var(--ms-blue-xlight, #f0f0ff);
+  color: var(--ms-blue);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1.5px solid #c0c0ff;
+  white-space: nowrap;
+  cursor: default;
+}
+a.card-action-btn {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+a.card-action-btn:hover {
+  background: #d0d0ff;
+  border-color: var(--ms-blue);
+}
+
+/* ═══════════════════════════════════════════════
+   UPLOAD ZONE — límites y avisos de imagen
+   ═══════════════════════════════════════════════ */
+
+/* Texto fijo de límites (siempre visible) */
+.upload-zone-limits {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #bbb;
+  margin-top: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Aviso dinámico de dimensiones grandes */
+.upload-zone-warn {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #8a6200;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Zona de upload con dirección column para que los elementos se apilen bien */
+.corp-upload-zone {
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding: 10px 12px !important;
+}
+
+/* Fila principal (icono + texto) dentro de la zone */
+.corp-upload-zone > svg,
+.corp-upload-zone > span:first-of-type {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════════
+   MIS PLANTILLAS
+   ═══════════════════════════════════════════════ */
+
+.panel-section-hdr--sub {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--ms-border);
+}
+.panel-section-hdr--sub h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ms-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.mis-tpl-count {
+  background: var(--ms-blue, #0000d0);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 20px;
+}
+
+/* Card de mis plantillas — diferenciada visualmente */
+.tpl-card--saved {
+  position: relative;
+  border-color: #c0c0ff;
+  background: #f6f6ff;
+}
+.tpl-card--saved:hover {
+  border-color: var(--ms-blue, #0000d0);
+  box-shadow: 0 4px 16px rgba(0, 0, 208, 0.12);
+}
+
+/* Botón borrar dentro de la card */
+.tpl-del-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.06);
+  color: #999;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+  z-index: 1;
+}
+.tpl-del-btn:hover {
+  background: #ffe0e0;
+  color: #c0392b;
+}
+
+/* Botón 📌 en el historial */
+.hist-btn--tpl {
+  opacity: 0.55;
+  transition: opacity 0.15s, background 0.15s;
+}
+.hist-btn--tpl:hover {
+  opacity: 1;
+  background: #f0f0ff;
+}
+.hist-btn--tpl-saved {
+  opacity: 1;
+  background: #f0f0ff;
+  color: var(--ms-blue, #0000d0);
 }
