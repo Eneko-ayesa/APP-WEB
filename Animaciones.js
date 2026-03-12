@@ -2026,15 +2026,14 @@ const PLANTILLAS = [
     cuerpo: "Hemos preparado una breve encuesta para conocer tu experiencia y mejorar nuestros procesos. Solo te llevará 5 minutos. Tus respuestas son anónimas y muy valiosas para nosotros.",
     imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
-<<<<<<< HEAD
+
   // {
   //   icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
   //   titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
   //   cuerpo: "#UnaiPaganos 😘",
   //   imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
   // },
-=======
->>>>>>> a1528cc29bd6d16b00bf2cb78d09f3143fcf86c5
+
   {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
@@ -2707,10 +2706,8 @@ function renderMiembrosPanel(panel) {
           return;
         }
 
-<<<<<<< HEAD
         searchWrap.style.display = "block";
         renderTabla(allMiembros);
-=======
         // Generamos las filas de la tabla con la clase "fila-miembro"
         let rows = miembros.map(function(m) {
           const nombre = m.nombre || m.displayName || "—";
@@ -2760,7 +2757,6 @@ function renderMiembrosPanel(panel) {
             });
         });
 
->>>>>>> a1528cc29bd6d16b00bf2cb78d09f3143fcf86c5
       })
       .catch(function() {
         searchWrap.style.display = "none";
