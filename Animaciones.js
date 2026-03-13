@@ -1731,7 +1731,6 @@ async function dispararEnvios() {
   // descomenta todo lo de abajo.
   // ═══════════════════════════════════════════════════════════════
 
-  /*
 
   // 1. Canal y destinatario
   const canal = document.getElementById("canal")?.value;
@@ -2067,12 +2066,12 @@ const PLANTILLAS = [
     imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
 
-  // {
-  //   icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
-  //   titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
-  //   cuerpo: "#UnaiPaganos 😘",
-  //   imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
-  // },
+  {
+    icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
+    titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
+    cuerpo: "#UnaiPaganos 😘",
+    imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
+  },
 
   {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
