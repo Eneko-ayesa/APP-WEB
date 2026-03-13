@@ -4525,7 +4525,6 @@ a.card-action-btn:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--ms-blue);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
