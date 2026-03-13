@@ -1015,7 +1015,7 @@ function ensurePreviewPanel(type) {
         const card = document.createElement("div");
         card.className = "tpl-card tpl-card--saved";
         card.innerHTML = `
-          <button class="tpl-del-btn" data-id="${item.id}" title="Eliminar plantilla">✕</button>
+          <button class="tpl-del-btn tooltip--danger" data-id="${item.id}" data-tooltip="Eliminar plantilla" title="Eliminar plantilla">✕</button>
           <span class="tpl-icon">📌</span>
           <div class="tpl-name">${s.titulo || "(sin título)"}</div>
           <div class="tpl-desc">${s.canal === "outlook" ? "📧 Outlook" : "📤 Teams"} · ${item.fecha}</div>`;
@@ -1119,8 +1119,11 @@ function renderHistPanelInline() {
     const mias = getStorage("yako_mis_plantillas");
     const yaGuardada = mias.some(p => p.state?.titulo === item.state?.titulo);
     const btnPlantilla = currentHistTab === "enviadas"
-      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
+      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" data-tooltip="${yaGuardada ? "Ya guardada como plantilla" : "Fijar como plantilla"}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
       : "";
+    const labelBorrar = currentHistTab === "borradores"
+      ? `data-tooltip="Eliminar borrador"`
+      : `data-tooltip="Eliminar tarjeta"`;
     return `
     <div class="hist-item">
       <div class="hist-dot ${canal}"></div>
@@ -1132,8 +1135,10 @@ function renderHistPanelInline() {
       <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
         ${btnPlantilla}
-        ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}">📂</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}">🔁</button>`}
-        <button class="hist-btn hist-btn--del" data-action="borrar" data-i="${i}">🗑</button>
+        ${currentHistTab === "borradores"
+          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂</button>`
+          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁</button>`}
+        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" ${labelBorrar}>🗑</button>
       </div>
     </div>`;
   }).join("")}</div>`;
@@ -1713,12 +1718,29 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
+            // ── GUARDADO AUTOMÁTICO COMO PLANTILLA ──────────────
+            const estadoActual = getCardState();
+            const mias = getStorage("yako_mis_plantillas");
+            const yaExiste = mias.some(p => p.state?.titulo === estadoActual.titulo);
+            if (!yaExiste && estadoActual.titulo) {
+                mias.unshift({ id: Date.now(), fecha: new Date().toLocaleString("es-ES"), state: estadoActual });
+                setStorage("yako_mis_plantillas", mias.slice(0, 20));
+            }
+            // ── FIN GUARDADO AUTOMÁTICO ──────────────────────────
+
             // Si tienes una función para mostrar éxito, úsala, si no, un alert
             if (typeof mostrarEnvioExito === "function") {
                 mostrarEnvioExito();
             } else {
                 alert("✅ " + (data.mensaje || "Enviado con éxito"));
             }
+
+            // ── TOAST DE CONFIRMACIÓN ────────────────────────────
+            const msgPlantilla = yaExiste
+                ? "✅ Tarjeta enviada correctamente."
+                : "✅ Tarjeta enviada y guardada como plantilla.";
+            showToast(msgPlantilla, "success");
+            // ── FIN TOAST ────────────────────────────────────────
         } else {
             throw new Error(data.error || "El servidor devolvió un error");
         }
@@ -2221,8 +2243,10 @@ function renderHistPanel() {
       </div>
       <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
-        ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}">📂 Cargar</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}">🔁 Clonar</button>`}
-        <button class="hist-btn hist-btn--del" data-action="borrar" data-i="${i}">🗑</button>
+        ${currentHistTab === "borradores"
+          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
+          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
+        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
       </div>
     </div>`).join("")}</div>`;
 
@@ -2306,6 +2330,7 @@ function addCharCounter(fieldId, max, label) {
 setTimeout(() => {
   addCharCounter("titulo", 80, "Título");
   addCharCounter("subtitulo", 140, "Subtítulo");
+  addCharCounter("parrafo" , 500, "Parrafo")
 }, 200);
 
 // ── SEND BUTTON FEEDBACK (handled in mostrarOutputPanel) ──────────────────────
