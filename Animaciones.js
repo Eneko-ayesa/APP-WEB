@@ -2067,13 +2067,6 @@ const PLANTILLAS = [
   },
 
   {
-    icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
-    titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
-    cuerpo: "#UnaiPaganos 😘",
-    imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
-  },
-
-  {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
     cuerpo: "Como parte de nuestro compromiso medioambiental, lanzamos una nueva iniciativa para reducir nuestra huella de carbono. Te invitamos a participar y a compartir tus ideas con el equipo.",

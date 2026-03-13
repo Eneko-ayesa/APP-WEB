@@ -1469,9 +1469,6 @@ div.rich-field a {
   color: var(--accent);
   border-color: var(--accent);
 }
-.btn-save-draft {
-  /* estilos delegados a btn-secondary-action */
-}
 
 /* ── DEVICE TOGGLE ───────────────────────────── */
 .preview-header-center {
@@ -3893,15 +3890,56 @@ input:not(:placeholder-shown):not(:focus) {
   margin-top: 6px;
 }
 
+/* Mensaje informativo */
+.btn-block-hint {
+  font-size: 11px;
+  color: var(--ms-ink-3, #aaa);
+  margin-top: 2px;
+  margin-bottom: 2px;
+  font-style: italic;
+}
+
 .btn-block-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;  /* necesario para que el ✕ se posicione encima */
 }
 
+/* ✕ para quitar una fila — flota sobre el input, solo visible al hover */
+.btn-row-del {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #bbb;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 2;
+  padding: 0;
+}
+.btn-block-row:hover .btn-row-del {
+  opacity: 1;
+}
+.btn-row-del:hover {
+  background: #ffe0e0;
+  color: #c0392b;
+}
+
+/* Padding derecho en el label para que el texto no quede bajo el ✕ */
 .btn-block-label {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px 34px 8px 12px;
   border: 1.5px solid var(--ms-blue-light, #c0c0ff);
   border-radius: 6px;
   font-family: var(--font);
@@ -3917,6 +3955,29 @@ input:not(:placeholder-shown):not(:focus) {
   border-color: var(--ms-blue);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(0,0,208,0.07);
+}
+
+/* Botón "Añadir botón" al pie de la lista */
+.btn-block-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 1.5px dashed #c0c0ff;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ms-blue);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-block-add:hover {
+  background: #f0f0ff;
+  border-color: var(--ms-blue);
 }
 
 .btn-block-url {
