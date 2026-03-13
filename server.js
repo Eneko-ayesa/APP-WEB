@@ -266,43 +266,77 @@ app.get('/api/grupos', async (req, res) => {
     }
 });
 // =======================================================
-// RUTA PARA OBTENER LOS MIEMBROS DE UN GRUPO (PARA EL EXPLORADOR)
+// RUTAS PARA OBTENER LOS MIEMBROS DE UN GRUPO (EXPLORADOR)
 // =======================================================
-// Ruta para obtener los miembros de un grupo específico
+
+// 1. Ruta usada por la búsqueda principal (?id=...)
 app.get('/api/miembros-grupo', async (req, res) => {
     const groupId = req.query.id;
-    
-    if (!groupId) {
-        return res.status(400).json({ error: 'ID de grupo requerido' });
-    }
+    if (!groupId) return res.status(400).json({ error: 'ID de grupo requerido' });
+
+    console.log(`\n🕵️‍♂️ [DEBUG] Frontend pide los miembros del grupo: ${groupId}`);
 
     try {
-        // 🛑 EL CAMBIO ESTÁ AQUÍ: Usamos 'client'
         const miembros = await client.api(`/groups/${groupId}/members`)
-            .select('id,displayName,mail,userPrincipalName')
-            .top(999) // Traemos hasta 999 miembros de golpe
+            .top(999) 
             .get();
 
-        res.status(200).json(miembros.value);
+        console.log(`✅ [DEBUG] Graph API encontró ${miembros.value.length} miembros en este grupo.`);
+
+        const resultado = miembros.value.map(m => ({
+            ...m, 
+            nombre: m.displayName || 'Usuario',
+            correo: m.mail || m.userPrincipalName || 'Sin correo',
+            cargo: m.jobTitle || 'Miembro',
+            tipo: 'usuario'
+        }));
+
+        // CHIVATO: Imprime en consola el primer usuario
+        if (resultado.length > 0) {
+            console.log("🧐 [DEBUG] Muestra del primer usuario que se envía a Animaciones.js:");
+            console.log(JSON.stringify(resultado[0], null, 2));
+        } else {
+            console.log("⚠️ [DEBUG] El grupo está vacío, no hay miembros que mostrar.");
+        }
+
+        res.status(200).json(resultado);
     } catch (error) {
-        console.error("Error al obtener los miembros del grupo:", error.message);
+        console.error("❌ [DEBUG] Error al obtener los miembros del grupo:", error.message);
         res.status(500).json({ error: 'Fallo al obtener los miembros.' });
     }
 });
-// Ruta para obtener los miembros de un grupo específico
+
+// 2. Ruta usada por el panel lateral de Miembros (/:id/miembros)
 app.get('/api/grupos/:id/miembros', async (req, res) => {
     try {
-        const groupId = req.params.id;
+        const groupId = req.params.id; 
+        console.log(`\n🕵️‍♂️ [DEBUG] Frontend pide los miembros del grupo: ${groupId}`);
         
-        // Pedimos a Graph API los miembros del grupo seleccionado
-        const miembros = await graphClient.api(`/groups/${groupId}/members`)
-            .select('displayName,mail,jobTitle')
-            .top(999) // Trae hasta 999 miembros (puedes ajustarlo si necesitas más)
+        const miembros = await client.api(`/groups/${groupId}/members`)
+            .top(999) 
             .get();
             
-        res.status(200).json(miembros.value);
+        console.log(`✅ [DEBUG] Graph API encontró ${miembros.value.length} miembros en este grupo.`);
+            
+        const resultado = miembros.value.map(m => ({
+            ...m, 
+            nombre: m.displayName || 'Usuario',
+            correo: m.mail || m.userPrincipalName || 'Sin correo',
+            cargo: m.jobTitle || 'Miembro',
+            tipo: 'usuario'
+        }));
+
+        // CHIVATO: Imprime en consola exactamente cómo es el primer usuario que enviamos a la web
+        if (resultado.length > 0) {
+            console.log("🧐 [DEBUG] Muestra del primer usuario que se envía a Animaciones.js:");
+            console.log(JSON.stringify(resultado[0], null, 2));
+        } else {
+            console.log("⚠️ [DEBUG] El grupo está vacío, no hay miembros que mostrar.");
+        }
+
+        res.status(200).json(resultado);
     } catch (error) {
-        console.error("Error al obtener miembros:", error.message);
+        console.error("❌ [DEBUG] Error fatal al obtener miembros:", error.message);
         res.status(500).json({ error: "Fallo al cargar los miembros del grupo." });
     }
 });
@@ -398,8 +432,25 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
             res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${referenciasValidas.length} usuarios válidos.` });
         }
 
-        // --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE ---
-        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 3) => {
+// --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE (CON MOCK PARA PRUEBAS) ---
+        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 5) => {
+            
+            // 🧪 SI ESTAMOS EN MODO BOMBARDEO, FINGIMOS LA CONEXIÓN A MICROSOFT
+            if (MODO_BOMBARDEO) {
+                // Simulamos lo que tarda la red real en contestar (entre 100ms y 300ms)
+                const latenciaRed = Math.floor(Math.random() * 200) + 100;
+                await new Promise(r => setTimeout(r, latenciaRed));
+                
+                // Opcional: Simulamos que un 1% de los envíos fallan para ver cómo reacciona tu código
+                const falloAleatorio = Math.random() < 0.01; 
+                if (falloAleatorio) {
+                    throw new Error("Simulación de error 429 o 500 de Microsoft");
+                }
+                
+                return true; // Microsoft (falso) dice "200 OK"
+            }
+
+            // 🌐 SI NO ESTAMOS EN MODO BOMBARDEO, ENVÍO REAL A TEAMS
             for (let intento = 1; intento <= maxIntentos; intento++) {
                 try {
                     await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {

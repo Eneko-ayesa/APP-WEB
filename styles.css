@@ -4253,3 +4253,297 @@ a.card-action-btn:hover {
 .hist-actions .hist-btn:first-child[data-tooltip]:focus-visible::after {
   transform: translateX(0) translateY(0);
 }
+/* ═══════════════════════════════════════════════
+   BUSCADOR GLOBAL DE USUARIOS
+   Componente: .global-user-search
+   ═══════════════════════════════════════════════ */
+
+/* ── Sección contenedora ── */
+.gus-section {
+  padding: 16px 20px 0;
+  margin-bottom: 4px;
+}
+
+.gus-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ms-ink-4);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gus-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ms-border);
+}
+
+/* ── Wrapper de posición relativa (para el dropdown) ── */
+.gus-wrap {
+  position: relative;
+}
+
+/* ── Barra de búsqueda — forma píldora ── */
+.global-user-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ms-surface);          /* #ffffff */
+  border-radius: 9999px;
+  padding: 0 16px 0 14px;
+  height: 44px;
+  box-shadow:
+    0 1px 3px  rgba(0,0,0,.06),
+    0 4px 12px rgba(0,0,0,.08),
+    0 8px 24px rgba(0,0,0,.05);
+  border: 1.5px solid var(--ms-border);
+  transition:
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+
+.global-user-search:focus-within {
+  border-color: var(--ms-blue);
+  box-shadow:
+    0 0 0 3px var(--ms-blue-light),
+    0 4px 12px rgba(0,0,208,.10);
+}
+
+/* Icono lupa */
+.gus-icon-search {
+  flex-shrink: 0;
+  color: var(--ms-ink-4);
+  display: flex;
+  align-items: center;
+  transition: color 200ms;
+}
+.global-user-search:focus-within .gus-icon-search {
+  color: var(--ms-blue);
+}
+
+/* Input */
+.gus-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ms-ink-2);
+  min-width: 0;
+}
+.gus-input::placeholder {
+  color: var(--ms-ink-4);
+  font-weight: 400;
+}
+
+/* Botón limpiar (×) */
+.gus-clear {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ms-border-dark);
+  color: var(--ms-ink-3);
+  font-size: 11px;
+  cursor: pointer;
+  display: none;               /* oculto hasta que haya texto */
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 150ms, color 150ms;
+}
+.gus-clear:hover {
+  background: #d13438;
+  color: #fff;
+}
+.gus-clear.visible {
+  display: flex;
+}
+
+/* Icono micrófono (decorativo) */
+.gus-icon-mic {
+  flex-shrink: 0;
+  color: var(--ms-ink-3);
+  display: flex;
+  align-items: center;
+  transition: color 150ms;
+}
+.gus-icon-mic:hover {
+  color: var(--ms-blue);
+  cursor: pointer;
+}
+
+/* ── Spinner de búsqueda ── */
+.gus-spinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--ms-border);
+  border-top-color: var(--ms-blue);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.gus-spinner.visible { display: block; }
+
+/* ── Dropdown de resultados ── */
+.gus-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--ms-surface);
+  border: 1.5px solid var(--ms-border);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 16px rgba(0,0,0,.08),
+    0 16px 40px rgba(0,0,0,.10);
+  z-index: 200;
+  overflow: hidden;
+
+  /* Animación de entrada */
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity   180ms cubic-bezier(.16,1,.3,1),
+    transform 180ms cubic-bezier(.16,1,.3,1);
+  pointer-events: none;
+}
+.gus-dropdown.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Cabecera del dropdown */
+.gus-dropdown-hdr {
+  padding: 10px 14px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ms-ink-4);
+  border-bottom: 1px solid var(--ms-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gus-result-count {
+  background: var(--ms-blue-light);
+  color: var(--ms-blue);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Lista de resultados */
+.gus-results {
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Fila de resultado individual */
+.gus-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 120ms;
+  border-bottom: 1px solid var(--ms-border);
+}
+.gus-result-item:last-child { border-bottom: none; }
+.gus-result-item:hover {
+  background: var(--ms-blue-xlight);
+}
+
+/* Avatar inicial */
+.gus-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ms-blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: -.01em;
+}
+
+.gus-result-info { flex: 1; min-width: 0; }
+.gus-result-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gus-result-meta {
+  font-size: 11px;
+  color: var(--ms-ink-4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* Badge del grupo al que pertenece */
+.gus-result-group {
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--ms-border);
+  color: var(--ms-ink-3);
+  border-radius: 6px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Estado vacío / sin resultados */
+.gus-no-results {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ms-ink-4);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Separador visual entre buscador global y selector de grupo */
+.gus-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px 10px;
+  color: var(--ms-ink-4);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.gus-divider::before,
+.gus-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ms-border);
+}
