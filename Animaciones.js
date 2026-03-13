@@ -625,36 +625,56 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
 
   // ── BLOQUE BOTONES ────────────────────────────
   if (tipo === "botones") {
-    // Estado vivo: array de objetos {label, url}
     const botonesData = [
       { label: "✅ Confirmar asistencia", url: "" },
       { label: "❌ No puedo asistir",     url: "" },
       { label: "❓ Más información",      url: "" },
     ];
-    // Guardamos referencia en el propio nodo para que renderPreview la lea
     block._botonesData = botonesData;
 
-    // Estructura base del bloque
     const topBtn = document.createElement("button");
     topBtn.type = "button"; topBtn.className = "add-btn add-top"; topBtn.title = "Añadir arriba"; topBtn.textContent = "+";
     const delBtn = document.createElement("button");
-    delBtn.type = "button"; delBtn.className = "btn-delete"; delBtn.title = "Eliminar"; delBtn.textContent = "✕";
-    const lbl = document.createElement("label"); lbl.textContent = "Botones de respuesta";
+    delBtn.type = "button"; delBtn.className = "btn-delete"; delBtn.title = "Eliminar bloque"; delBtn.textContent = "✕";
+
+    // Label igual que IMAGEN / PÁRRAFO / TÍTULO
+    const lbl = document.createElement("label"); lbl.textContent = "Botones";
+
+    // Mensaje informativo
+    const hint = document.createElement("div");
+    hint.className = "btn-block-hint";
+    hint.textContent = "Los textos son predefinidos, puedes editarlos libremente.";
+
     const list = document.createElement("div"); list.className = "btn-block-list";
+
     const botBtn = document.createElement("button");
     botBtn.type = "button"; botBtn.className = "add-btn add-bottom"; botBtn.title = "Añadir abajo"; botBtn.textContent = "+";
 
     block.appendChild(topBtn);
     block.appendChild(delBtn);
     block.appendChild(lbl);
+    block.appendChild(hint);
     block.appendChild(list);
     block.appendChild(botBtn);
 
     function renderBtnRows() {
       list.innerHTML = "";
+
       botonesData.forEach((btn, i) => {
         const row = document.createElement("div");
         row.className = "btn-block-row";
+
+        // Botón de eliminar fila (aparece al hover)
+        const rowDel = document.createElement("button");
+        rowDel.type = "button";
+        rowDel.className = "btn-row-del";
+        rowDel.title = "Quitar botón";
+        rowDel.textContent = "✕";
+        rowDel.addEventListener("click", () => {
+          botonesData.splice(i, 1);
+          renderBtnRows();
+          renderPreview();
+        });
 
         const labelInput = document.createElement("input");
         labelInput.type = "text";
@@ -677,10 +697,28 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
           renderPreview();
         });
 
+        row.appendChild(rowDel);
         row.appendChild(labelInput);
         row.appendChild(urlInput2);
         list.appendChild(row);
       });
+
+      // Botón "Añadir botón" — solo si hay menos de 3
+      if (botonesData.length < 3) {
+        const addRow = document.createElement("button");
+        addRow.type = "button";
+        addRow.className = "btn-block-add";
+        addRow.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir botón`;
+        addRow.addEventListener("click", () => {
+          botonesData.push({ label: "", url: "" });
+          renderBtnRows();
+          renderPreview();
+          // Focus en el nuevo input
+          const inputs = list.querySelectorAll(".btn-block-label");
+          inputs[inputs.length - 1]?.focus();
+        });
+        list.appendChild(addRow);
+      }
     }
 
     renderBtnRows();
@@ -1249,6 +1287,20 @@ function mostrarConfirmEnvio() {
   const titulo = getFieldValue("titulo");
   if (!titulo.text) { mostrarErrorValidacion("Título requerido", "La tarjeta necesita un título para poder enviarse.", "Escribe un título en el campo <strong>01 · Título</strong> del formulario."); return; }
 
+  const destinatario = canal === "teams"
+    ? document.getElementById("teamsRecipient")?.value?.trim()
+    : document.getElementById("emails")?.value?.trim();
+  if (!destinatario) {
+    const campoNombre = canal === "teams" ? "canal o grupo de Teams" : "destinatarios de Outlook";
+    const campoId    = canal === "teams" ? "<strong>Teams — Canal / Grupo</strong>" : "<strong>Destinatarios</strong>";
+    mostrarErrorValidacion(
+      "Destinatario requerido",
+      `Debes indicar a quién enviar la tarjeta antes de continuar.`,
+      `Rellena el campo ${campoId} con el ${campoNombre}.`
+    );
+    return;
+  }
+
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
   const canalIcon = canal === "teams" ? "📤" : "📧";
   const canalBadgeClass = canal === "teams" ? "badge-teams" : "badge-outlook";
@@ -1348,7 +1400,6 @@ function ejecutarEnvio() {
     const state = getCardState();
     if (state.titulo) {
       guardarEnviada(state);
-      guardarMiPlantilla(state);
       const histPanel = document.getElementById("histPanelInline");
       if (histPanel) {
         currentHistTab = "enviadas";
@@ -1666,46 +1717,55 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
 
   // Envoltorio limpio y sin variables nulas
 async function dispararEnvios() {
-    // 1. Detectar el Canal seleccionado
-    const canal = document.getElementById("canal")?.value;
-    
-    // 2. Obtener los destinatarios (aquí definimos la variable que te falta)
-    // Outlook usa "emails", Teams usa "teamsRecipient"
-    const inputID = (canal === "teams") ? 'teamsRecipient' : 'emails';
-    const inputDestinatarios = document.getElementById(inputID)?.value || ""; 
 
-    // Validación rápida
-    if (!inputDestinatarios.trim()) {
-        alert("Por favor, introduce al menos un destinatario.");
-        return;
-    }
+  // ═══════════════════════════════════════════════════════════════
+  // MODO LOCAL (activo) — UX completa sin servidor
+  // Guarda en historial, plantillas y muestra el modal de éxito.
+  // ═══════════════════════════════════════════════════════════════
+  ejecutarEnvio();
 
-    // 3. Obtener el JSON de la tarjeta y el asunto
-    // Usamos la función envoltorio que creamos en el paso anterior
-    const tarjetaJSON = window.generarCuerpoTarjeta(); 
-    const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
 
-    // 4. Configurar el endpoint y el cuerpo del mensaje
-    let endpoint = "";
-    let bodyPayload = {
-        destinatarios: inputDestinatarios,
-        asunto: textoAsunto,
-        tarjeta: tarjetaJSON
-    };
+  // ═══════════════════════════════════════════════════════════════
+  // MODO SERVIDOR (comentado) — descomentar cuando el backend esté listo
+  // Para activarlo: comenta el bloque MODO LOCAL de arriba y
+  // descomenta todo lo de abajo.
+  // ═══════════════════════════════════════════════════════════════
 
-    if (canal === "teams") {
-        endpoint = "/api/enviar-grupo-teams";
-    } else {
-        endpoint = "/api/enviar-outlook";
-    }
+  /*
 
-    // 5. Feedback visual: Bloquear el botón
-    const botonEnviar = document.getElementById('btnEnviar');
-    const textoOriginal = botonEnviar ? botonEnviar.innerText : "Enviar";
-    if (botonEnviar) {
-        botonEnviar.innerText = "Enviando...";
-        botonEnviar.disabled = true;
-    }
+  // 1. Canal y destinatario
+  const canal = document.getElementById("canal")?.value;
+  const inputID = canal === "teams" ? "teamsRecipient" : "emails";
+  const inputDestinatarios = document.getElementById(inputID)?.value?.trim() || "";
+
+  if (!inputDestinatarios) {
+    mostrarErrorValidacion(
+      "Destinatario requerido",
+      "Debes introducir al menos un destinatario antes de enviar.",
+      canal === "teams"
+        ? "Escribe el nombre del canal o grupo en el campo <strong>Teams</strong>."
+        : "Escribe una o varias direcciones en el campo <strong>Destinatarios</strong>."
+    );
+    return;
+  }
+
+  // 2. JSON de la tarjeta
+  let tarjetaJSON;
+  try { tarjetaJSON = window.generarCuerpoTarjeta?.(); } catch(e) { tarjetaJSON = null; }
+  if (!tarjetaJSON) { mostrarEnvioError(new Error("No se pudo generar el contenido de la tarjeta.")); return; }
+
+  // 3. Endpoint y payload
+  const endpoint  = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
+  const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
+  const bodyPayload = { destinatarios: inputDestinatarios, asunto: textoAsunto, tarjeta: tarjetaJSON };
+
+  // 4. Bloquear botón mientras se envía
+  const botonEnviar = document.querySelector(".btn-submit");
+  const textoOriginal = botonEnviar?.innerHTML || "";
+  if (botonEnviar) {
+    botonEnviar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando…`;
+    botonEnviar.disabled = true;
+  }
 
     // 6. Llamada al servidor
     try {
@@ -1718,29 +1778,12 @@ async function dispararEnvios() {
         const data = await respuesta.json();
 
         if (respuesta.ok) {
-            // ── GUARDADO AUTOMÁTICO COMO PLANTILLA ──────────────
-            const estadoActual = getCardState();
-            const mias = getStorage("yako_mis_plantillas");
-            const yaExiste = mias.some(p => p.state?.titulo === estadoActual.titulo);
-            if (!yaExiste && estadoActual.titulo) {
-                mias.unshift({ id: Date.now(), fecha: new Date().toLocaleString("es-ES"), state: estadoActual });
-                setStorage("yako_mis_plantillas", mias.slice(0, 20));
-            }
-            // ── FIN GUARDADO AUTOMÁTICO ──────────────────────────
-
             // Si tienes una función para mostrar éxito, úsala, si no, un alert
             if (typeof mostrarEnvioExito === "function") {
                 mostrarEnvioExito();
             } else {
                 alert("✅ " + (data.mensaje || "Enviado con éxito"));
             }
-
-            // ── TOAST DE CONFIRMACIÓN ────────────────────────────
-            const msgPlantilla = yaExiste
-                ? "✅ Tarjeta enviada correctamente."
-                : "✅ Tarjeta enviada y guardada como plantilla.";
-            showToast(msgPlantilla, "success");
-            // ── FIN TOAST ────────────────────────────────────────
         } else {
             throw new Error(data.error || "El servidor devolvió un error");
         }
@@ -2300,6 +2343,25 @@ document.querySelectorAll(".hist-tab").forEach(tab => {
 
 // Save draft button
 document.getElementById("btnGuardarBorrador")?.addEventListener("click", guardarBorrador);
+
+document.getElementById("btnGuardarPlantilla")?.addEventListener("click", () => {
+  const state = getCardState();
+  if (!state.titulo) {
+    mostrarErrorValidacion(
+      "Título requerido",
+      "La plantilla necesita un título para guardarse.",
+      "Escribe un título en el campo <strong>01 · Título</strong>."
+    );
+    return;
+  }
+  const mias = getStorage("yako_mis_plantillas");
+  if (mias.some(p => p.state?.titulo === state.titulo)) {
+    showToast("ℹ️ Ya tienes una plantilla con este título");
+    return;
+  }
+  guardarMiPlantilla(state);
+  showToast("📌 Plantilla guardada");
+});
 
 // History save is now handled inside mostrarOutputPanel()
 

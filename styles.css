@@ -3943,6 +3943,7 @@ input:not(:placeholder-shown):not(:focus) {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+  justify-content: center;
 }
 .card-action-btn {
   display: inline-flex;
@@ -4003,15 +4004,39 @@ a.card-action-btn:hover {
 .corp-upload-zone {
   flex-direction: column !important;
   align-items: center !important;
-  gap: 0 !important;
-  padding: 10px 12px !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 10px 14px !important;
+  text-align: center !important;
 }
 
 /* Fila principal (icono + texto) dentro de la zone */
-.corp-upload-zone > svg,
+.corp-upload-zone > svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+  margin-bottom: 2px !important;
+}
 .corp-upload-zone > span:first-of-type {
-  display: inline-flex;
-  align-items: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  white-space: normal !important;
+  text-align: center !important;
+  line-height: 1.5 !important;
+}
+
+/* El label "examinar" NO hereda el text-transform:uppercase de .block label */
+.corp-upload-zone label {
+  text-transform: none !important;
+  font-size: inherit !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  margin-bottom: 0 !important;
+  display: inline !important;
+  color: var(--ms-blue) !important;
+  cursor: pointer !important;
 }
 
 /* ═══════════════════════════════════════════════
