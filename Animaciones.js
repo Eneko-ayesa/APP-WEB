@@ -625,36 +625,56 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
 
   // ── BLOQUE BOTONES ────────────────────────────
   if (tipo === "botones") {
-    // Estado vivo: array de objetos {label, url}
     const botonesData = [
       { label: "✅ Confirmar asistencia", url: "" },
       { label: "❌ No puedo asistir",     url: "" },
       { label: "❓ Más información",      url: "" },
     ];
-    // Guardamos referencia en el propio nodo para que renderPreview la lea
     block._botonesData = botonesData;
 
-    // Estructura base del bloque
     const topBtn = document.createElement("button");
     topBtn.type = "button"; topBtn.className = "add-btn add-top"; topBtn.title = "Añadir arriba"; topBtn.textContent = "+";
     const delBtn = document.createElement("button");
-    delBtn.type = "button"; delBtn.className = "btn-delete"; delBtn.title = "Eliminar"; delBtn.textContent = "✕";
-    const lbl = document.createElement("label"); lbl.textContent = "Botones de respuesta";
+    delBtn.type = "button"; delBtn.className = "btn-delete"; delBtn.title = "Eliminar bloque"; delBtn.textContent = "✕";
+
+    // Label igual que IMAGEN / PÁRRAFO / TÍTULO
+    const lbl = document.createElement("label"); lbl.textContent = "Botones";
+
+    // Mensaje informativo
+    const hint = document.createElement("div");
+    hint.className = "btn-block-hint";
+    hint.textContent = "Los textos son predefinidos, puedes editarlos libremente.";
+
     const list = document.createElement("div"); list.className = "btn-block-list";
+
     const botBtn = document.createElement("button");
     botBtn.type = "button"; botBtn.className = "add-btn add-bottom"; botBtn.title = "Añadir abajo"; botBtn.textContent = "+";
 
     block.appendChild(topBtn);
     block.appendChild(delBtn);
     block.appendChild(lbl);
+    block.appendChild(hint);
     block.appendChild(list);
     block.appendChild(botBtn);
 
     function renderBtnRows() {
       list.innerHTML = "";
+
       botonesData.forEach((btn, i) => {
         const row = document.createElement("div");
         row.className = "btn-block-row";
+
+        // Botón de eliminar fila (aparece al hover)
+        const rowDel = document.createElement("button");
+        rowDel.type = "button";
+        rowDel.className = "btn-row-del";
+        rowDel.title = "Quitar botón";
+        rowDel.textContent = "✕";
+        rowDel.addEventListener("click", () => {
+          botonesData.splice(i, 1);
+          renderBtnRows();
+          renderPreview();
+        });
 
         const labelInput = document.createElement("input");
         labelInput.type = "text";
@@ -677,10 +697,28 @@ function crearBloque(tipo, referencia = null, posicion = "abajo") {
           renderPreview();
         });
 
+        row.appendChild(rowDel);
         row.appendChild(labelInput);
         row.appendChild(urlInput2);
         list.appendChild(row);
       });
+
+      // Botón "Añadir botón" — solo si hay menos de 3
+      if (botonesData.length < 3) {
+        const addRow = document.createElement("button");
+        addRow.type = "button";
+        addRow.className = "btn-block-add";
+        addRow.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir botón`;
+        addRow.addEventListener("click", () => {
+          botonesData.push({ label: "", url: "" });
+          renderBtnRows();
+          renderPreview();
+          // Focus en el nuevo input
+          const inputs = list.querySelectorAll(".btn-block-label");
+          inputs[inputs.length - 1]?.focus();
+        });
+        list.appendChild(addRow);
+      }
     }
 
     renderBtnRows();
@@ -1015,7 +1053,7 @@ function ensurePreviewPanel(type) {
         const card = document.createElement("div");
         card.className = "tpl-card tpl-card--saved";
         card.innerHTML = `
-          <button class="tpl-del-btn" data-id="${item.id}" title="Eliminar plantilla">✕</button>
+          <button class="tpl-del-btn tooltip--danger" data-id="${item.id}" data-tooltip="Eliminar plantilla" title="Eliminar plantilla">✕</button>
           <span class="tpl-icon">📌</span>
           <div class="tpl-name">${s.titulo || "(sin título)"}</div>
           <div class="tpl-desc">${s.canal === "outlook" ? "📧 Outlook" : "📤 Teams"} · ${item.fecha}</div>`;
@@ -1119,8 +1157,11 @@ function renderHistPanelInline() {
     const mias = getStorage("yako_mis_plantillas");
     const yaGuardada = mias.some(p => p.state?.titulo === item.state?.titulo);
     const btnPlantilla = currentHistTab === "enviadas"
-      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
+      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" data-tooltip="${yaGuardada ? "Ya guardada como plantilla" : "Fijar como plantilla"}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
       : "";
+    const labelBorrar = currentHistTab === "borradores"
+      ? `data-tooltip="Eliminar borrador"`
+      : `data-tooltip="Eliminar tarjeta"`;
     return `
     <div class="hist-item">
       <div class="hist-dot ${canal}"></div>
@@ -1132,8 +1173,10 @@ function renderHistPanelInline() {
       <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
         ${btnPlantilla}
-        ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}">📂</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}">🔁</button>`}
-        <button class="hist-btn hist-btn--del" data-action="borrar" data-i="${i}">🗑</button>
+        ${currentHistTab === "borradores"
+          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂</button>`
+          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁</button>`}
+        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" ${labelBorrar}>🗑</button>
       </div>
     </div>`;
   }).join("")}</div>`;
@@ -1244,6 +1287,20 @@ function mostrarConfirmEnvio() {
   const titulo = getFieldValue("titulo");
   if (!titulo.text) { mostrarErrorValidacion("Título requerido", "La tarjeta necesita un título para poder enviarse.", "Escribe un título en el campo <strong>01 · Título</strong> del formulario."); return; }
 
+  const destinatario = canal === "teams"
+    ? document.getElementById("teamsRecipient")?.value?.trim()
+    : document.getElementById("emails")?.value?.trim();
+  if (!destinatario) {
+    const campoNombre = canal === "teams" ? "canal o grupo de Teams" : "destinatarios de Outlook";
+    const campoId    = canal === "teams" ? "<strong>Teams — Canal / Grupo</strong>" : "<strong>Destinatarios</strong>";
+    mostrarErrorValidacion(
+      "Destinatario requerido",
+      `Debes indicar a quién enviar la tarjeta antes de continuar.`,
+      `Rellena el campo ${campoId} con el ${campoNombre}.`
+    );
+    return;
+  }
+
   const canalLabel = canal === "teams" ? "Microsoft Teams" : "Outlook";
   const canalIcon = canal === "teams" ? "📤" : "📧";
   const canalBadgeClass = canal === "teams" ? "badge-teams" : "badge-outlook";
@@ -1343,7 +1400,6 @@ function ejecutarEnvio() {
     const state = getCardState();
     if (state.titulo) {
       guardarEnviada(state);
-      guardarMiPlantilla(state);
       const histPanel = document.getElementById("histPanelInline");
       if (histPanel) {
         currentHistTab = "enviadas";
@@ -1661,46 +1717,54 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
 
   // Envoltorio limpio y sin variables nulas
 async function dispararEnvios() {
-    // 1. Detectar el Canal seleccionado
-    const canal = document.getElementById("canal")?.value;
-    
-    // 2. Obtener los destinatarios (aquí definimos la variable que te falta)
-    // Outlook usa "emails", Teams usa "teamsRecipient"
-    const inputID = (canal === "teams") ? 'teamsRecipient' : 'emails';
-    const inputDestinatarios = document.getElementById(inputID)?.value || ""; 
 
-    // Validación rápida
-    if (!inputDestinatarios.trim()) {
-        alert("Por favor, introduce al menos un destinatario.");
-        return;
-    }
+  // ═══════════════════════════════════════════════════════════════
+  // MODO LOCAL (activo) — UX completa sin servidor
+  // Guarda en historial, plantillas y muestra el modal de éxito.
+  // ═══════════════════════════════════════════════════════════════
+  ejecutarEnvio();
 
-    // 3. Obtener el JSON de la tarjeta y el asunto
-    // Usamos la función envoltorio que creamos en el paso anterior
-    const tarjetaJSON = window.generarCuerpoTarjeta(); 
-    const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
 
-    // 4. Configurar el endpoint y el cuerpo del mensaje
-    let endpoint = "";
-    let bodyPayload = {
-        destinatarios: inputDestinatarios,
-        asunto: textoAsunto,
-        tarjeta: tarjetaJSON
-    };
+  // ═══════════════════════════════════════════════════════════════
+  // MODO SERVIDOR (comentado) — descomentar cuando el backend esté listo
+  // Para activarlo: comenta el bloque MODO LOCAL de arriba y
+  // descomenta todo lo de abajo.
+  // ═══════════════════════════════════════════════════════════════
 
-    if (canal === "teams") {
-        endpoint = "/api/enviar-grupo-teams";
-    } else {
-        endpoint = "/api/enviar-outlook";
-    }
 
-    // 5. Feedback visual: Bloquear el botón
-    const botonEnviar = document.getElementById('btnEnviar');
-    const textoOriginal = botonEnviar ? botonEnviar.innerText : "Enviar";
-    if (botonEnviar) {
-        botonEnviar.innerText = "Enviando...";
-        botonEnviar.disabled = true;
-    }
+  // 1. Canal y destinatario
+  const canal = document.getElementById("canal")?.value;
+  const inputID = canal === "teams" ? "teamsRecipient" : "emails";
+  const inputDestinatarios = document.getElementById(inputID)?.value?.trim() || "";
+
+  if (!inputDestinatarios) {
+    mostrarErrorValidacion(
+      "Destinatario requerido",
+      "Debes introducir al menos un destinatario antes de enviar.",
+      canal === "teams"
+        ? "Escribe el nombre del canal o grupo en el campo <strong>Teams</strong>."
+        : "Escribe una o varias direcciones en el campo <strong>Destinatarios</strong>."
+    );
+    return;
+  }
+
+  // 2. JSON de la tarjeta
+  let tarjetaJSON;
+  try { tarjetaJSON = window.generarCuerpoTarjeta?.(); } catch(e) { tarjetaJSON = null; }
+  if (!tarjetaJSON) { mostrarEnvioError(new Error("No se pudo generar el contenido de la tarjeta.")); return; }
+
+  // 3. Endpoint y payload
+  const endpoint  = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
+  const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
+  const bodyPayload = { destinatarios: inputDestinatarios, asunto: textoAsunto, tarjeta: tarjetaJSON };
+
+  // 4. Bloquear botón mientras se envía
+  const botonEnviar = document.querySelector(".btn-submit");
+  const textoOriginal = botonEnviar?.innerHTML || "";
+  if (botonEnviar) {
+    botonEnviar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando…`;
+    botonEnviar.disabled = true;
+  }
 
     // 6. Llamada al servidor
     try {
@@ -2002,13 +2066,6 @@ const PLANTILLAS = [
     imagen: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=300&fit=crop&auto=format"
   },
 
-  // {
-  //   icon: "💸", name: "Solo para Unai", desc: "Mensaje muy importante",
-  //   titulo: "💸 Recordatorio urgente", subtitulo: "Atención: esto es solo para ti",
-  //   cuerpo: "#UnaiPaganos 😘",
-  //   imagen: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=300&fit=crop&auto=format"
-  // },
-
   {
     icon: "🌍", name: "Sostenibilidad", desc: "Iniciativa verde",
     titulo: "🌍 Compromiso con el planeta", subtitulo: "Nuestra iniciativa de sostenibilidad",
@@ -2221,8 +2278,10 @@ function renderHistPanel() {
       </div>
       <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
-        ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}">📂 Cargar</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}">🔁 Clonar</button>`}
-        <button class="hist-btn hist-btn--del" data-action="borrar" data-i="${i}">🗑</button>
+        ${currentHistTab === "borradores"
+          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
+          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
+        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
       </div>
     </div>`).join("")}</div>`;
 
@@ -2277,6 +2336,25 @@ document.querySelectorAll(".hist-tab").forEach(tab => {
 // Save draft button
 document.getElementById("btnGuardarBorrador")?.addEventListener("click", guardarBorrador);
 
+document.getElementById("btnGuardarPlantilla")?.addEventListener("click", () => {
+  const state = getCardState();
+  if (!state.titulo) {
+    mostrarErrorValidacion(
+      "Título requerido",
+      "La plantilla necesita un título para guardarse.",
+      "Escribe un título en el campo <strong>01 · Título</strong>."
+    );
+    return;
+  }
+  const mias = getStorage("yako_mis_plantillas");
+  if (mias.some(p => p.state?.titulo === state.titulo)) {
+    showToast("ℹ️ Ya tienes una plantilla con este título");
+    return;
+  }
+  guardarMiPlantilla(state);
+  showToast("📌 Plantilla guardada");
+});
+
 // History save is now handled inside mostrarOutputPanel()
 
 // ═══════════════════════════════════════════════
@@ -2306,6 +2384,7 @@ function addCharCounter(fieldId, max, label) {
 setTimeout(() => {
   addCharCounter("titulo", 80, "Título");
   addCharCounter("subtitulo", 140, "Subtítulo");
+  addCharCounter("parrafo" , 500, "Parrafo")
 }, 200);
 
 // ── SEND BUTTON FEEDBACK (handled in mostrarOutputPanel) ──────────────────────
@@ -2539,8 +2618,72 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 
 // ── RENDER IMAGES PANEL ────────────────────────
 function renderMiembrosPanel(panel) {
-  // 1. Estructura base: Solo Cabecera y Selector de Grupos
+  // 1. Estructura base: Buscador global + Cabecera + Desplegable + Tabla
   panel.innerHTML = `
+    <!-- ══ BUSCADOR GLOBAL DE USUARIOS ═══════════════════ -->
+    <div class="gus-section">
+      <div class="gus-label">Búsqueda global de usuarios</div>
+      <div class="gus-wrap">
+
+        <!-- Barra en forma de píldora -->
+        <div class="global-user-search" role="search" aria-label="Buscar usuario en todos los grupos">
+          <!-- Icono lupa -->
+          <span class="gus-icon-search" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+
+          <!-- Input principal -->
+          <input
+            id="gusInput"
+            class="gus-input"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Buscar usuario en todos los grupos..."
+            aria-label="Buscar usuario en todos los grupos"
+            aria-autocomplete="list"
+            aria-controls="gusDropdown"
+          >
+
+          <!-- Spinner (visible mientras carga) -->
+          <span class="gus-spinner" id="gusSpinner" aria-hidden="true"></span>
+
+          <!-- Botón limpiar -->
+          <button class="gus-clear" id="gusClear" type="button"
+                  title="Limpiar búsqueda" aria-label="Limpiar búsqueda">✕</button>
+
+          <!-- Icono micrófono (decorativo / futuro) -->
+          <span class="gus-icon-mic" aria-hidden="true" title="Búsqueda por voz (próximamente)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8"  y1="23" x2="16" y2="23"/>
+            </svg>
+          </span>
+        </div>
+
+        <!-- Dropdown de resultados -->
+        <div class="gus-dropdown" id="gusDropdown" role="listbox" aria-label="Resultados de búsqueda">
+          <div class="gus-dropdown-hdr">
+            <span>Resultados</span>
+            <span class="gus-result-count" id="gusCount">0</span>
+          </div>
+          <div class="gus-results" id="gusResults" role="list"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Separador visual entre buscador global y explorador por grupo -->
+    <div class="gus-divider">o explora por lista</div>
+
+    <!-- ══ EXPLORADOR DE LISTAS (original) ══════════════ -->
     <div class="panel-section-hdr">
       <h2>👥 Explorador de Listas</h2>
       <p>Selecciona una lista de distribución para ver sus miembros</p>
@@ -2551,6 +2694,18 @@ function renderMiembrosPanel(panel) {
             <select id="exploradorGruposSelect" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--ms-border-dark); font-family: inherit; background: var(--ms-surface); outline: none;">
                 <option value="">Cargando listas de Microsoft 365... ⏳</option>
             </select>
+        </div>
+
+        <!-- Mini buscador de usuarios (filtro dentro del grupo) -->
+        <div id="miembrosSearchWrap" style="display:none; margin-bottom:14px; position:relative;">
+          <div style="display:flex; align-items:center; background:#f5f5fa; border:1.5px solid #e0e0e8; border-radius:8px; padding:6px 12px; gap:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input id="miembrosSearchInput" type="text" placeholder="Buscar usuario por nombre o email..." 
+              style="border:none; background:transparent; outline:none; font-size:13px; width:100%; font-family:inherit; color:#333;" />
+            <button id="miembrosSearchClear" style="border:none; background:none; cursor:pointer; color:#aaa; font-size:16px; line-height:1; padding:0; display:none;" title="Limpiar búsqueda">✕</button>
+          </div>
         </div>
 
         <div id="miembrosContent">
@@ -2567,8 +2722,134 @@ function renderMiembrosPanel(panel) {
     </div>
   `;
 
-  const selectGrupos = panel.querySelector("#exploradorGruposSelect");
-  const content = panel.querySelector("#miembrosContent");
+  // ── REFS ─────────────────────────────────────────────
+  const gusInput    = panel.querySelector("#gusInput");
+  const gusDropdown = panel.querySelector("#gusDropdown");
+  const gusResults  = panel.querySelector("#gusResults");
+  const gusCount    = panel.querySelector("#gusCount");
+  const gusSpinner  = panel.querySelector("#gusSpinner");
+  const gusClear    = panel.querySelector("#gusClear");
+
+  const selectGrupos  = panel.querySelector("#exploradorGruposSelect");
+  const content       = panel.querySelector("#miembrosContent");
+  const searchWrap    = panel.querySelector("#miembrosSearchWrap");
+  const searchInput   = panel.querySelector("#miembrosSearchInput");
+  const searchClear   = panel.querySelector("#miembrosSearchClear");
+
+  // ── BUSCADOR GLOBAL — lógica ─────────────────────────
+  let gusTimer = null;
+
+  function gusShowDropdown(html, count) {
+    gusResults.innerHTML = html;
+    gusCount.textContent = count;
+    gusDropdown.classList.add("open");
+  }
+
+  function gusHide() {
+    gusDropdown.classList.remove("open");
+    gusResults.innerHTML = "";
+  }
+
+  function gusRenderResultados(usuarios) {
+    if (!usuarios.length) {
+      gusShowDropdown(`
+        <div class="gus-no-results">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          Sin resultados para esta búsqueda
+        </div>`, "0");
+      return;
+    }
+
+    const rows = usuarios.map(u => {
+      const nombre  = u.nombre || u.displayName || "—";
+      const email   = u.correo || u.mail || u.userPrincipalName || "—";
+      const grupo   = u.grupo  || u.groupName || "";
+      const inicial = nombre.charAt(0).toUpperCase();
+      return `
+        <div class="gus-result-item" role="option" tabindex="0"
+             data-email="${email}" data-nombre="${nombre}" data-grupo="${grupo}"
+             title="Seleccionar ${nombre}">
+          <div class="gus-avatar">${inicial}</div>
+          <div class="gus-result-info">
+            <div class="gus-result-name">${nombre}</div>
+            <div class="gus-result-meta">${email}</div>
+          </div>
+          ${grupo ? `<span class="gus-result-group" title="${grupo}">${grupo}</span>` : ""}
+        </div>`;
+    }).join("");
+
+    gusShowDropdown(rows, usuarios.length);
+
+    // Click en resultado: rellena el campo de destinatario y cierra
+    gusResults.querySelectorAll(".gus-result-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const emailVal = item.dataset.email;
+        const canal = document.getElementById("canal")?.value;
+        if (canal === "teams") {
+          const teamsEl = document.getElementById("teamsRecipient");
+          if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+        } else {
+          const emailsEl = document.getElementById("emails");
+          if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+        }
+        gusInput.value = item.dataset.nombre;
+        gusClear.classList.add("visible");
+        gusHide();
+        showToast(`✅ Usuario seleccionado: ${item.dataset.nombre}`);
+      });
+      // Navegación por teclado
+      item.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); item.click(); }
+      });
+    });
+  }
+
+  // Busca en el servidor (endpoint: GET /api/buscar-usuario?q=...)
+  async function gusBuscar(q) {
+    gusSpinner.classList.add("visible");
+    try {
+      const res  = await fetch("/api/buscar-usuario?q=" + encodeURIComponent(q));
+      const data = await res.json();
+      const usuarios = Array.isArray(data) ? data : (data.usuarios || data.results || []);
+      gusRenderResultados(usuarios);
+    } catch {
+      gusShowDropdown(`
+        <div class="gus-no-results">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#faa" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Error al conectar con el servidor
+        </div>`, "!");
+    } finally {
+      gusSpinner.classList.remove("visible");
+    }
+  }
+
+  gusInput.addEventListener("input", () => {
+    const q = gusInput.value.trim();
+    gusClear.classList.toggle("visible", q.length > 0);
+    clearTimeout(gusTimer);
+    if (q.length < 2) { gusHide(); return; }
+    // Debounce 350ms para no saturar la API
+    gusTimer = setTimeout(() => gusBuscar(q), 350);
+  });
+
+  gusClear.addEventListener("click", () => {
+    gusInput.value = "";
+    gusClear.classList.remove("visible");
+    gusHide();
+    gusInput.focus();
+  });
+
+  // Cierre al hacer clic fuera
+  document.addEventListener("click", e => {
+    if (!panel.querySelector(".gus-wrap").contains(e.target)) gusHide();
+  }, { capture: true });
+
+  // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
   // 2. Cargar el desplegable de grupos
   fetch("/api/grupos")
