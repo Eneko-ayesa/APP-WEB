@@ -2618,8 +2618,72 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 
 // ── RENDER IMAGES PANEL ────────────────────────
 function renderMiembrosPanel(panel) {
-  // 1. Estructura base: Cabecera + Desplegable independiente + Contenedor de tabla
+  // 1. Estructura base: Buscador global + Cabecera + Desplegable + Tabla
   panel.innerHTML = `
+    <!-- ══ BUSCADOR GLOBAL DE USUARIOS ═══════════════════ -->
+    <div class="gus-section">
+      <div class="gus-label">Búsqueda global de usuarios</div>
+      <div class="gus-wrap">
+
+        <!-- Barra en forma de píldora -->
+        <div class="global-user-search" role="search" aria-label="Buscar usuario en todos los grupos">
+          <!-- Icono lupa -->
+          <span class="gus-icon-search" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+
+          <!-- Input principal -->
+          <input
+            id="gusInput"
+            class="gus-input"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Buscar usuario en todos los grupos..."
+            aria-label="Buscar usuario en todos los grupos"
+            aria-autocomplete="list"
+            aria-controls="gusDropdown"
+          >
+
+          <!-- Spinner (visible mientras carga) -->
+          <span class="gus-spinner" id="gusSpinner" aria-hidden="true"></span>
+
+          <!-- Botón limpiar -->
+          <button class="gus-clear" id="gusClear" type="button"
+                  title="Limpiar búsqueda" aria-label="Limpiar búsqueda">✕</button>
+
+          <!-- Icono micrófono (decorativo / futuro) -->
+          <span class="gus-icon-mic" aria-hidden="true" title="Búsqueda por voz (próximamente)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8"  y1="23" x2="16" y2="23"/>
+            </svg>
+          </span>
+        </div>
+
+        <!-- Dropdown de resultados -->
+        <div class="gus-dropdown" id="gusDropdown" role="listbox" aria-label="Resultados de búsqueda">
+          <div class="gus-dropdown-hdr">
+            <span>Resultados</span>
+            <span class="gus-result-count" id="gusCount">0</span>
+          </div>
+          <div class="gus-results" id="gusResults" role="list"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Separador visual entre buscador global y explorador por grupo -->
+    <div class="gus-divider">o explora por lista</div>
+
+    <!-- ══ EXPLORADOR DE LISTAS (original) ══════════════ -->
     <div class="panel-section-hdr">
       <h2>👥 Explorador de Listas</h2>
       <p>Selecciona una lista de distribución para ver sus miembros</p>
@@ -2632,7 +2696,7 @@ function renderMiembrosPanel(panel) {
             </select>
         </div>
 
-        <!-- Mini buscador de usuarios -->
+        <!-- Mini buscador de usuarios (filtro dentro del grupo) -->
         <div id="miembrosSearchWrap" style="display:none; margin-bottom:14px; position:relative;">
           <div style="display:flex; align-items:center; background:#f5f5fa; border:1.5px solid #e0e0e8; border-radius:8px; padding:6px 12px; gap:8px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
@@ -2659,11 +2723,134 @@ function renderMiembrosPanel(panel) {
     </div>
   `;
 
-  const selectGrupos = panel.querySelector("#exploradorGruposSelect");
-  const content = panel.querySelector("#miembrosContent");
-  const searchWrap = panel.querySelector("#miembrosSearchWrap");
-  const searchInput = panel.querySelector("#miembrosSearchInput");
-  const searchClear = panel.querySelector("#miembrosSearchClear");
+  // ── REFS ─────────────────────────────────────────────
+  const gusInput    = panel.querySelector("#gusInput");
+  const gusDropdown = panel.querySelector("#gusDropdown");
+  const gusResults  = panel.querySelector("#gusResults");
+  const gusCount    = panel.querySelector("#gusCount");
+  const gusSpinner  = panel.querySelector("#gusSpinner");
+  const gusClear    = panel.querySelector("#gusClear");
+
+  const selectGrupos  = panel.querySelector("#exploradorGruposSelect");
+  const content       = panel.querySelector("#miembrosContent");
+  const searchWrap    = panel.querySelector("#miembrosSearchWrap");
+  const searchInput   = panel.querySelector("#miembrosSearchInput");
+  const searchClear   = panel.querySelector("#miembrosSearchClear");
+
+  // ── BUSCADOR GLOBAL — lógica ─────────────────────────
+  let gusTimer = null;
+
+  function gusShowDropdown(html, count) {
+    gusResults.innerHTML = html;
+    gusCount.textContent = count;
+    gusDropdown.classList.add("open");
+  }
+
+  function gusHide() {
+    gusDropdown.classList.remove("open");
+    gusResults.innerHTML = "";
+  }
+
+  function gusRenderResultados(usuarios) {
+    if (!usuarios.length) {
+      gusShowDropdown(`
+        <div class="gus-no-results">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          Sin resultados para esta búsqueda
+        </div>`, "0");
+      return;
+    }
+
+    const rows = usuarios.map(u => {
+      const nombre  = u.nombre || u.displayName || "—";
+      const email   = u.correo || u.mail || u.userPrincipalName || "—";
+      const grupo   = u.grupo  || u.groupName || "";
+      const inicial = nombre.charAt(0).toUpperCase();
+      return `
+        <div class="gus-result-item" role="option" tabindex="0"
+             data-email="${email}" data-nombre="${nombre}" data-grupo="${grupo}"
+             title="Seleccionar ${nombre}">
+          <div class="gus-avatar">${inicial}</div>
+          <div class="gus-result-info">
+            <div class="gus-result-name">${nombre}</div>
+            <div class="gus-result-meta">${email}</div>
+          </div>
+          ${grupo ? `<span class="gus-result-group" title="${grupo}">${grupo}</span>` : ""}
+        </div>`;
+    }).join("");
+
+    gusShowDropdown(rows, usuarios.length);
+
+    // Click en resultado: rellena el campo de destinatario y cierra
+    gusResults.querySelectorAll(".gus-result-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const emailVal = item.dataset.email;
+        const canal = document.getElementById("canal")?.value;
+        if (canal === "teams") {
+          const teamsEl = document.getElementById("teamsRecipient");
+          if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+        } else {
+          const emailsEl = document.getElementById("emails");
+          if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+        }
+        gusInput.value = item.dataset.nombre;
+        gusClear.classList.add("visible");
+        gusHide();
+        showToast(`✅ Usuario seleccionado: ${item.dataset.nombre}`);
+      });
+      // Navegación por teclado
+      item.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); item.click(); }
+      });
+    });
+  }
+
+  // Busca en el servidor (endpoint: GET /api/buscar-usuario?q=...)
+  async function gusBuscar(q) {
+    gusSpinner.classList.add("visible");
+    try {
+      const res  = await fetch("/api/buscar-usuario?q=" + encodeURIComponent(q));
+      const data = await res.json();
+      const usuarios = Array.isArray(data) ? data : (data.usuarios || data.results || []);
+      gusRenderResultados(usuarios);
+    } catch {
+      gusShowDropdown(`
+        <div class="gus-no-results">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#faa" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Error al conectar con el servidor
+        </div>`, "!");
+    } finally {
+      gusSpinner.classList.remove("visible");
+    }
+  }
+
+  gusInput.addEventListener("input", () => {
+    const q = gusInput.value.trim();
+    gusClear.classList.toggle("visible", q.length > 0);
+    clearTimeout(gusTimer);
+    if (q.length < 2) { gusHide(); return; }
+    // Debounce 350ms para no saturar la API
+    gusTimer = setTimeout(() => gusBuscar(q), 350);
+  });
+
+  gusClear.addEventListener("click", () => {
+    gusInput.value = "";
+    gusClear.classList.remove("visible");
+    gusHide();
+    gusInput.focus();
+  });
+
+  // Cierre al hacer clic fuera
+  document.addEventListener("click", e => {
+    if (!panel.querySelector(".gus-wrap").contains(e.target)) gusHide();
+  }, { capture: true });
+
+  // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
   // Variable para guardar todos los miembros cargados (para filtrar sin re-fetch)
   let allMiembros = [];
