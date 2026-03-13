@@ -248,8 +248,6 @@ app.get('/api/buscar-usuarios', async (req, res) => {
 });
 
 // Ruta para obtener los grupos y mostrarlos en el frontend
-// Ruta para obtener los grupos y mostrarlos en el frontend
-// Ruta para obtener los grupos y mostrarlos en el frontend
 app.get('/api/grupos', async (req, res) => {
     try {
         // 🛑 EL CAMBIO ESTÁ AQUÍ: Usamos 'client' en lugar de 'graphClient'
@@ -320,14 +318,15 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
         // PANEL DE PRUEBAS
         // ====================================================================
         const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
-        const MODO_BOMBARDEO  = true; // true = Envía 1000 tarjetas al primer destinatario.
+        const MODO_BOMBARDEO  = true;  // true = Envía tarjetas masivas al primer destinatario.
+        const CANTIDAD_BOMBARDEO = 3000; // Número de tarjetas a enviar en modo bombardeo
         // ====================================================================
         
         if (!destinatarios) {
             return res.status(400).json({ error: "No hay destinatarios seleccionados." });
         }
 
-        // 1. Transformamos el string (separado por comas) que envía el frontend en un array
+        // 1. Transformamos el string
         const listaCorreos = typeof destinatarios === 'string' 
             ? destinatarios.split(',').map(e => e.trim()).filter(e => e !== "")
             : destinatarios;
@@ -338,7 +337,7 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
 
         let targetUserIds = new Set(); 
 
-        // 2. Fase de desglose de destinatarios (Usamos 'client' en vez de 'graphClient')
+        // 2. Fase de desglose de destinatarios
         for (const email of listaCorreos) {
             // A) Buscamos si es un grupo
             const groupSearch = await client.api(`/groups`)
@@ -364,7 +363,7 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
             }
         }
 
-        // 3. Preparamos las referencias cruzando con tu base de datos de Teams
+        // 3. Preparamos las referencias
         const referenciasValidas = [];
         for (const id of Object.keys(conversationReferences)) {
             const referencia = conversationReferences[id];
@@ -374,7 +373,7 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
         }
 
         if (referenciasValidas.length === 0) {
-            return res.status(404).json({ error: "Ninguno de los destinatarios (o miembros del grupo) tiene el bot instalado." });
+            return res.status(404).json({ error: "Ninguno de los destinatarios tiene el bot instalado." });
         }
 
         // ====================================================================
@@ -384,19 +383,19 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
             const usuarioObjetivo = referenciasValidas[0]; 
             referenciasValidas.length = 0; 
             
-            for (let i = 0; i < 1000; i++) {
+            for (let i = 0; i < CANTIDAD_BOMBARDEO; i++) {
                 referenciasValidas.push(usuarioObjetivo);
             }
-            console.log("💣 MODO BOMBARDEO ACTIVO: Se generaron 1000 envíos para el usuario.");
+            console.log(` MODO BOMBARDEO ACTIVO: Se generaron ${CANTIDAD_BOMBARDEO} envíos.`);
         }
 
-        // 4. RESPUESTA INMEDIATA AL FRONTEND (Evita que el navegador se quede cargando)
+        // 4. RESPUESTA INMEDIATA AL FRONTEND
         if (MODO_SIMULACION) {
-            res.status(202).json({ mensaje: `[SIMULACIÓN] Detectados ${targetUserIds.size} usuarios. Mira la consola (sin envío).` });
+            res.status(202).json({ mensaje: `[SIMULACIÓN] Detectados ${targetUserIds.size} usuarios. Mira la consola.` });
         } else if (MODO_BOMBARDEO) {
-            res.status(202).json({ mensaje: `[MODO TEST] Enviando tarjetas de prueba a tu cuenta...` });
+            res.status(202).json({ mensaje: `[MODO TEST] Enviando ${CANTIDAD_BOMBARDEO} tarjetas a tu cuenta...` });
         } else {
-            res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${referenciasValidas.length} usuarios válidos con el bot.` });
+            res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${referenciasValidas.length} usuarios válidos.` });
         }
 
         // --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE ---
@@ -408,19 +407,20 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
                             attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
                         });
                     });
-                    return true; // Éxito
+                    return true;
                 } catch (error) {
                     if (intento === maxIntentos) throw error; 
-                    await new Promise(r => setTimeout(r, 2000 * intento));
+                    await new Promise(r => setTimeout(r, 2000 * intento)); // Backoff progresivo
                 }
             }
         };
 
-        // 5. PROCESO ASÍNCRONO ACELERADO (Se ejecuta en segundo plano)
+        // 5. PROCESO ASÍNCRONO CON CONTADOR EN VIVO
         (async () => {
             try {
-                const TAMANO_LOTE = 15;        
-                const ESPERA_ENTRE_LOTES = 800; 
+                // AJUSTE DE SEGURIDAD (MÁXIMA VELOCIDAD SIN BLOQUEO)
+                const TAMANO_LOTE = 15;        // 15 mensajes por lote
+                const ESPERA_ENTRE_LOTES = 500; // Medio segundo de pausa entre lotes (30 msgs/seg)
 
                 let exitos = 0;
                 let fallos = 0;
@@ -430,7 +430,7 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
                     lotes.push(referenciasValidas.slice(i, i + TAMANO_LOTE));
                 }
 
-                console.log(`\n🚀 INICIANDO ENTREGA ACELERADA TEAMS: ${referenciasValidas.length} tarjetas en cola.`);
+                console.log(`\n🚀 INICIANDO ENTREGA TEAMS: ${referenciasValidas.length} tarjetas en ${lotes.length} lotes.`);
                 const startTime = Date.now();
 
                 for (let i = 0; i < lotes.length; i++) {
@@ -448,7 +448,19 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
                     });
 
                     await Promise.all(promesasEnvio);
-                    console.log(`📦 Lote ${i + 1}/${lotes.length} completado.`);
+                    
+                    //  CÁLCULO DE TIEMPO Y ETA EN VIVO
+                    const tiempoActual = Date.now();
+                    const milisegundosTranscurridos = tiempoActual - startTime;
+                    const velocidadPorLote = milisegundosTranscurridos / (i + 1);
+                    const lotesRestantes = lotes.length - (i + 1);
+                    const etaMilisegundos = velocidadPorLote * lotesRestantes;
+
+                    const segTranscurridos = (milisegundosTranscurridos / 1000).toFixed(1);
+                    const segRestantes = (etaMilisegundos / 1000).toFixed(1);
+
+                    // Borra la línea anterior de la consola y reescribe para hacer efecto "contador dinámico"
+                    process.stdout.write(`\rLote ${i + 1}/${lotes.length} |  Llevamos: ${segTranscurridos}s | Faltan: ~${segRestantes}s para terminar...`);
 
                     if (i < lotes.length - 1) {
                         await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
@@ -458,15 +470,15 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
                 const endTime = Date.now();
                 const minutosTranscurridos = ((endTime - startTime) / 60000).toFixed(2);
 
-                console.log(`\n🏁 REPORTE FINAL DE ENVÍO TEAMS:`);
+                console.log(`\n\nREPORTE FINAL DE ENVÍO TEAMS:`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(`⏱️  Tiempo total: ${minutosTranscurridos} minutos`);
+                console.log(` Tiempo total real: ${minutosTranscurridos} minutos`);
                 console.log(`✅ Entregas confirmadas: ${exitos}`);
                 console.log(`❌ Errores irrecuperables: ${fallos}`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
             } catch (errAsync) {
-                console.error("❌ Error en el proceso de fondo de Teams:", errAsync);
+                console.error("\n❌ Error en el proceso de fondo de Teams:", errAsync);
             }
         })();
 
