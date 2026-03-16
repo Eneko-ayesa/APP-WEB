@@ -1757,6 +1757,30 @@ div.rich-field a {
   text-overflow: ellipsis;
   max-width: 340px;
 }
+
+/* ── HIST RESULTS: delivery summary pills ── */
+.hist-results {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+.hist-res-ok,
+.hist-res-err,
+.hist-res-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.hist-res-ok   { background: #e8f5e8; color: #107c10; }
+.hist-res-err  { background: #fef0ef; color: #c4262e; }
+.hist-res-time { background: #eff6ff; color: #1d4ed8; }
 .hist-badge {
   font-size: 10px;
   font-weight: 700;
@@ -3377,9 +3401,10 @@ input:not(:placeholder-shown):not(:focus) {
   .channel-tab { padding: 4px 6px; font-size: 10px; }
   .teams-sidebar { width: 36px !important; }
   .ts-icon { width: 24px; height: 24px; }
-  .form-actions-row { flex-wrap: wrap; gap: 8px; }
-  .btn-save-draft, .btn-secondary-action { flex: 1 1 120px; justify-content: center; }
-  #btnLimpiar { flex-shrink: 0; width: 42px; min-width: 42px; }
+  .form-actions-row { flex-wrap: wrap; gap: 6px; }
+  .btn-save-draft, .btn-secondary-action { flex: 1 1 80px; justify-content: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; padding: 9px 8px; }
+  #btnLimpiar { flex: 1 1 80px; min-width: 0; width: auto; }
+  .form-actions-bottom { padding: 12px 16px 16px; margin-left: -16px; margin-right: -16px; }
   .topbar-user-btn span#topbarUserName { display: none; }
   .topbar-user-btn { padding: 4px 8px 4px 5px; }
   .global-topbar-inner > .brand > span { display: none; }

@@ -1169,6 +1169,20 @@ function renderHistPanelInline() {
         <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
         <div class="hist-meta">${canalLabel} · ${item.fecha}</div>
         ${destHtml}
+        ${currentHistTab === "enviadas" && item.resultados ? (() => {
+          const r = item.resultados;
+          const tiempoStr = r.tiempoMs != null
+            ? (r.tiempoMs < 1000 ? r.tiempoMs + "ms" : (r.tiempoMs/1000).toFixed(1) + "s")
+            : null;
+          const enProceso = r.enProceso === true;
+          return `<div class="hist-results">
+            <span class="hist-res-ok" title="${enProceso ? "Usuarios detectados por el servidor" : "Entregados correctamente"}">
+              ${enProceso ? "⏳" : "✅"} ${r.enviados != null ? r.enviados : "—"} ${enProceso ? "en proceso" : "entregados"}
+            </span>
+            ${r.errores != null && r.errores > 0 ? `<span class="hist-res-err" title="Errores de entrega">❌ ${r.errores} error${r.errores !== 1 ? "es" : ""}</span>` : ""}
+            ${tiempoStr ? `<span class="hist-res-time" title="Tiempo de respuesta del servidor">⏱ ${tiempoStr}</span>` : ""}
+          </div>`;
+        })() : ""}
       </div>
       <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
@@ -1396,10 +1410,25 @@ function mostrarConfirmEnvio() {
 }
 
 function ejecutarEnvio() {
+  // Modo local: simula un envío sin servidor para desarrollo/demo.
+  // Cuando el servidor esté listo este bloque no se usa
+  // (dispararEnvios() lo ignora en MODO_SERVIDOR=true).
   try {
     const state = getCardState();
+    const tiempoInicio = Date.now();
+
+    const canal = state.canal || "teams";
+    const rawDest = canal === "outlook" ? (state.emails || "") : (state.teamsRecipient || "");
+    const lista = rawDest.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    const total = Math.max(lista.length, 1);
+    const errores = total > 1 ? Math.floor(Math.random() * Math.min(2, Math.floor(total * 0.05))) : 0;
+    const enviados = total - errores;
+    const tiempoMs = (Date.now() - tiempoInicio) + 120 + Math.floor(Math.random() * 280);
+
+    const resultados = { total, enviados, errores, tiempoMs, fuente: "local" };
+
     if (state.titulo) {
-      guardarEnviada(state);
+      guardarEnviada(state, resultados);
       const histPanel = document.getElementById("histPanelInline");
       if (histPanel) {
         currentHistTab = "enviadas";
@@ -1409,7 +1438,7 @@ function ejecutarEnvio() {
         renderHistPanelInline();
       }
     }
-    mostrarEnvioExito(state);
+    mostrarEnvioExito(state, resultados);
   } catch (err) {
     mostrarEnvioError(err);
   }
@@ -1518,7 +1547,7 @@ function autoCloseModal(modal, segundos) {
   // Cancelar timer si el usuario cierra manualmente
   modal.addEventListener("click", () => clearTimeout(timer), { once: true });
 }
-function mostrarEnvioExito(state) {
+function mostrarEnvioExito(state, resultados) {
   document.getElementById("envioExitoModal")?.remove();
 
   const canal      = state?.canal === "outlook" ? "Outlook" : "Microsoft Teams";
@@ -1582,9 +1611,41 @@ function mostrarEnvioExito(state) {
             <div style="font-size:14px; font-weight:600; color:#1a1a2e;">${tituloCard}</div>
           </div>
         </div>
+        ${resultados ? (() => {
+          const enProceso = resultados.enProceso === true;
+          const tiempoStr = resultados.tiempoMs != null
+            ? (resultados.tiempoMs < 1000 ? resultados.tiempoMs + "ms" : (resultados.tiempoMs/1000).toFixed(1) + "s")
+            : "—";
+          const enviadosStr = resultados.enviados != null ? resultados.enviados : "—";
+          const erroresStr  = resultados.errores  != null ? resultados.errores  : enProceso ? "—" : "0";
+          const erroresColor = (resultados.errores > 0) ? "#c2410c" : "#15803d";
+          const erroresBg    = (resultados.errores > 0) ? "#fff7ed" : "#f0fff4";
+          const erroresBorder= (resultados.errores > 0) ? "#fed7aa" : "#bbf7d0";
+          return `
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+            <div style="background:#f0fff4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:#15803d;line-height:1;">${enviadosStr}</div>
+              <div style="font-size:10px;color:#166534;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;">${enProceso ? "Detectados" : "Entregados"}</div>
+            </div>
+            <div style="background:${erroresBg};border:1.5px solid ${erroresBorder};border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:${erroresColor};line-height:1;">${erroresStr}</div>
+              <div style="font-size:10px;color:${erroresColor};font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;">Errores</div>
+            </div>
+            <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:#1d4ed8;line-height:1;">${tiempoStr}</div>
+              <div style="font-size:10px;color:#1e40af;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;">Tiempo</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px;">
+            ${enProceso
+              ? `Teams está procesando el envío en segundo plano a <strong>${enviadosStr}</strong> usuario${enviadosStr !== 1 ? "s" : ""}. Puedes cerrar esta ventana.`
+              : `Envío completado: <strong style="color:#15803d">${enviadosStr}</strong> entregado${enviadosStr !== 1 ? "s" : ""}${resultados.errores > 0 ? `, <strong style="color:#c2410c">${erroresStr}</strong> con error` : ""}. Consulta el <strong>historial</strong> para más detalles.`
+            }
+          </p>`;
+        })() : `
         <p style="font-size:13px; color:#666; line-height:1.6; margin:0 0 20px;">
           Tu tarjeta adaptativa se ha enviado correctamente. Puedes consultarla en el <strong>historial</strong> en cualquier momento.
-        </p>
+        </p>`}
       </div>
 
       <!-- Botón cerrar -->
@@ -1716,23 +1777,35 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
 
 
   // Envoltorio limpio y sin variables nulas
+// ── HELPER: obtiene el aadObjectId del usuario autenticado ──────────────
+// login.html guarda loginResponse.account.localAccountId en "yako_aad_id".
+// Ese valor coincide con el aadObjectId de usuarios.json, que es lo que
+// el servidor necesita para encontrar la conversationReference y mandar
+// la Adaptive Card de confirmación al usuario que lanzó el envío.
+function getEmisorId() {
+  return sessionStorage.getItem("yako_aad_id") || null;
+}
+
 async function dispararEnvios() {
 
-  // ═══════════════════════════════════════════════════════════════
-  // MODO LOCAL (activo) — UX completa sin servidor
-  // Guarda en historial, plantillas y muestra el modal de éxito.
-  // ═══════════════════════════════════════════════════════════════
-  ejecutarEnvio();
+  // ═══════════════════════════════════════════════════════════════════════
+  // INTERRUPTOR PRINCIPAL
+  // false → Modo local (sin servidor, para desarrollo y demo)
+  // true  → Modo servidor real (activa cuando el backend esté listo)
+  // ═══════════════════════════════════════════════════════════════════════
+  const MODO_SERVIDOR = false;
 
+  if (!MODO_SERVIDOR) {
+    // ── MODO LOCAL ─────────────────────────────────────────────────────
+    // Simula el envío localmente, guarda en historial y muestra el modal.
+    ejecutarEnvio();
+    return;
+  }
 
-  // ═══════════════════════════════════════════════════════════════
-  // MODO SERVIDOR (comentado) — descomentar cuando el backend esté listo
-  // Para activarlo: comenta el bloque MODO LOCAL de arriba y
-  // descomenta todo lo de abajo.
-  // ═══════════════════════════════════════════════════════════════
+  // ── MODO SERVIDOR ──────────────────────────────────────────────────────
+  // Todo lo de abajo solo se ejecuta cuando MODO_SERVIDOR = true
 
-
-  // 1. Canal y destinatario
+  const state = getCardState();
   const canal = document.getElementById("canal")?.value;
   const inputID = canal === "teams" ? "teamsRecipient" : "emails";
   const inputDestinatarios = document.getElementById(inputID)?.value?.trim() || "";
@@ -1748,17 +1821,25 @@ async function dispararEnvios() {
     return;
   }
 
-  // 2. JSON de la tarjeta
   let tarjetaJSON;
   try { tarjetaJSON = window.generarCuerpoTarjeta?.(); } catch(e) { tarjetaJSON = null; }
   if (!tarjetaJSON) { mostrarEnvioError(new Error("No se pudo generar el contenido de la tarjeta.")); return; }
 
-  // 3. Endpoint y payload
-  const endpoint  = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
+  const endpoint    = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
   const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
-  const bodyPayload = { destinatarios: inputDestinatarios, asunto: textoAsunto, tarjeta: tarjetaJSON };
+  // emisorId: aadObjectId del usuario logueado (guardado en login.html).
+  // El servidor lo usa para buscar su conversationReference en usuarios.json
+  // y enviarle la Adaptive Card de confirmación cuando termine el proceso.
+  const emisorId = getEmisorId();
 
-  // 4. Bloquear botón mientras se envía
+  const bodyPayload = {
+    destinatarios: inputDestinatarios,
+    asunto:        textoAsunto,
+    tarjeta:       tarjetaJSON,
+    emisorId:      emisorId  // ← aadObjectId del usuario que lanza el envío
+  };
+
+  // Bloquear botón mientras se envía
   const botonEnviar = document.querySelector(".btn-submit");
   const textoOriginal = botonEnviar?.innerHTML || "";
   if (botonEnviar) {
@@ -1766,36 +1847,76 @@ async function dispararEnvios() {
     botonEnviar.disabled = true;
   }
 
-    // 6. Llamada al servidor
-    try {
-        const respuesta = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyPayload)
-        });
+  const tiempoInicio = Date.now();
 
-        const data = await respuesta.json();
+  try {
+    const respuesta = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyPayload)
+    });
 
-        if (respuesta.ok) {
-            // Si tienes una función para mostrar éxito, úsala, si no, un alert
-            if (typeof mostrarEnvioExito === "function") {
-                mostrarEnvioExito();
-            } else {
-                alert("✅ " + (data.mensaje || "Enviado con éxito"));
-            }
-        } else {
-            throw new Error(data.error || "El servidor devolvió un error");
-        }
-    } catch (error) {
-        console.error("Error al enviar:", error);
-        alert("❌ Error: " + error.message);
-    } finally {
-        // Restaurar botón
-        if (botonEnviar) {
-            botonEnviar.innerText = textoOriginal;
-            botonEnviar.disabled = false;
-        }
+    const data = await respuesta.json();
+
+    if (!respuesta.ok) {
+      throw new Error(data.error || "El servidor devolvió un error");
     }
+
+    // ── Construir objeto resultados según el canal ──────────────────────
+    // Outlook devuelve: { detalles: { total, exitos, fallidos, errores[] } }
+    // Teams  devuelve: { mensaje: "Procesando envío masivo. Detectados X usuarios válidos." }
+    //   → 202 Accepted: el proceso real corre en background en el servidor.
+    //     Extraemos el número de usuarios del mensaje si está disponible.
+    let resultados;
+
+    if (canal === "outlook") {
+      // Respuesta síncrona con datos reales
+      const d = data.detalles || {};
+      resultados = {
+        total:    d.total    ?? 0,
+        enviados: d.exitos   ?? 0,
+        errores:  d.fallidos ?? 0,
+        tiempoMs: Date.now() - tiempoInicio,
+        fuente:   "servidor"
+      };
+    } else {
+      // Teams: 202 Accepted — el servidor procesará en background.
+      // Intentamos extraer el número de usuarios detectados del mensaje.
+      const match = (data.mensaje || "").match(/(\d+)\s+usuario/i);
+      const detectados = match ? parseInt(match[1], 10) : null;
+      resultados = {
+        total:    detectados ?? null,
+        enviados: detectados ?? null,   // aún en proceso
+        errores:  null,                 // no disponible hasta que termine el proceso de fondo
+        tiempoMs: Date.now() - tiempoInicio,
+        fuente:   "servidor",
+        enProceso: true                 // flag: Teams procesa en background
+      };
+    }
+
+    // Guardar en historial y mostrar modal de éxito con los datos reales
+    if (state.titulo) {
+      guardarEnviada(state, resultados);
+      const histPanel = document.getElementById("histPanelInline");
+      if (histPanel) {
+        currentHistTab = "enviadas";
+        document.querySelectorAll(".hist-tab").forEach(t => {
+          t.classList.toggle("active", t.dataset.htab === "enviadas");
+        });
+        renderHistPanelInline();
+      }
+    }
+    mostrarEnvioExito(state, resultados);
+
+  } catch (error) {
+    console.error("Error al enviar:", error);
+    mostrarEnvioError(error);
+  } finally {
+    if (botonEnviar) {
+      botonEnviar.innerHTML = textoOriginal;
+      botonEnviar.disabled = false;
+    }
+  }
 }
 
 // Función auxiliar para crear un diseño simple de email
@@ -2198,9 +2319,15 @@ function guardarBorrador() {
   mostrarEnvioExito && showToast("✅ Borrador guardado");
 }
 
-function guardarEnviada(state) {
+function guardarEnviada(state, resultados) {
   const enviadas = getStorage("yako_enviadas");
-  enviadas.unshift({ id: Date.now(), fecha: new Date().toLocaleString("es-ES"), tipo: "enviada", state });
+  enviadas.unshift({
+    id:         Date.now(),
+    fecha:      new Date().toLocaleString("es-ES"),
+    tipo:       "enviada",
+    state,
+    resultados: resultados || null
+  });
   setStorage("yako_enviadas", enviadas.slice(0, 30));
 }
 
