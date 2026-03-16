@@ -334,7 +334,6 @@ app.get('/api/grupos/:id/miembros', async (req, res) => {
             .top(999) 
             .get();
             
-        console.log(`✅ [DEBUG] Graph API encontró ${miembros.value.length} miembros en este grupo.`);
             
         const resultado = miembros.value.map(m => ({
             ...m, 
@@ -343,14 +342,6 @@ app.get('/api/grupos/:id/miembros', async (req, res) => {
             cargo: m.jobTitle || 'Miembro',
             tipo: 'usuario'
         }));
-
-        // CHIVATO: Imprime en consola exactamente cómo es el primer usuario que enviamos a la web
-        if (resultado.length > 0) {
-            console.log("🧐 [DEBUG] Muestra del primer usuario que se envía a Animaciones.js:");
-            console.log(JSON.stringify(resultado[0], null, 2));
-        } else {
-            console.log("⚠️ [DEBUG] El grupo está vacío, no hay miembros que mostrar.");
-        }
 
         res.status(200).json(resultado);
     } catch (error) {
@@ -370,8 +361,8 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
         // PANEL DE PRUEBAS
         // ====================================================================
         const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
-        const MODO_BOMBARDEO  = true;  // true = Envía tarjetas masivas al primer destinatario.
-        const CANTIDAD_BOMBARDEO = 3000; // Número de tarjetas a enviar en modo bombardeo
+        const MODO_BOMBARDEO  = false;  // true = Envía tarjetas masivas al primer destinatario.
+        const CANTIDAD_BOMBARDEO = 2000; // Número de tarjetas a enviar en modo bombardeo
         // ====================================================================
         
         if (!destinatarios) {

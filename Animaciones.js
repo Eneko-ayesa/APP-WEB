@@ -1440,7 +1440,6 @@ function ejecutarEnvio() {
     }
     mostrarEnvioExito(state, resultados);
     mostrarEnvioExito(state);
-
     // ── NOTIFICACIÓN DE ENTREGA ──────────────────────────────────────────
     const notifyCheck = document.getElementById("notifyDelivery");
     if (notifyCheck?.checked) {
@@ -1840,6 +1839,9 @@ async function dispararEnvios() {
   // Todo lo de abajo solo se ejecuta cuando MODO_SERVIDOR = true
 
   const state = getCardState();
+  // ❌ 1. ELIMINADA la función ejecutarEnvio() que lanzaba el pop-up doble
+
+  // 1. Canal y destinatario
   const canal = document.getElementById("canal")?.value;
   const inputID = canal === "teams" ? "teamsRecipient" : "emails";
   const inputDestinatarios = document.getElementById(inputID)?.value?.trim() || "";
@@ -1876,8 +1878,10 @@ async function dispararEnvios() {
   // Bloquear botón mientras se envía
   const botonEnviar = document.querySelector(".btn-submit");
   const textoOriginal = botonEnviar?.innerHTML || "";
+  
   if (botonEnviar) {
-    botonEnviar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando…`;
+    // ✅ 2. Ponemos visualmente que está enviando (usando innerHTML)
+    botonEnviar.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-bottom-color:transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right:8px; vertical-align:-3px;"></span> Enviando...';
     botonEnviar.disabled = true;
   }
 
@@ -1950,6 +1954,35 @@ async function dispararEnvios() {
       botonEnviar.innerHTML = textoOriginal;
       botonEnviar.disabled = false;
     }
+  // 6. Llamada al servidor
+  try {
+      const respuesta = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+      });
+
+      const data = await respuesta.json();
+
+      if (respuesta.ok) {
+          // ✅ 3. Pop-up verdadero (UNA SOLA VEZ) y pasándole los datos para que dibuje tu icono
+          if (typeof mostrarEnvioExito === "function") {
+              mostrarEnvioExito({ canal: canal, titulo: textoAsunto });
+          } else {
+              alert("✅ " + (data.mensaje || "Enviado con éxito"));
+          }
+      } else {
+          throw new Error(data.error || "El servidor devolvió un error");
+      }
+  } catch (error) {
+      console.error("Error al enviar:", error);
+      alert("❌ Error: " + error.message);
+  } finally {
+      // ✅ 4. Restaurar botón (¡Usando innerHTML en vez de innerText!)
+      if (botonEnviar) {
+          botonEnviar.innerHTML = textoOriginal;
+          botonEnviar.disabled = false;
+      }
   }
 }
 
@@ -2852,27 +2885,6 @@ function renderMiembrosPanel(panel) {
     
     <div style="padding: 0 20px 20px 20px;">
         <div style="margin-bottom: 20px;">
-            <!-- MEJORA 2: Buscador de grupos con autoselección -->
-            <div style="position:relative; margin-bottom:8px;">
-              <div style="display:flex; align-items:center; background:var(--ms-surface); border:1.5px solid var(--ms-border-dark); border-radius:8px; padding:6px 10px; gap:8px; transition:border-color .15s;" id="grupoSearchWrap">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" style="flex-shrink:0;">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input id="grupoSearchInput" type="text" autocomplete="off"
-                  placeholder="Buscar grupo..."
-                  style="border:none; background:transparent; outline:none; font-size:13px; width:100%; font-family:inherit; color:var(--ms-ink-2);" />
-                <button id="grupoSearchClear" type="button"
-                  style="border:none;background:none;cursor:pointer;color:#bbb;font-size:14px;padding:0;line-height:1;display:none;"
-                  title="Limpiar">✕</button>
-              </div>
-              <!-- Dropdown de sugerencias de grupo -->
-              <div id="grupoSearchDropdown" style="
-                display:none; position:absolute; top:calc(100% + 4px); left:0; right:0;
-                background:#fff; border:1.5px solid var(--ms-border-dark);
-                border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.10);
-                z-index:100; max-height:220px; overflow-y:auto;"></div>
-            </div>
-
             <select id="exploradorGruposSelect" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--ms-border-dark); font-family: inherit; background: var(--ms-surface); outline: none;">
                 <option value="">Cargando listas de Microsoft 365... ⏳</option>
             </select>
@@ -2912,15 +2924,11 @@ function renderMiembrosPanel(panel) {
   const gusSpinner  = panel.querySelector("#gusSpinner");
   const gusClear    = panel.querySelector("#gusClear");
 
-  const selectGrupos       = panel.querySelector("#exploradorGruposSelect");
-  const content            = panel.querySelector("#miembrosContent");
-  const searchWrap         = panel.querySelector("#miembrosSearchWrap");
-  const searchInput        = panel.querySelector("#miembrosSearchInput");
-  const searchClear        = panel.querySelector("#miembrosSearchClear");
-  const grupoSearchInput   = panel.querySelector("#grupoSearchInput");
-  const grupoSearchClear   = panel.querySelector("#grupoSearchClear");
-  const grupoSearchDropdown = panel.querySelector("#grupoSearchDropdown");
-  const grupoSearchWrap    = panel.querySelector("#grupoSearchWrap");
+  const selectGrupos  = panel.querySelector("#exploradorGruposSelect");
+  const content       = panel.querySelector("#miembrosContent");
+  const searchWrap    = panel.querySelector("#miembrosSearchWrap");
+  const searchInput   = panel.querySelector("#miembrosSearchInput");
+  const searchClear   = panel.querySelector("#miembrosSearchClear");
 
   // ── BUSCADOR GLOBAL — lógica (MODIFICADO PARA LISTAS) ─────────────────────────
   let gusTimer = null;
@@ -3005,31 +3013,56 @@ function renderMiembrosPanel(panel) {
         const itemId = item.dataset.id;
         const itemName = item.dataset.nombre;
         const itemTipo = item.dataset.tipo;
+        const emailVal = item.dataset.email;
 
+        // 1. SIEMPRE rellenamos la caja de destinatario principal (Teams o Outlook)
+        const canal = document.getElementById("canal")?.value;
+        if (canal === "teams") {
+            const teamsEl = document.getElementById("teamsRecipient");
+            if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+        } else {
+            const emailsEl = document.getElementById("emails");
+            if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+        }
+
+        // 2. Si es un GRUPO, lo sincronizamos con el explorador de abajo y lo abrimos
+        // 2. Si es un GRUPO, lo sincronizamos con el explorador de abajo y lo abrimos
         if (itemTipo === "grupo") {
-            // Si hace clic en un GRUPO, lo seleccionamos en el explorador de abajo
             const selectGrupos = document.getElementById("exploradorGruposSelect");
+            
             if (selectGrupos) {
+                // A) Comprobamos si el grupo ya existe en el desplegable
+                let existe = Array.from(selectGrupos.options).some(opt => opt.value === itemId);
+                
+                // B) Si NO existe en la lista en este momento, lo creamos y lo metemos a la fuerza
+                if (!existe) {
+                    const nuevaOpcion = new Option(itemName, itemId);
+                    selectGrupos.add(nuevaOpcion);
+                }
+
+                // C) Ahora que sabemos 100% que existe en la lista, lo seleccionamos
                 selectGrupos.value = itemId;
-                selectGrupos.dispatchEvent(new Event("change"));
+
+                // D) Disparamos el evento para que tu web descargue y pinte a los miembros
+                selectGrupos.dispatchEvent(new Event("change", { bubbles: true }));
             }
+
+            // Forzamos a que el panel de miembros se abra visualmente si estaba cerrado
+            const btnAbrirMiembros = document.getElementById("toggleExploradorBtn");
+            const panelExplorador = document.getElementById("exploradorGruposContainer");
+            
+            if (panelExplorador && panelExplorador.style.display === "none") {
+                if (btnAbrirMiembros) btnAbrirMiembros.click();
+                else panelExplorador.style.display = "block";
+            }
+
             if (typeof showToast === "function") showToast(`✅ Lista seleccionada: ${itemName}`);
             
         } else {
-            // Si hace clic en un USUARIO, lo ponemos en la caja de destinatarios directamente
-            const emailVal = item.dataset.email;
-            const canal = document.getElementById("canal")?.value;
-            if (canal === "teams") {
-              const teamsEl = document.getElementById("teamsRecipient");
-              if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
-            } else {
-              const emailsEl = document.getElementById("emails");
-              if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
-            }
             if (typeof showToast === "function") showToast(`✅ Usuario seleccionado: ${itemName}`);
         }
 
-        // Actualizamos el buscador visualmente y cerramos
+        // 3. Actualizamos el buscador visualmente y cerramos
         if (typeof gusInput !== 'undefined') { gusInput.value = itemName; }
         if (typeof gusClear !== 'undefined') { gusClear.classList.add("visible"); }
         gusHide();
@@ -3094,76 +3127,6 @@ function renderMiembrosPanel(panel) {
     if (wrap && !wrap.contains(e.target)) gusHide();
   }, { capture: true });
 
-  // ── MEJORA 2: BUSCADOR DE GRUPOS CON AUTOSELECCIÓN ─────────────────────────
-  // Almacenamos las opciones cargadas para filtrar localmente (sin re-fetch)
-  let _allGrupoOptions = [];
-
-  function grupoSearchRender(q) {
-    const term = q.trim().toLowerCase();
-    grupoSearchDropdown.innerHTML = "";
-
-    if (!term) {
-      grupoSearchDropdown.style.display = "none";
-      return;
-    }
-
-    const matches = _allGrupoOptions.filter(o =>
-      o.text.toLowerCase().includes(term) && o.value
-    );
-
-    if (!matches.length) {
-      grupoSearchDropdown.innerHTML =
-        '<div style="padding:10px 12px;font-size:12px;color:#aaa;">Sin resultados</div>';
-      grupoSearchDropdown.style.display = "block";
-      return;
-    }
-
-    matches.slice(0, 12).forEach(o => {
-      const item = document.createElement("div");
-      item.style.cssText = "padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background .1s;";
-      // Resaltar la parte que coincide
-      const idx = o.text.toLowerCase().indexOf(term);
-      item.innerHTML = o.text.slice(0, idx)
-        + `<strong style="color:var(--ms-blue,#0000d0)">${o.text.slice(idx, idx + term.length)}</strong>`
-        + o.text.slice(idx + term.length);
-      item.addEventListener("mouseenter", () => item.style.background = "var(--ms-blue-xlight,#f0f0ff)");
-      item.addEventListener("mouseleave", () => item.style.background = "");
-      item.addEventListener("click", () => {
-        // AUTOSELECCIONAR en el <select> y disparar change para cargar miembros
-        selectGrupos.value = o.value;
-        selectGrupos.dispatchEvent(new Event("change"));
-        grupoSearchInput.value = o.text;
-        grupoSearchClear.style.display = "inline";
-        grupoSearchDropdown.style.display = "none";
-        grupoSearchWrap.style.borderColor = "var(--ms-blue,#0000d0)";
-      });
-      grupoSearchDropdown.appendChild(item);
-    });
-    grupoSearchDropdown.style.display = "block";
-  }
-
-  grupoSearchInput.addEventListener("input", function() {
-    const q = this.value;
-    grupoSearchClear.style.display = q ? "inline" : "none";
-    grupoSearchWrap.style.borderColor = q ? "var(--ms-blue,#0000d0)" : "";
-    grupoSearchRender(q);
-  });
-
-  grupoSearchClear.addEventListener("click", () => {
-    grupoSearchInput.value = "";
-    grupoSearchClear.style.display = "none";
-    grupoSearchDropdown.style.display = "none";
-    grupoSearchWrap.style.borderColor = "";
-    grupoSearchInput.focus();
-  });
-
-  // Cerrar dropdown al hacer clic fuera
-  document.addEventListener("click", e => {
-    if (!grupoSearchWrap?.contains(e.target) && !grupoSearchDropdown?.contains(e.target)) {
-      grupoSearchDropdown.style.display = "none";
-    }
-  }, { capture: true });
-
   // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
   // Variable para guardar todos los miembros cargados (para filtrar sin re-fetch)
   let allMiembros = [];
@@ -3197,17 +3160,11 @@ function renderMiembrosPanel(panel) {
 
   // 2. Pedimos TODAS las listas a tu servidor para llenar el desplegable
   //    MEJORA 3: Ordenar alfabéticamente y mostrar número de miembros
+
   // 2. Cargar el desplegable de grupos
   fetch("/api/grupos")
     .then(r => r.json())
     .then(grupos => {
-      // Ordenar A-Z por nombre
-      grupos.sort((a, b) => {
-        const na = (a.displayName || "").toLowerCase();
-        const nb = (b.displayName || "").toLowerCase();
-        return na.localeCompare(nb, "es");
-      });
-
       selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
       _allGrupoOptions = []; // Reset para el buscador local
       grupos.forEach(g => {
@@ -4151,4 +4108,4 @@ window.generarCuerpoTarjeta = function() {
     return cardCompleta.attachments[0].content;
 };
 
-
+}
