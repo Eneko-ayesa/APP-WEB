@@ -536,6 +536,10 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
                 console.log(`✅ Entregas confirmadas: ${exitos}`);
                 console.log(`❌ Errores irrecuperables: ${fallos}`);
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                
+                if (req.body.notificar && req.body.remitente) {
+                    await enviarNotificacionFin(req.body.remitente, exitos, fallos, minutosTranscurridos);
+                }
 
             } catch (errAsync) {
                 console.error("\n❌ Error en el proceso de fondo de Teams:", errAsync);
@@ -552,3 +556,37 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
 app.listen(3000, () => {
     console.log('🚀 Servidor activo en puerto 3000');
 });
+
+// ── FUNCIÓN PARA AVISAR AL USUARIO AL TERMINAR EL LOTE ──
+async function enviarNotificacionFin(destinatario, exitos, fallos, tiempo) {
+    try {
+        const client = Client.initWithMiddleware({ authProvider });
+        const mensaje = {
+            message: {
+                subject: "✅ Tu envío masivo ha finalizado",
+                body: {
+                    contentType: "HTML",
+                    content: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #0a7c15;">¡Tu entrega se ha completado!</h2>
+                            <p>El envío de tu tarjeta adaptativa acaba de terminar en el servidor.</p>
+                            <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <strong>📊 Resumen del envío:</strong><br><br>
+                                ✅ Entregas confirmadas: <b>${exitos}</b><br>
+                                ❌ Errores irrecuperables: <b>${fallos}</b><br>
+                                ⏱️ Tiempo total: <b>${tiempo} minutos</b>
+                            </div>
+                            <p>Puedes consultar el historial completo en Yako Broadcasting System.</p>
+                        </div>
+                    `
+                },
+                toRecipients: [{ emailAddress: { address: destinatario } }]
+            }
+        };
+        // Usa la misma cuenta central que ya usas para enviar a Outlook
+        await client.api(`/users/${process.env.EMAIL_USER}/sendMail`).post(mensaje);
+        console.log(`📧 Notificación de fin enviada a ${destinatario}`);
+    } catch (error) {
+        console.error("Error al enviar la notificación de fin al usuario:", error);
+    }
+}

@@ -1741,9 +1741,32 @@ async function dispararEnvios() {
   if (!tarjetaJSON) { mostrarEnvioError(new Error("No se pudo generar el contenido de la tarjeta.")); return; }
 
   // 3. Endpoint y payload
+  // 3. Endpoint y payload
   const endpoint  = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
   const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
-  const bodyPayload = { destinatarios: inputDestinatarios, asunto: textoAsunto, tarjeta: tarjetaJSON };
+  
+  // Capturamos el check y el correo usando TUS IDs EXACTOS
+  const checkElement = document.getElementById("notifyDelivery");
+  const quiereNotificacion = checkElement ? checkElement.checked : false;
+const emailElement = document.getElementById("topbarDEmail");
+  
+  // 1. Leemos el texto bruto
+  let correoBruto = emailElement?.innerText?.trim() || emailElement?.value?.trim() || "";
+  
+  // 2. ¡EL TRUCO! Le quitamos TODOS los espacios en blanco que se hayan podido colar
+  const correoRemitente = correoBruto.replace(/\s+/g, "");
+
+  // 🚨 CHIVATO
+  console.log("👉 CHIVATO NOTIFICACIÓN - ¿Quiere aviso?:", quiereNotificacion);
+  console.log("👉 CHIVATO NOTIFICACIÓN - Correo LIMPIO:", correoRemitente);
+
+  const bodyPayload = { 
+      destinatarios: inputDestinatarios, 
+      asunto: textoAsunto, 
+      tarjeta: tarjetaJSON,
+      notificar: quiereNotificacion,
+      remitente: correoRemitente
+  };
 
   // 4. Bloquear botón mientras se envía
   const botonEnviar = document.querySelector(".btn-submit");
@@ -2924,11 +2947,22 @@ function renderMiembrosPanel(panel) {
 
   // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
+  // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
+
   // 2. Cargar el desplegable de grupos
   fetch("/api/grupos")
     .then(r => r.json())
     .then(grupos => {
       selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
+      
+      // 🌟 MAGIA DE ORDENACIÓN ALFABÉTICA AQUÍ 🌟
+      grupos.sort((a, b) => {
+        let nombreA = String(a.displayName || a.nombre || "Grupo sin nombre").trim();
+        let nombreB = String(b.displayName || b.nombre || "Grupo sin nombre").trim();
+        return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+      });
+
+      // Ya ordenados, los metemos en el HTML
       grupos.forEach(grupo => {
           const option = document.createElement("option");
           option.value = grupo.id;
@@ -2942,7 +2976,7 @@ function renderMiembrosPanel(panel) {
           option.setAttribute("data-correo", correoLista);
           option.setAttribute("data-miembros", cantidad);
 
-          exploradorGruposSelect.appendChild(option);
+          selectGrupos.appendChild(option);
       });
     })
     .catch(err => {
@@ -3694,14 +3728,31 @@ document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
   try {
     const resp = await fetch("http://localhost:3000/api/listas-distribucion");
     if (!resp.ok) throw new Error("Error " + resp.status);
+    
     const listas = await resp.json();
+    
+    listas.sort((a, b) => {
+      // 1. Sacamos el texto
+      let nombreA = String(a.nombre || a.displayName || a.email || "");
+      let nombreB = String(b.nombre || b.displayName || b.email || "");
+      
+      // 2. Le quitamos los espacios fantasma del principio y final
+      nombreA = nombreA.trim();
+      nombreB = nombreB.trim();
+      
+      // 3. Comparamos usando las reglas exactas del español (ignorando mayúsculas/minúsculas)
+      return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+    });
+
     select.innerHTML = '<option value="">Selecciona una lista…</option>';
+    
     listas.forEach(l => {
       const opt = document.createElement("option");
       opt.value = l.email || l.id;
       opt.textContent = l.nombre || l.displayName || l.email;
       select.appendChild(opt);
     });
+    
     showToast("✅ " + listas.length + " listas cargadas");
   } catch (e) {
     mostrarErrorValidacion("No se pudieron cargar las listas", "Error al conectar con el servidor Exchange.", "Asegúrate de que el servidor Node.js está activo y configurado.");
