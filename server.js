@@ -209,32 +209,38 @@ app.get('/api/buscar-usuarios', async (req, res) => {
             .top(5)
             .get();
 
-        // 2. Buscamos GRUPOS que coincidan con el texto
+        // 2. Buscamos GRUPOS que coincidan con el texto y contamos sus miembros
         const responseGrupos = await client.api('/groups')
-            .filter(`startsWith(displayName, '${busqueda}') or startsWith(mail, '${busqueda}')`)
-            .select('id,displayName,mail')
-            .top(5)
-            .get();
+                    .header('ConsistencyLevel', 'eventual') 
+                    .query({ $count: true })
+                    .filter(`startsWith(displayName, '${busqueda}') or startsWith(mail, '${busqueda}')`)
+                    .expand('members($count=true)') 
+                    .top(5)
+                    .get();
 
-        // 3. Formateamos los usuarios para que Animaciones.js los entienda
+        // 3. Formateamos los usuarios
         const usuarios = responseUsuarios.value.map(u => ({
             id: u.id,
             nombre: u.displayName,
             correo: u.mail || u.userPrincipalName,
             tipo: 'usuario'
         }));
-
-        // 4. Formateamos los grupos
-        const grupos = responseGrupos.value.map(g => ({
-            id: g.id,
-            nombre: g.displayName,
-            correo: g.mail,
-            tipo: 'grupo'
-        }));
+        // 4. Formateamos los grupos (¡CORREGIDO!)
+       const grupos = responseGrupos.value.map(g => {
+            // A veces Microsoft lo manda en odata.count, a veces dentro del array members
+            const numeroMiembros = g['members@odata.count'] || (g.members ? g.members.length : 0);
+            
+            return {
+                id: g.id,
+                nombre: g.displayName,
+                correo: g.mail || "Sin correo",
+                cantidadUsuarios: numeroMiembros,
+                tipo: 'grupo'
+            };
+        });
 
         // 5. Unimos ambas listas y las enviamos al navegador
         res.status(200).json([...usuarios, ...grupos]);
-
     } catch (error) {
         // 🛑 ESTO ES LO QUE TE CHIVARÁ EL ERROR REAL SI ALGO FALLA
         console.error("❌ Error en /api/buscar-usuarios:", error.message);
@@ -248,61 +254,107 @@ app.get('/api/buscar-usuarios', async (req, res) => {
 });
 
 // Ruta para obtener los grupos y mostrarlos en el frontend
+// Ruta para cargar el menú desplegable de grupos al iniciar la página
 app.get('/api/grupos', async (req, res) => {
     try {
-        // 🛑 EL CAMBIO ESTÁ AQUÍ: Usamos 'client' en lugar de 'graphClient'
         const grupos = await client.api('/groups')
             .header('ConsistencyLevel', 'eventual') 
-            .query({ $count: true })                
-            .filter("mailEnabled eq true") 
+            .query({ $count: true }) // 👈 Obligatorio para Graph
             .select('id,displayName,mail')
+            .expand('members($count=true)') // 👈 ¡La magia para contar!
             .top(999) 
             .get();
 
-        res.status(200).json(grupos.value);
+        // Formateamos los datos y sacamos el número
+        const gruposFormateados = grupos.value.map(g => {
+            const numeroMiembros = g['members@odata.count'] || (g.members ? g.members.length : 0);
+            
+            return {
+                id: g.id,
+                displayName: g.displayName,
+                correo: g.mail || "Sin correo",
+                cantidadUsuarios: numeroMiembros // 👈 Aquí mandamos el número a la web
+            };
+        });
+
+        res.status(200).json(gruposFormateados);
     } catch (error) {
-        console.error("Error al obtener grupos:", error.message);
+        console.error("Error al obtener grupos del desplegable:", error.message);
         res.status(500).json({ error: 'Fallo al obtener las listas de distribución.' });
     }
 });
 // =======================================================
-// RUTA PARA OBTENER LOS MIEMBROS DE UN GRUPO (PARA EL EXPLORADOR)
+// RUTAS PARA OBTENER LOS MIEMBROS DE UN GRUPO (EXPLORADOR)
 // =======================================================
-// Ruta para obtener los miembros de un grupo específico
+
+// 1. Ruta usada por la búsqueda principal (?id=...)
 app.get('/api/miembros-grupo', async (req, res) => {
     const groupId = req.query.id;
-    
-    if (!groupId) {
-        return res.status(400).json({ error: 'ID de grupo requerido' });
-    }
+    if (!groupId) return res.status(400).json({ error: 'ID de grupo requerido' });
+
+    console.log(`\n🕵️‍♂️ [DEBUG] Frontend pide los miembros del grupo: ${groupId}`);
 
     try {
-        // 🛑 EL CAMBIO ESTÁ AQUÍ: Usamos 'client'
         const miembros = await client.api(`/groups/${groupId}/members`)
-            .select('id,displayName,mail,userPrincipalName')
-            .top(999) // Traemos hasta 999 miembros de golpe
+            .top(999) 
             .get();
 
-        res.status(200).json(miembros.value);
+        console.log(`✅ [DEBUG] Graph API encontró ${miembros.value.length} miembros en este grupo.`);
+
+        const resultado = miembros.value.map(m => ({
+            ...m, 
+            nombre: m.displayName || 'Usuario',
+            correo: m.mail || m.userPrincipalName || 'Sin correo',
+            cargo: m.jobTitle || 'Miembro',
+            tipo: 'usuario'
+        }));
+
+        // CHIVATO: Imprime en consola el primer usuario
+        if (resultado.length > 0) {
+            console.log("🧐 [DEBUG] Muestra del primer usuario que se envía a Animaciones.js:");
+            console.log(JSON.stringify(resultado[0], null, 2));
+        } else {
+            console.log("⚠️ [DEBUG] El grupo está vacío, no hay miembros que mostrar.");
+        }
+
+        res.status(200).json(resultado);
     } catch (error) {
-        console.error("Error al obtener los miembros del grupo:", error.message);
+        console.error("❌ [DEBUG] Error al obtener los miembros del grupo:", error.message);
         res.status(500).json({ error: 'Fallo al obtener los miembros.' });
     }
 });
-// Ruta para obtener los miembros de un grupo específico
+
+// 2. Ruta usada por el panel lateral de Miembros (/:id/miembros)
 app.get('/api/grupos/:id/miembros', async (req, res) => {
     try {
-        const groupId = req.params.id;
+        const groupId = req.params.id; 
+        console.log(`\n🕵️‍♂️ [DEBUG] Frontend pide los miembros del grupo: ${groupId}`);
         
-        // Pedimos a Graph API los miembros del grupo seleccionado
-        const miembros = await graphClient.api(`/groups/${groupId}/members`)
-            .select('displayName,mail,jobTitle')
-            .top(999) // Trae hasta 999 miembros (puedes ajustarlo si necesitas más)
+        const miembros = await client.api(`/groups/${groupId}/members`)
+            .top(999) 
             .get();
             
-        res.status(200).json(miembros.value);
+        console.log(`✅ [DEBUG] Graph API encontró ${miembros.value.length} miembros en este grupo.`);
+            
+        const resultado = miembros.value.map(m => ({
+            ...m, 
+            nombre: m.displayName || 'Usuario',
+            correo: m.mail || m.userPrincipalName || 'Sin correo',
+            cargo: m.jobTitle || 'Miembro',
+            tipo: 'usuario'
+        }));
+
+        // CHIVATO: Imprime en consola exactamente cómo es el primer usuario que enviamos a la web
+        if (resultado.length > 0) {
+            console.log("🧐 [DEBUG] Muestra del primer usuario que se envía a Animaciones.js:");
+            console.log(JSON.stringify(resultado[0], null, 2));
+        } else {
+            console.log("⚠️ [DEBUG] El grupo está vacío, no hay miembros que mostrar.");
+        }
+
+        res.status(200).json(resultado);
     } catch (error) {
-        console.error("Error al obtener miembros:", error.message);
+        console.error("❌ [DEBUG] Error fatal al obtener miembros:", error.message);
         res.status(500).json({ error: "Fallo al cargar los miembros del grupo." });
     }
 });
@@ -398,8 +450,25 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
             res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${referenciasValidas.length} usuarios válidos.` });
         }
 
-        // --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE ---
-        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 3) => {
+// --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE (CON MOCK PARA PRUEBAS) ---
+        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 5) => {
+            
+            // 🧪 SI ESTAMOS EN MODO BOMBARDEO, FINGIMOS LA CONEXIÓN A MICROSOFT
+            if (MODO_BOMBARDEO) {
+                // Simulamos lo que tarda la red real en contestar (entre 100ms y 300ms)
+                const latenciaRed = Math.floor(Math.random() * 200) + 100;
+                await new Promise(r => setTimeout(r, latenciaRed));
+                
+                // Opcional: Simulamos que un 1% de los envíos fallan para ver cómo reacciona tu código
+                const falloAleatorio = Math.random() < 0.01; 
+                if (falloAleatorio) {
+                    throw new Error("Simulación de error 429 o 500 de Microsoft");
+                }
+                
+                return true; // Microsoft (falso) dice "200 OK"
+            }
+
+            // 🌐 SI NO ESTAMOS EN MODO BOMBARDEO, ENVÍO REAL A TEAMS
             for (let intento = 1; intento <= maxIntentos; intento++) {
                 try {
                     await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {

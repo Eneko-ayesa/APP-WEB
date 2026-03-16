@@ -2774,7 +2774,6 @@ function renderMiembrosPanel(panel) {
               <p>Selecciona un grupo en el desplegable de arriba</p>
             </div>
         </div>
-
     </div>
   `;
 
@@ -2796,7 +2795,7 @@ function renderMiembrosPanel(panel) {
   const grupoSearchDropdown = panel.querySelector("#grupoSearchDropdown");
   const grupoSearchWrap    = panel.querySelector("#grupoSearchWrap");
 
-  // ── BUSCADOR GLOBAL — lógica ─────────────────────────
+  // ── BUSCADOR GLOBAL — lógica (MODIFICADO PARA LISTAS) ─────────────────────────
   let gusTimer = null;
 
   function gusShowDropdown(html, count) {
@@ -2810,8 +2809,8 @@ function renderMiembrosPanel(panel) {
     gusResults.innerHTML = "";
   }
 
-  function gusRenderResultados(usuarios) {
-    if (!usuarios.length) {
+  function gusRenderResultados(resultados) {
+    if (!resultados.length) {
       gusShowDropdown(`
         <div class="gus-no-results">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
@@ -2823,59 +2822,115 @@ function renderMiembrosPanel(panel) {
       return;
     }
 
-    const rows = usuarios.map(u => {
-      const nombre  = u.nombre || u.displayName || "—";
-      const email   = u.correo || u.mail || u.userPrincipalName || "—";
-      const grupo   = u.grupo  || u.groupName || "";
-      const inicial = nombre.charAt(0).toUpperCase();
-      return `
-        <div class="gus-result-item" role="option" tabindex="0"
-             data-email="${email}" data-nombre="${nombre}" data-grupo="${grupo}"
-             title="Seleccionar ${nombre}">
-          <div class="gus-avatar">${inicial}</div>
-          <div class="gus-result-info">
-            <div class="gus-result-name">${nombre}</div>
-            <div class="gus-result-meta">${email}</div>
-          </div>
-          ${grupo ? `<span class="gus-result-group" title="${grupo}">${grupo}</span>` : ""}
-        </div>`;
+    // Dibujamos cada fila dependiendo de si es Grupo o Usuario
+    const rows = resultados.map(item => {
+      const nombre = item.nombre || "—";
+      const idItem = item.id;
+      const correo = item.correo || "Sin correo";
+      const tipo = item.tipo; // 'grupo' o 'usuario'
+      
+      if (tipo === 'grupo') {
+          // 🏢 DISEÑO PARA LISTAS DE DISTRIBUCIÓN
+          const numMiembros = item.cantidadUsuarios !== undefined ? item.cantidadUsuarios : "?";
+          
+          return `
+            <div class="gus-result-item" role="option" tabindex="0"
+                 data-id="${idItem}" data-nombre="${nombre}" data-tipo="grupo"
+                 title="Seleccionar lista ${nombre}"
+                 style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+              
+              <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="gus-avatar" color: white;">👥</div>
+                  <div class="gus-result-info">
+                    <div class="gus-result-name" style="font-weight: bold;">${nombre}</div>
+                    <div class="gus-result-meta" style="font-size: 0.85em; color: #666;">Lista de distribución • ${correo}</div>
+                  </div>
+              </div>
+
+              <div class="gus-miembros-badge" style="font-size: 11px; background-color: #e2e2f6; color: #5b5fc7; font-weight: bold; padding: 4px 8px; border-radius: 12px; white-space: nowrap;">
+                ${numMiembros} miembros
+              </div>
+            </div>`;
+            
+      } else {
+          // 👤 DISEÑO PARA USUARIOS INDIVIDUALES
+          const inicial = nombre.charAt(0).toUpperCase();
+          return `
+            <div class="gus-result-item" role="option" tabindex="0"
+                 data-id="${idItem}" data-nombre="${nombre}" data-email="${correo}" data-tipo="usuario"
+                 title="Seleccionar a ${nombre}"
+                 style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                 
+              <div class="gus-avatar">${inicial}</div>
+              <div class="gus-result-info">
+                <div class="gus-result-name">${nombre}</div>
+                <div class="gus-result-meta">${correo}</div>
+              </div>
+            </div>`;
+      }
     }).join("");
 
-    gusShowDropdown(rows, usuarios.length);
+    gusShowDropdown(rows, resultados.length);
 
-    // Click en resultado: rellena el campo de destinatario y cierra
+    // ── GESTIÓN DE CLICS ──
     gusResults.querySelectorAll(".gus-result-item").forEach(item => {
       item.addEventListener("click", () => {
-        const emailVal = item.dataset.email;
-        const canal = document.getElementById("canal")?.value;
-        if (canal === "teams") {
-          const teamsEl = document.getElementById("teamsRecipient");
-          if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+        const itemId = item.dataset.id;
+        const itemName = item.dataset.nombre;
+        const itemTipo = item.dataset.tipo;
+
+        if (itemTipo === "grupo") {
+            // Si hace clic en un GRUPO, lo seleccionamos en el explorador de abajo
+            const selectGrupos = document.getElementById("exploradorGruposSelect");
+            if (selectGrupos) {
+                selectGrupos.value = itemId;
+                selectGrupos.dispatchEvent(new Event("change"));
+            }
+            if (typeof showToast === "function") showToast(`✅ Lista seleccionada: ${itemName}`);
+            
         } else {
-          const emailsEl = document.getElementById("emails");
-          if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+            // Si hace clic en un USUARIO, lo ponemos en la caja de destinatarios directamente
+            const emailVal = item.dataset.email;
+            const canal = document.getElementById("canal")?.value;
+            if (canal === "teams") {
+              const teamsEl = document.getElementById("teamsRecipient");
+              if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+            } else {
+              const emailsEl = document.getElementById("emails");
+              if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+            }
+            if (typeof showToast === "function") showToast(`✅ Usuario seleccionado: ${itemName}`);
         }
-        gusInput.value = item.dataset.nombre;
-        gusClear.classList.add("visible");
+
+        // Actualizamos el buscador visualmente y cerramos
+        if (typeof gusInput !== 'undefined') { gusInput.value = itemName; }
+        if (typeof gusClear !== 'undefined') { gusClear.classList.add("visible"); }
         gusHide();
-        showToast(`✅ Usuario seleccionado: ${item.dataset.nombre}`);
       });
-      // Navegación por teclado
+      
       item.addEventListener("keydown", e => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); item.click(); }
       });
     });
   }
 
-  // Busca en el servidor (endpoint: GET /api/buscar-usuario?q=...)
+  // Busca filtrando directamente las opciones del desplegable (ya no usa fetch)
+  // ── BUSCADOR GLOBAL — Conectado a tu server.js ─────────────────────────
   async function gusBuscar(q) {
     gusSpinner.classList.add("visible");
     try {
-      const res  = await fetch("/api/buscar-usuario?q=" + encodeURIComponent(q));
+      // 1. Llamamos a tu servidor (la ruta que acabamos de arreglar)
+      const res  = await fetch("/api/buscar-usuarios?q=" + encodeURIComponent(q));
       const data = await res.json();
-      const usuarios = Array.isArray(data) ? data : (data.usuarios || data.results || []);
-      gusRenderResultados(usuarios);
-    } catch {
+      
+      // 2. Extraemos el array de datos
+      const resultados = Array.isArray(data) ? data : (data.usuarios || data.results || []);
+      
+      // 3. Se los pasamos a la función mágica que dibuja la lista y los avatares
+      gusRenderResultados(resultados);
+
+    } catch (error) {
+      console.error("Error en la búsqueda:", error);
       gusShowDropdown(`
         <div class="gus-no-results">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#faa" stroke-width="1.5">
@@ -2893,8 +2948,9 @@ function renderMiembrosPanel(panel) {
     gusClear.classList.toggle("visible", q.length > 0);
     clearTimeout(gusTimer);
     if (q.length < 2) { gusHide(); return; }
-    // Debounce 350ms para no saturar la API
-    gusTimer = setTimeout(() => gusBuscar(q), 350);
+    
+    // Retardo de 250ms mientras el usuario teclea
+    gusTimer = setTimeout(() => gusBuscar(q), 250);
   });
 
   gusClear.addEventListener("click", () => {
@@ -2906,7 +2962,9 @@ function renderMiembrosPanel(panel) {
 
   // Cierre al hacer clic fuera
   document.addEventListener("click", e => {
-    if (!panel.querySelector(".gus-wrap").contains(e.target)) gusHide();
+    // Nos aseguramos de que no de error si panel no está definido globalmente
+    const wrap = document.querySelector(".gus-wrap");
+    if (wrap && !wrap.contains(e.target)) gusHide();
   }, { capture: true });
 
   // ── MEJORA 2: BUSCADOR DE GRUPOS CON AUTOSELECCIÓN ─────────────────────────
@@ -2981,6 +3039,7 @@ function renderMiembrosPanel(panel) {
 
   // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
+<<<<<<< HEAD
   // Variable para guardar todos los miembros cargados (para filtrar sin re-fetch)
   let allMiembros = [];
 
@@ -3013,6 +3072,9 @@ function renderMiembrosPanel(panel) {
 
   // 2. Pedimos TODAS las listas a tu servidor para llenar el desplegable
   //    MEJORA 3: Ordenar alfabéticamente y mostrar número de miembros
+=======
+  // 2. Cargar el desplegable de grupos
+>>>>>>> 7c31fce6a3a3318bf2a792b3d5138cc9a7d75ab7
   fetch("/api/grupos")
     .then(r => r.json())
     .then(grupos => {
@@ -3024,6 +3086,7 @@ function renderMiembrosPanel(panel) {
       });
 
       selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
+<<<<<<< HEAD
       _allGrupoOptions = []; // Reset para el buscador local
       grupos.forEach(g => {
         const option = document.createElement("option");
@@ -3048,36 +3111,38 @@ function renderMiembrosPanel(panel) {
           selectGrupos.dispatchEvent(new Event("change"));
           window.grupoPendienteDeSeleccion = null;
       }
+=======
+      grupos.forEach(grupo => {
+          const option = document.createElement("option");
+          option.value = grupo.id;
+          
+          const nombreReal = grupo.displayName || grupo.nombre || "Grupo sin nombre";
+          const correoLista = grupo.correo || grupo.mail || "Sin correo";
+          const cantidad = grupo.cantidadUsuarios !== undefined ? grupo.cantidadUsuarios : "?";
+
+          option.textContent = `${nombreReal}  —  ${correoLista}  —  (👥 ${cantidad} miembros)`;
+    
+          option.setAttribute("data-correo", correoLista);
+          option.setAttribute("data-miembros", cantidad);
+
+          exploradorGruposSelect.appendChild(option);
+      });
+>>>>>>> 7c31fce6a3a3318bf2a792b3d5138cc9a7d75ab7
     })
     .catch(err => {
       console.error("Error cargando grupos:", err);
       selectGrupos.innerHTML = '<option value="">⚠️ Error al cargar las listas</option>';
     });
 
-  // 3. Detectamos cuando el usuario elige una lista en el desplegable
+  // 3. Evento de cambio de grupo
   selectGrupos.addEventListener("change", function() {
     const grupoId = this.value;
-    searchInput.value = "";
-    searchClear.style.display = "none";
-    allMiembros = [];
 
     if (!grupoId) {
-      searchWrap.style.display = "none";
-      content.innerHTML = `
-        <div class="miembros-empty">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-          <p>Selecciona un grupo en el desplegable de arriba</p>
-        </div>
-      `;
+      content.innerHTML = '<div class="miembros-empty"><p>Selecciona un grupo arriba</p></div>';
       return;
     }
 
-    // Ponemos el spinner de carga usando tus clases CSS originales
     content.innerHTML = `
       <div class="miembros-loading">
         <div class="miembros-spinner"></div>
@@ -3085,81 +3150,98 @@ function renderMiembrosPanel(panel) {
       </div>
     `;
 
-    // 4. Llamamos a tu servidor para que nos dé los miembros exactos de esa lista
     fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        allMiembros = Array.isArray(data) ? data : (data.miembros || []);
+      .then(r => r.json())
+      .then(data => {
+        const lista = Array.isArray(data) ? data : (data.value || data.miembros || []);
 
-        if (allMiembros.length === 0) {
-          searchWrap.style.display = "none";
+        if (lista.length === 0) {
           content.innerHTML = '<div class="miembros-empty"><p>Este grupo no tiene miembros</p></div>';
           return;
         }
 
-        searchWrap.style.display = "block";
-        renderTabla(allMiembros);
-        // Generamos las filas de la tabla con la clase "fila-miembro"
-        let rows = miembros.map(function(m) {
+        // Generamos las filas de la tabla
+        let rowsHtml = lista.map(m => {
           const nombre = m.nombre || m.displayName || "—";
           const email  = m.correo  || m.mail || m.userPrincipalName || "—";
           const inicial = nombre.charAt(0).toUpperCase();
-          return '<tr class="fila-miembro">'
-            + '<td><div class="miembro-avatar-row"><div class="miembro-avatar">' + inicial + '</div><span>' + nombre + '</span></div></td>'
-            + '<td><a href="mailto:' + email + '" class="miembro-email">' + email + '</a></td>'
-            + '</tr>';
+          return `
+            <tr class="fila-miembro">
+              <td style="padding: 10px; border-bottom: 1px solid var(--ms-border);">
+                <div class="miembro-avatar-row" style="display: flex; align-items: center; gap: 10px;">
+                  <div class="miembro-avatar" style="width: 28px; height: 28px; background: var(--ms-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">${inicial}</div>
+                  <span>${nombre}</span>
+                </div>
+              </td>
+              <td style="padding: 10px; border-bottom: 1px solid var(--ms-border);">
+                <a href="mailto:${email}" style="color: var(--ms-blue); text-decoration: none; font-size: 13px;">${email}</a>
+              </td>
+            </tr>`;
         }).join("");
 
-        // 5. Inyectamos LA BARRA DE BÚSQUEDA y la tabla terminada
-        content.innerHTML = ''
-          + '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; gap: 15px;">'
-          + '  <div style="position: relative; flex-grow: 1;">'
-          + '    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="position: absolute; left: 10px; top: 10px; color: #888;">'
-          + '      <circle cx="11" cy="11" r="8"></circle>'
-          + '      <path stroke-linecap="round" d="M21 21l-4.35-4.35"></path>'
-          + '    </svg>'
-          + '    <input type="text" id="buscadorFiltroMiembros" placeholder="Buscar por nombre o correo..." style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid var(--ms-border-dark); border-radius: 6px; font-family: inherit; background: var(--ms-surface); outline: none; box-sizing: border-box;">'
-          + '  </div>'
-          + '  <span class="miembros-count" style="background: var(--ms-blue-light); color: var(--ms-blue); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; white-space: nowrap;">' + miembros.length + ' miembro' + (miembros.length !== 1 ? "s" : "") + '</span>'
-          + '</div>'
-          + '<div class="miembros-table-wrap" style="border: 1px solid var(--ms-border); border-radius: 8px; overflow: hidden; max-height: 500px; overflow-y: auto;">'
-          + '<table class="miembros-table" style="width: 100%; border-collapse: collapse; text-align: left;">'
-          + '<thead style="background: var(--ms-surface-alt); border-bottom: 2px solid var(--ms-border); position: sticky; top: 0; z-index: 10;"><tr><th style="padding: 10px;">NOMBRE</th><th style="padding: 10px;">CORREO</th></tr></thead>'
-          + '<tbody>' + rows + '</tbody>'
-          + '</table></div>';
+        // Inyectamos el BUSCADOR ÚNICO y la TABLA
+        content.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <div style="position: relative; flex-grow: 1;">
+              <svg width="16" height="16" fill="none" stroke="#888" stroke-width="2" viewBox="0 0 24 24" style="position: absolute; left: 10px; top: 10px;">
+                <circle cx="11" cy="11" r="8"></circle><path d="M21 21l-4.35-4.35"></path>
+              </svg>
+              <input type="text" id="inputUnicoBuscador" placeholder="Filtrar por nombre o email..." 
+                style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid var(--ms-border-dark); border-radius: 6px; outline: none; font-family: inherit;">
+            </div>
+            <span style="background: var(--ms-blue-light); color: var(--ms-blue); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; white-space: nowrap;">
+              ${lista.length} miembros
+            </span>
+          </div>
+          <div style="border: 1px solid var(--ms-border); border-radius: 8px; overflow: hidden; max-height: 400px; overflow-y: auto; background: white;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead style="background: var(--ms-surface-alt); position: sticky; top: 0; z-index: 10;">
+                <tr>
+                  <th style="padding: 10px; font-size: 11px; color: #666;">NOMBRE</th>
+                  <th style="padding: 10px; font-size: 11px; color: #666;">CORREO</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          </div>
+        `;
 
-        // 6. 🚀 ACTIVAMOS LA LÓGICA DEL BUSCADOR
-        const inputBuscador = content.querySelector("#buscadorFiltroMiembros");
-        const filasMiembros = content.querySelectorAll(".fila-miembro");
+        // Lógica del buscador
+        const input = content.querySelector("#inputUnicoBuscador");
+        const filas = content.querySelectorAll(".fila-miembro");
 
-        inputBuscador.addEventListener("input", function(e) {
-            const terminoBusqueda = e.target.value.toLowerCase();
-            
-            filasMiembros.forEach(fila => {
-                // Sacamos todo el texto de la fila (nombre + email)
-                const textoFila = fila.textContent.toLowerCase();
-                
-                // Comparamos
-                if (textoFila.includes(terminoBusqueda)) {
-                    fila.style.display = ""; // Mostramos la fila
-                } else {
-                    fila.style.display = "none"; // Ocultamos la fila
-                }
-            });
+        input.addEventListener("input", function(e) {
+          const valor = e.target.value.toLowerCase().trim();
+          filas.forEach(f => {
+            f.style.display = f.textContent.toLowerCase().includes(valor) ? "" : "none";
+          });
         });
-
       })
-      .catch(function() {
-        searchWrap.style.display = "none";
-        content.innerHTML = '<div class="miembros-empty"><span style="font-size:32px">⚠️</span><p>No se pudieron cargar los miembros.<br>Comprueba la conexión con el servidor.</p></div>';
+      .catch(err => {
+        console.error("Error:", err);
+        content.innerHTML = '<p style="color:red; padding:20px;">Error al conectar con el servidor.</p>';
       });
   });
+}
 
   // 5. Buscador en tiempo real
+ // 1. Definimos las variables que faltan buscando los elementos por su ID
+const searchInput = document.getElementById("buscadorFiltroMiembros");
+// Si no tienes un botón de "X" para limpiar, creamos una variable vacía para que no de error
+const searchClear = { style: { display: "none" } }; 
+
+// 2. Ahora sí, el código del buscador funcionará
+if (searchInput) {
   searchInput.addEventListener("input", function() {
     const q = this.value.trim().toLowerCase();
-    searchClear.style.display = q ? "block" : "none";
+    
+    // Si tienes un botón de limpiar (searchClear) en tu HTML original, esto lo mostrará/ocultará
+    if (document.getElementById("searchClear")) {
+        document.getElementById("searchClear").style.display = q ? "block" : "none";
+    }
+
     if (!allMiembros.length) return;
+
     const filtrados = q
       ? allMiembros.filter(function(m) {
           const nombre = (m.nombre || m.displayName || "").toLowerCase();
@@ -3168,16 +3250,29 @@ function renderMiembrosPanel(panel) {
           return nombre.includes(q) || email.includes(q) || id.includes(q);
         })
       : allMiembros;
-    renderTabla(filtrados);
-  });
 
-  searchClear.addEventListener("click", function() {
-    searchInput.value = "";
-    searchClear.style.display = "none";
-    renderTabla(allMiembros);
-    searchInput.focus();
+    // 3. Importante: Como estamos usando una tabla manual, 
+    // en lugar de renderTabla(filtrados), vamos a filtrar las filas directamente
+    const filas = content.querySelectorAll(".fila-miembro");
+    filas.forEach(fila => {
+        const texto = fila.textContent.toLowerCase();
+        fila.style.display = texto.includes(q) ? "" : "none";
+    });
   });
 }
+
+// 4. El evento del botón limpiar (solo si existe el elemento)
+const btnClear = document.getElementById("searchClear");
+if (btnClear && searchInput) {
+    btnClear.addEventListener("click", function() {
+        searchInput.value = "";
+        this.style.display = "none";
+        // Mostramos todas las filas de nuevo
+        content.querySelectorAll(".fila-miembro").forEach(f => f.style.display = "");
+        searchInput.focus();
+    });
+}
+
 
 function renderImagenesPanel(panel) {
   panel.innerHTML = `
@@ -3935,3 +4030,5 @@ window.generarCuerpoTarjeta = function() {
     // Devolvemos solo el contenido de la tarjeta
     return cardCompleta.attachments[0].content;
 };
+
+
