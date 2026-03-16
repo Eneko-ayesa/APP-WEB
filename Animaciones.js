@@ -2819,31 +2819,56 @@ function renderMiembrosPanel(panel) {
         const itemId = item.dataset.id;
         const itemName = item.dataset.nombre;
         const itemTipo = item.dataset.tipo;
+        const emailVal = item.dataset.email;
 
+        // 1. SIEMPRE rellenamos la caja de destinatario principal (Teams o Outlook)
+        const canal = document.getElementById("canal")?.value;
+        if (canal === "teams") {
+            const teamsEl = document.getElementById("teamsRecipient");
+            if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+        } else {
+            const emailsEl = document.getElementById("emails");
+            if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+        }
+
+        // 2. Si es un GRUPO, lo sincronizamos con el explorador de abajo y lo abrimos
+        // 2. Si es un GRUPO, lo sincronizamos con el explorador de abajo y lo abrimos
         if (itemTipo === "grupo") {
-            // Si hace clic en un GRUPO, lo seleccionamos en el explorador de abajo
             const selectGrupos = document.getElementById("exploradorGruposSelect");
+            
             if (selectGrupos) {
+                // A) Comprobamos si el grupo ya existe en el desplegable
+                let existe = Array.from(selectGrupos.options).some(opt => opt.value === itemId);
+                
+                // B) Si NO existe en la lista en este momento, lo creamos y lo metemos a la fuerza
+                if (!existe) {
+                    const nuevaOpcion = new Option(itemName, itemId);
+                    selectGrupos.add(nuevaOpcion);
+                }
+
+                // C) Ahora que sabemos 100% que existe en la lista, lo seleccionamos
                 selectGrupos.value = itemId;
-                selectGrupos.dispatchEvent(new Event("change"));
+
+                // D) Disparamos el evento para que tu web descargue y pinte a los miembros
+                selectGrupos.dispatchEvent(new Event("change", { bubbles: true }));
             }
+
+            // Forzamos a que el panel de miembros se abra visualmente si estaba cerrado
+            const btnAbrirMiembros = document.getElementById("toggleExploradorBtn");
+            const panelExplorador = document.getElementById("exploradorGruposContainer");
+            
+            if (panelExplorador && panelExplorador.style.display === "none") {
+                if (btnAbrirMiembros) btnAbrirMiembros.click();
+                else panelExplorador.style.display = "block";
+            }
+
             if (typeof showToast === "function") showToast(`✅ Lista seleccionada: ${itemName}`);
             
         } else {
-            // Si hace clic en un USUARIO, lo ponemos en la caja de destinatarios directamente
-            const emailVal = item.dataset.email;
-            const canal = document.getElementById("canal")?.value;
-            if (canal === "teams") {
-              const teamsEl = document.getElementById("teamsRecipient");
-              if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
-            } else {
-              const emailsEl = document.getElementById("emails");
-              if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
-            }
             if (typeof showToast === "function") showToast(`✅ Usuario seleccionado: ${itemName}`);
         }
 
-        // Actualizamos el buscador visualmente y cerramos
+        // 3. Actualizamos el buscador visualmente y cerramos
         if (typeof gusInput !== 'undefined') { gusInput.value = itemName; }
         if (typeof gusClear !== 'undefined') { gusClear.classList.add("visible"); }
         gusHide();
