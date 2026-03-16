@@ -4497,7 +4497,6 @@ a.card-action-btn:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--ms-blue);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -4571,4 +4570,110 @@ a.card-action-btn:hover {
   flex: 1;
   height: 1px;
   background: var(--ms-border);
+}
+/* ═══════════════════════════════════════════════
+   CHECKBOX — NOTIFICACIÓN DE ENTREGA
+   ═══════════════════════════════════════════════ */
+
+.notify-check-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--ms-border);
+  background: var(--ms-surface-alt, #faf9f8);
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+  transition: border-color 180ms, background 180ms, box-shadow 180ms;
+}
+.notify-check-label:hover {
+  border-color: var(--ms-blue, #0000d0);
+  background: var(--ms-blue-xlight, #f0f0ff);
+}
+.notify-check-label:has(input:checked) {
+  border-color: var(--ms-blue, #0000d0);
+  background: var(--ms-blue-xlight, #f0f0ff);
+  box-shadow: 0 0 0 3px var(--ms-blue-light, #e0e0ff);
+}
+
+/* Caja del checkbox */
+.notify-check-box {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.notify-check-box input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.notify-check-custom {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--ms-border-dark, #c8c6c4);
+  background: var(--ms-surface, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 180ms, border-color 180ms, transform 120ms;
+}
+.notify-check-custom svg {
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 150ms, transform 150ms cubic-bezier(.22,1,.36,1);
+}
+.notify-check-box input:checked ~ .notify-check-custom {
+  background: var(--ms-blue, #0000d0);
+  border-color: var(--ms-blue, #0000d0);
+  transform: scale(1.05);
+}
+.notify-check-box input:checked ~ .notify-check-custom svg {
+  opacity: 1;
+  transform: scale(1);
+}
+.notify-check-box input:focus-visible ~ .notify-check-custom {
+  outline: 2px solid var(--ms-blue, #0000d0);
+  outline-offset: 2px;
+}
+
+/* Texto + badges */
+.notify-check-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ms-ink-2, #323130);
+  line-height: 1.3;
+}
+.notify-check-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.notify-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: .02em;
+}
+.notify-badge--teams {
+  background: #dce7ff;
+  color: #2b5fcc;
+}
+.notify-badge--email {
+  background: #e6f4ea;
+  color: #1a7a30;
 }

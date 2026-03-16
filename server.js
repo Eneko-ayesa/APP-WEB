@@ -209,32 +209,38 @@ app.get('/api/buscar-usuarios', async (req, res) => {
             .top(5)
             .get();
 
-        // 2. Buscamos GRUPOS que coincidan con el texto
+        // 2. Buscamos GRUPOS que coincidan con el texto y contamos sus miembros
         const responseGrupos = await client.api('/groups')
-            .filter(`startsWith(displayName, '${busqueda}') or startsWith(mail, '${busqueda}')`)
-            .select('id,displayName,mail')
-            .top(5)
-            .get();
+                    .header('ConsistencyLevel', 'eventual') 
+                    .query({ $count: true })
+                    .filter(`startsWith(displayName, '${busqueda}') or startsWith(mail, '${busqueda}')`)
+                    .expand('members($count=true)') 
+                    .top(5)
+                    .get();
 
-        // 3. Formateamos los usuarios para que Animaciones.js los entienda
+        // 3. Formateamos los usuarios
         const usuarios = responseUsuarios.value.map(u => ({
             id: u.id,
             nombre: u.displayName,
             correo: u.mail || u.userPrincipalName,
             tipo: 'usuario'
         }));
-
-        // 4. Formateamos los grupos
-        const grupos = responseGrupos.value.map(g => ({
-            id: g.id,
-            nombre: g.displayName,
-            correo: g.mail,
-            tipo: 'grupo'
-        }));
+        // 4. Formateamos los grupos (¡CORREGIDO!)
+       const grupos = responseGrupos.value.map(g => {
+            // A veces Microsoft lo manda en odata.count, a veces dentro del array members
+            const numeroMiembros = g['members@odata.count'] || (g.members ? g.members.length : 0);
+            
+            return {
+                id: g.id,
+                nombre: g.displayName,
+                correo: g.mail || "Sin correo",
+                cantidadUsuarios: numeroMiembros,
+                tipo: 'grupo'
+            };
+        });
 
         // 5. Unimos ambas listas y las enviamos al navegador
         res.status(200).json([...usuarios, ...grupos]);
-
     } catch (error) {
         // 🛑 ESTO ES LO QUE TE CHIVARÁ EL ERROR REAL SI ALGO FALLA
         console.error("❌ Error en /api/buscar-usuarios:", error.message);
@@ -248,20 +254,32 @@ app.get('/api/buscar-usuarios', async (req, res) => {
 });
 
 // Ruta para obtener los grupos y mostrarlos en el frontend
+// Ruta para cargar el menú desplegable de grupos al iniciar la página
 app.get('/api/grupos', async (req, res) => {
     try {
-        // 🛑 EL CAMBIO ESTÁ AQUÍ: Usamos 'client' en lugar de 'graphClient'
         const grupos = await client.api('/groups')
             .header('ConsistencyLevel', 'eventual') 
-            .query({ $count: true })                
-            .filter("mailEnabled eq true") 
+            .query({ $count: true }) // 👈 Obligatorio para Graph
             .select('id,displayName,mail')
+            .expand('members($count=true)') // 👈 ¡La magia para contar!
             .top(999) 
             .get();
 
-        res.status(200).json(grupos.value);
+        // Formateamos los datos y sacamos el número
+        const gruposFormateados = grupos.value.map(g => {
+            const numeroMiembros = g['members@odata.count'] || (g.members ? g.members.length : 0);
+            
+            return {
+                id: g.id,
+                displayName: g.displayName,
+                correo: g.mail || "Sin correo",
+                cantidadUsuarios: numeroMiembros // 👈 Aquí mandamos el número a la web
+            };
+        });
+
+        res.status(200).json(gruposFormateados);
     } catch (error) {
-        console.error("Error al obtener grupos:", error.message);
+        console.error("Error al obtener grupos del desplegable:", error.message);
         res.status(500).json({ error: 'Fallo al obtener las listas de distribución.' });
     }
 });

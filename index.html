@@ -537,6 +537,39 @@
                   Limpiar
                 </button>
               </div>
+
+              <!-- ── NOTIFICACIÓN DE ENTREGA ──────────────── -->
+              <label class="notify-check-label" for="notifyDelivery">
+                <span class="notify-check-box">
+                  <input type="checkbox" id="notifyDelivery" name="notifyDelivery"
+                    aria-label="Notificarme cuando la entrega haya terminado">
+                  <span class="notify-check-custom" aria-hidden="true">
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none"
+                         stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="2 6 5 9 10 3"/>
+                    </svg>
+                  </span>
+                </span>
+                <span class="notify-check-text">
+                  Notificarme cuando la entrega haya terminado
+                  <span class="notify-check-badges">
+                    <span class="notify-badge notify-badge--teams">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>Teams
+                    </span>
+                    <span class="notify-badge notify-badge--email">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>Correo
+                    </span>
+                  </span>
+                </span>
+              </label>
+              <!-- ── FIN NOTIFICACIÓN ─────────────────────── -->
+
               <button type="submit" class="btn-submit">
                 <svg
                   width="16"
