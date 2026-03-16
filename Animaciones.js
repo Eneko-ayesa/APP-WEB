@@ -2609,6 +2609,12 @@ function mostrarInsertDialog(imgUrl, imgLabel) {
 function renderMiembrosPanel(panel) {
   // 1. Estructura base: Buscador global + Cabecera + Desplegable + Tabla
   panel.innerHTML = `
+    <!-- ══ CABECERA DEL PANEL ═══════════════════════════════ -->
+    <div class="panel-section-hdr">
+      <h2>👥 Explorador de Listas</h2>
+      <p>Selecciona una lista de distribución para ver sus miembros</p>
+    </div>
+
     <!-- ══ BUSCADOR GLOBAL DE USUARIOS ═══════════════════ -->
     <div class="gus-section">
       <div class="gus-label">Búsqueda global de usuarios</div>
@@ -2671,12 +2677,6 @@ function renderMiembrosPanel(panel) {
 
     <!-- Separador visual entre buscador global y explorador por grupo -->
     <div class="gus-divider">o explora por lista</div>
-
-    <!-- ══ EXPLORADOR DE LISTAS (original) ══════════════ -->
-    <div class="panel-section-hdr">
-      <h2>👥 Explorador de Listas</h2>
-      <p>Selecciona una lista de distribución para ver sus miembros</p>
-    </div>
     
     <div style="padding: 0 20px 20px 20px;">
         <div style="margin-bottom: 20px;">
@@ -3846,5 +3846,3 @@ window.generarCuerpoTarjeta = function() {
     // Devolvemos solo el contenido de la tarjeta
     return cardCompleta.attachments[0].content;
 };
-
-
