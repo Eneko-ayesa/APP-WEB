@@ -1,4 +1,5 @@
 require('dotenv').config();
+global.enviosActivos = {};
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -97,90 +98,7 @@ app.post('/api/messages', async (req, res) => {
         }
     });
 });
-// 📧 RUTA PARA ENVIAR POR OUTLOOK (La que te está dando 404)
-app.post('/api/enviar-outlook', async (req, res) => {
-    const { destinatarios, asunto, tarjeta } = req.body;
-    
-    try {
-        // 1. Limpiamos y preparamos la lista de correos de forma segura (Solo una vez)
-        const listaCorreos = typeof destinatarios === 'string' 
-            ? destinatarios.split(',').map(e => e.trim()).filter(e => e !== "")
-            : destinatarios;
 
-        if (!listaCorreos || listaCorreos.length === 0) {
-            return res.status(400).json({ error: "No hay destinatarios válidos." });
-        }
-
-        // 2. Dividimos la lista en lotes (ej: de 10 en 10) para no saturar la API
-        const lotes = dividirEnLotes(listaCorreos, 10);
-        let enviadosCorrectamente = 0;
-        let fallidos = [];
-
-        console.log(`Iniciando envío de ${listaCorreos.length} correos en ${lotes.length} lotes...`);
-
-        // 3. Procesamos cada lote secuencialmente
-        for (const [index, lote] of lotes.entries()) {
-            console.log(`Procesando lote ${index + 1}/${lotes.length}...`);
-
-            // Enviamos los correos del lote actual en paralelo
-            const promesasLote = lote.map(async (email) => {
-                try {
-                    await client.api(`/users/${process.env.EMAIL_USER}/sendMail`).post({
-                        message: {
-                            subject: asunto,
-                            toRecipients: [{ emailAddress: { address: email } }],
-                            body: {
-                                contentType: 'html',
-                                content: `
-                                    <html>
-                                        <head>
-                                            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-                                        </head>
-                                        <body>
-                                            <div id="adaptive-card-container">
-                                                <script type="application/adaptivecard+json">${JSON.stringify(tarjeta)}</script>
-                                                <p style="font-family: sans-serif; font-size: 12px; color: #666;">
-                                                    Si no puedes ver la tarjeta interactiva, este mensaje requiere un cliente de correo compatible con Actionable Messages.
-                                                </p>
-                                            </div>
-                                        </body>
-                                    </html>
-                                `
-                            }
-                        }
-                    });
-                    enviadosCorrectamente++;
-                } catch (err) {
-                    console.error(`Error enviando a ${email}:`, err.message);
-                    fallidos.push({ email, error: err.message });
-                }
-            });
-
-            // Esperamos a que termine el lote actual
-            await Promise.all(promesasLote);
-
-            // 4. Pausa de cortesía entre lotes (ej: 1 segundo) para respetar los límites de Graph
-            if (index < lotes.length - 1) {
-                await esperar(1000); 
-            }
-        }
-
-        // 5. Respuesta final con estadísticas
-        res.status(200).json({
-            mensaje: `Proceso finalizado.`,
-            detalles: {
-                total: listaCorreos.length,
-                exitos: enviadosCorrectamente,
-                fallidos: fallidos.length,
-                errores: fallidos
-            }
-        });
-
-    } catch (error) {
-        console.error("Error crítico en /api/enviar-outlook:", error);
-        res.status(500).json({ error: 'Error interno al procesar el envío.', detalle: error.message });
-    }
-});
 // Función auxiliar para crear pausas de tiempo en el código
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -350,213 +268,6 @@ app.get('/api/grupos/:id/miembros', async (req, res) => {
     }
 });
 
-// ====================================================================
-// 🚀 RUTA MAESTRA PARA ENVIAR POR TEAMS (GRUPOS E INDIVIDUALES)
-// ====================================================================
-app.post('/api/enviar-grupo-teams', async (req, res) => {
-    try {
-        const { tarjeta, destinatarios } = req.body;
-        
-        // ====================================================================
-        // PANEL DE PRUEBAS
-        // ====================================================================
-        const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
-        const MODO_BOMBARDEO  = false;  // true = Envía tarjetas masivas al primer destinatario.
-        const CANTIDAD_BOMBARDEO = 2000; // Número de tarjetas a enviar en modo bombardeo
-        // ====================================================================
-        
-        if (!destinatarios) {
-            return res.status(400).json({ error: "No hay destinatarios seleccionados." });
-        }
-
-        // 1. Transformamos el string
-        const listaCorreos = typeof destinatarios === 'string' 
-            ? destinatarios.split(',').map(e => e.trim()).filter(e => e !== "")
-            : destinatarios;
-
-        if (listaCorreos.length === 0) {
-            return res.status(400).json({ error: "La lista de destinatarios está vacía." });
-        }
-
-        let targetUserIds = new Set(); 
-
-        // 2. Fase de desglose de destinatarios
-        for (const email of listaCorreos) {
-            // A) Buscamos si es un grupo
-            const groupSearch = await client.api(`/groups`)
-                .filter(`mail eq '${email}'`)
-                .select('id').get();
-
-            if (groupSearch.value && groupSearch.value.length > 0) {
-                const groupId = groupSearch.value[0].id;
-                const members = await client.api(`/groups/${groupId}/members`).select('id').get();
-                members.value.forEach(m => {
-                    if (m['@odata.type'] === '#microsoft.graph.user') targetUserIds.add(m.id);
-                });
-                continue; 
-            }
-
-            // B) Buscamos si es un usuario individual
-            const userSearch = await client.api(`/users`)
-                .filter(`mail eq '${email}' or userPrincipalName eq '${email}'`)
-                .select('id').get();
-
-            if (userSearch.value && userSearch.value.length > 0) {
-                targetUserIds.add(userSearch.value[0].id);
-            }
-        }
-
-        // 3. Preparamos las referencias
-        const referenciasValidas = [];
-        for (const id of Object.keys(conversationReferences)) {
-            const referencia = conversationReferences[id];
-            if (referencia.user && referencia.user.aadObjectId && targetUserIds.has(referencia.user.aadObjectId)) {
-                referenciasValidas.push(referencia);
-            }
-        }
-
-        if (referenciasValidas.length === 0) {
-            return res.status(404).json({ error: "Ninguno de los destinatarios tiene el bot instalado." });
-        }
-
-        // ====================================================================
-        // 💣 MODO BOMBARDEO
-        // ====================================================================
-        if (MODO_BOMBARDEO) {
-            const usuarioObjetivo = referenciasValidas[0]; 
-            referenciasValidas.length = 0; 
-            
-            for (let i = 0; i < CANTIDAD_BOMBARDEO; i++) {
-                referenciasValidas.push(usuarioObjetivo);
-            }
-            console.log(` MODO BOMBARDEO ACTIVO: Se generaron ${CANTIDAD_BOMBARDEO} envíos.`);
-        }
-
-        // 4. RESPUESTA INMEDIATA AL FRONTEND
-        if (MODO_SIMULACION) {
-            res.status(202).json({ mensaje: `[SIMULACIÓN] Detectados ${targetUserIds.size} usuarios. Mira la consola.` });
-        } else if (MODO_BOMBARDEO) {
-            res.status(202).json({ mensaje: `[MODO TEST] Enviando ${CANTIDAD_BOMBARDEO} tarjetas a tu cuenta...` });
-        } else {
-            res.status(202).json({ mensaje: `Procesando envío masivo. Detectados ${referenciasValidas.length} usuarios válidos.` });
-        }
-
-// --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE (CON MOCK PARA PRUEBAS) ---
-        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 5) => {
-            
-            // 🧪 SI ESTAMOS EN MODO BOMBARDEO, FINGIMOS LA CONEXIÓN A MICROSOFT
-            if (MODO_BOMBARDEO) {
-                // Simulamos lo que tarda la red real en contestar (entre 100ms y 300ms)
-                const latenciaRed = Math.floor(Math.random() * 200) + 100;
-                await new Promise(r => setTimeout(r, latenciaRed));
-                
-                // Opcional: Simulamos que un 1% de los envíos fallan para ver cómo reacciona tu código
-                const falloAleatorio = Math.random() < 0.01; 
-                if (falloAleatorio) {
-                    throw new Error("Simulación de error 429 o 500 de Microsoft");
-                }
-                
-                return true; // Microsoft (falso) dice "200 OK"
-            }
-
-            // 🌐 SI NO ESTAMOS EN MODO BOMBARDEO, ENVÍO REAL A TEAMS
-            for (let intento = 1; intento <= maxIntentos; intento++) {
-                try {
-                    await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
-                        await ctx.sendActivity({ 
-                            attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
-                        });
-                    });
-                    return true;
-                } catch (error) {
-                    if (intento === maxIntentos) throw error; 
-                    await new Promise(r => setTimeout(r, 2000 * intento)); // Backoff progresivo
-                }
-            }
-        };
-
-        // 5. PROCESO ASÍNCRONO CON CONTADOR EN VIVO
-        (async () => {
-            try {
-                // AJUSTE DE SEGURIDAD (MÁXIMA VELOCIDAD SIN BLOQUEO)
-                const TAMANO_LOTE = 15;        // 15 mensajes por lote
-                const ESPERA_ENTRE_LOTES = 500; // Medio segundo de pausa entre lotes (30 msgs/seg)
-
-                let exitos = 0;
-                let fallos = 0;
-
-                const lotes = [];
-                for (let i = 0; i < referenciasValidas.length; i += TAMANO_LOTE) {
-                    lotes.push(referenciasValidas.slice(i, i + TAMANO_LOTE));
-                }
-
-                console.log(`\n🚀 INICIANDO ENTREGA TEAMS: ${referenciasValidas.length} tarjetas en ${lotes.length} lotes.`);
-                const startTime = Date.now();
-
-                for (let i = 0; i < lotes.length; i++) {
-                    const loteActual = lotes[i];
-                    
-                    const promesasEnvio = loteActual.map(referencia => {
-                        if (MODO_SIMULACION) {
-                            exitos++;
-                            return Promise.resolve();
-                        }
-                        
-                        return enviarConReintentos(referencia, tarjeta)
-                            .then(() => exitos++)
-                            .catch(() => fallos++);
-                    });
-
-                    await Promise.all(promesasEnvio);
-                    
-                    //  CÁLCULO DE TIEMPO Y ETA EN VIVO
-                    const tiempoActual = Date.now();
-                    const milisegundosTranscurridos = tiempoActual - startTime;
-                    const velocidadPorLote = milisegundosTranscurridos / (i + 1);
-                    const lotesRestantes = lotes.length - (i + 1);
-                    const etaMilisegundos = velocidadPorLote * lotesRestantes;
-
-                    const segTranscurridos = (milisegundosTranscurridos / 1000).toFixed(1);
-                    const segRestantes = (etaMilisegundos / 1000).toFixed(1);
-
-                    // Borra la línea anterior de la consola y reescribe para hacer efecto "contador dinámico"
-                    process.stdout.write(`\rLote ${i + 1}/${lotes.length} |  Llevamos: ${segTranscurridos}s | Faltan: ~${segRestantes}s para terminar...`);
-
-                    if (i < lotes.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
-                    }
-                }
-                
-                const endTime = Date.now();
-                const minutosTranscurridos = ((endTime - startTime) / 60000).toFixed(2);
-
-                console.log(`\n\nREPORTE FINAL DE ENVÍO TEAMS:`);
-                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                console.log(` Tiempo total real: ${minutosTranscurridos} minutos`);
-                console.log(`✅ Entregas confirmadas: ${exitos}`);
-                console.log(`❌ Errores irrecuperables: ${fallos}`);
-                console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-                
-                if (req.body.notificar && req.body.remitente) {
-                    await enviarNotificacionFin(req.body.remitente, exitos, fallos, minutosTranscurridos);
-                }
-
-            } catch (errAsync) {
-                console.error("\n❌ Error en el proceso de fondo de Teams:", errAsync);
-            }
-        })();
-
-    } catch (error) {
-        console.error("Error al preparar envío a Teams:", error.message);
-        if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor.' });
-    }
-});
-
-// --- Iniciacion ---
-app.listen(3000, () => {
-    console.log('🚀 Servidor activo en puerto 3000');
-});
-
 // ── FUNCIÓN PARA AVISAR AL USUARIO AL TERMINAR EL LOTE ──
 async function enviarNotificacionFin(destinatario, exitos, fallos, tiempo) {
     try {
@@ -590,3 +301,341 @@ async function enviarNotificacionFin(destinatario, exitos, fallos, tiempo) {
         console.error("Error al enviar la notificación de fin al usuario:", error);
     }
 }
+
+app.get('/api/estado-envio/:jobId', (req, res) => {
+    const job = global.enviosActivos[req.params.jobId];
+    if (!job) {
+        return res.status(404).json({ error: "Envío no encontrado" });
+    }
+    res.json(job);
+});
+
+// ====================================================================
+// ── ALMACÉN GLOBAL DE ENVÍOS EN SEGUNDO PLANO ──
+// ====================================================================
+global.enviosActivos = {};
+
+// ── RUTA PARA CONSULTAR EL ESTADO DEL ENVÍO DESDE LA WEB ──
+app.get('/api/estado-envio/:jobId', (req, res) => {
+    const job = global.enviosActivos[req.params.jobId];
+    if (!job) {
+        return res.status(404).json({ error: "Envío no encontrado" });
+    }
+    res.json(job);
+});
+
+// ====================================================================
+// 🚀 RUTA MAESTRA PARA ENVIAR POR TEAMS (GRUPOS E INDIVIDUALES)
+// ====================================================================
+app.post('/api/enviar-grupo-teams', async (req, res) => {
+    try {
+        const { tarjeta, destinatarios } = req.body;
+        
+        // ====================================================================
+        // PANEL DE PRUEBAS
+        // ====================================================================
+        const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
+        const MODO_BOMBARDEO  = true;  // true = Envía tarjetas masivas al primer destinatario.
+        const CANTIDAD_BOMBARDEO = 2000; // Número de tarjetas a enviar en modo bombardeo
+        // ====================================================================
+        
+        if (!destinatarios) {
+            return res.status(400).json({ error: "No hay destinatarios seleccionados." });
+        }
+
+        // 1. Transformamos el string
+        const listaCorreos = typeof destinatarios === 'string' 
+            ? destinatarios.split(',').map(e => e.trim()).filter(e => e !== "")
+            : destinatarios;
+
+        if (listaCorreos.length === 0) {
+            return res.status(400).json({ error: "La lista de destinatarios está vacía." });
+        }
+
+        let targetUserIds = new Set(); 
+
+        // 2. Fase de desglose de destinatarios
+        for (const email of listaCorreos) {
+            const groupSearch = await client.api(`/groups`)
+                .filter(`mail eq '${email}'`)
+                .select('id').get();
+
+            if (groupSearch.value && groupSearch.value.length > 0) {
+                const groupId = groupSearch.value[0].id;
+                const members = await client.api(`/groups/${groupId}/members`).select('id').get();
+                members.value.forEach(m => {
+                    if (m['@odata.type'] === '#microsoft.graph.user') targetUserIds.add(m.id);
+                });
+                continue; 
+            }
+
+            const userSearch = await client.api(`/users`)
+                .filter(`mail eq '${email}' or userPrincipalName eq '${email}'`)
+                .select('id').get();
+
+            if (userSearch.value && userSearch.value.length > 0) {
+                targetUserIds.add(userSearch.value[0].id);
+            }
+        }
+
+        // 3. Preparamos las referencias
+        const referenciasValidas = [];
+        for (const id of Object.keys(conversationReferences)) {
+            const referencia = conversationReferences[id];
+            if (referencia.user && referencia.user.aadObjectId && targetUserIds.has(referencia.user.aadObjectId)) {
+                referenciasValidas.push(referencia);
+            }
+        }
+
+        if (referenciasValidas.length === 0) {
+            return res.status(404).json({ error: "Ninguno de los destinatarios tiene el bot instalado." });
+        }
+
+        if (MODO_BOMBARDEO) {
+            const usuarioObjetivo = referenciasValidas[0]; 
+            referenciasValidas.length = 0; 
+            
+            for (let i = 0; i < CANTIDAD_BOMBARDEO; i++) {
+                referenciasValidas.push(usuarioObjetivo);
+            }
+            console.log(` MODO BOMBARDEO ACTIVO: Se generaron ${CANTIDAD_BOMBARDEO} envíos.`);
+        }
+
+        // 🌟 CREACIÓN DEL RASTREO (JOB ID) 🌟
+        const jobId = "JOB_" + Date.now();
+        global.enviosActivos[jobId] = {
+            estado: "Enviando...",
+            exitos: 0,
+            fallos: 0,
+            total: referenciasValidas.length,
+            usuariosFallidos: []
+        };
+
+        // 4. RESPUESTA INMEDIATA AL FRONTEND CON EL JOBID
+        if (MODO_SIMULACION) {
+            res.status(202).json({ mensaje: `[SIMULACIÓN] Detectados ${targetUserIds.size} usuarios.`, jobId: jobId });
+        } else if (MODO_BOMBARDEO) {
+            res.status(202).json({ mensaje: `[MODO TEST] Enviando ${CANTIDAD_BOMBARDEO} tarjetas...`, jobId: jobId });
+        } else {
+            res.status(202).json({ mensaje: `Procesando envío masivo a ${referenciasValidas.length} usuarios.`, jobId: jobId });
+        }
+
+        // --- FUNCIÓN DE AUTO-REINTENTO INTELIGENTE ---
+        const enviarConReintentos = async (referencia, tarjeta, maxIntentos = 5) => {
+            if (MODO_BOMBARDEO) {
+                const latenciaRed = Math.floor(Math.random() * 200) + 100;
+                await new Promise(r => setTimeout(r, latenciaRed));
+                if (Math.random() < 0.01) throw new Error("Simulación de error");
+                return true;
+            }
+
+            for (let intento = 1; intento <= maxIntentos; intento++) {
+                try {
+                    await adapter.continueConversationAsync(process.env.CLIENT_ID, referencia, async (ctx) => {
+                        await ctx.sendActivity({ 
+                            attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: tarjeta }] 
+                        });
+                    });
+                    return true;
+                } catch (error) {
+                    if (intento === maxIntentos) throw error; 
+                    await new Promise(r => setTimeout(r, 2000 * intento));
+                }
+            }
+        };
+
+        // 5. PROCESO ASÍNCRONO EN SEGUNDO PLANO
+        (async () => {
+            try {
+                const TAMANO_LOTE = 15;        
+                const ESPERA_ENTRE_LOTES = 500; 
+
+                let exitos = 0;
+                let fallos = 0;
+
+                const lotes = [];
+                for (let i = 0; i < referenciasValidas.length; i += TAMANO_LOTE) {
+                    lotes.push(referenciasValidas.slice(i, i + TAMANO_LOTE));
+                }
+
+                console.log(`\n🚀 INICIANDO ENTREGA TEAMS: ${referenciasValidas.length} tarjetas en ${lotes.length} lotes.`);
+                const startTime = Date.now();
+
+                for (let i = 0; i < lotes.length; i++) {
+                    const loteActual = lotes[i];
+                    
+                    const promesasEnvio = loteActual.map(referencia => {
+                        const nombreFallo = referencia.user ? referencia.user.name : "Usuario desconocido";
+                        
+                        if (MODO_SIMULACION) {
+                            exitos++;
+                            global.enviosActivos[jobId].exitos++; // Actualiza Tracker
+                            return Promise.resolve();
+                        }
+                        
+                        return enviarConReintentos(referencia, tarjeta)
+                            .then(() => {
+                                exitos++;
+                                global.enviosActivos[jobId].exitos++; // Actualiza Tracker
+                            })
+                            .catch(() => {
+                                fallos++;
+                                global.enviosActivos[jobId].fallos++; // Actualiza Tracker
+                                global.enviosActivos[jobId].usuariosFallidos.push(nombreFallo); // Guarda quién falló
+                            });
+                    });
+
+                    await Promise.all(promesasEnvio);
+                    
+                    const tiempoActual = Date.now();
+                    const milisegundosTranscurridos = tiempoActual - startTime;
+                    const velocidadPorLote = milisegundosTranscurridos / (i + 1);
+                    const etaMilisegundos = velocidadPorLote * (lotes.length - (i + 1));
+                    
+                    process.stdout.write(`\rLote ${i + 1}/${lotes.length} |  Llevamos: ${(milisegundosTranscurridos / 1000).toFixed(1)}s | Faltan: ~${(etaMilisegundos / 1000).toFixed(1)}s para terminar...`);
+
+                    if (i < lotes.length - 1) await new Promise(resolve => setTimeout(resolve, ESPERA_ENTRE_LOTES));
+                }
+                
+                const minutosTranscurridos = ((Date.now() - startTime) / 60000).toFixed(2);
+
+                console.log(`\n\nREPORTE FINAL DE ENVÍO TEAMS:\n✅ Entregas: ${exitos} | ❌ Fallos: ${fallos}\n`);
+                
+                // 🌟 EL RASTREADOR MARCA EL FIN 🌟
+                global.enviosActivos[jobId].estado = "Completado";
+
+                if (req.body.notificar && req.body.remitente) {
+                    await enviarNotificacionFin(req.body.remitente, exitos, fallos, minutosTranscurridos);
+                }
+
+            } catch (errAsync) {
+                console.error("\n❌ Error en el proceso de fondo de Teams:", errAsync);
+                global.enviosActivos[jobId].estado = "Completado"; // Liberar el tracking en caso de fallo crítico
+            }
+        })();
+
+    } catch (error) {
+        console.error("Error al preparar envío a Teams:", error.message);
+        if (!res.headersSent) res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+});
+
+
+// ====================================================================
+// 📧 RUTA PARA ENVIAR POR OUTLOOK (AHORA EN SEGUNDO PLANO)
+// ====================================================================
+app.post('/api/enviar-outlook', async (req, res) => {
+    const { destinatarios, asunto, tarjeta, notificar, remitente } = req.body;
+    
+    try {
+        const listaCorreos = typeof destinatarios === 'string' 
+            ? destinatarios.split(',').map(e => e.trim()).filter(e => e !== "")
+            : destinatarios;
+
+        if (!listaCorreos || listaCorreos.length === 0) {
+            return res.status(400).json({ error: "No hay destinatarios válidos." });
+        }
+
+        // 🌟 CREACIÓN DEL RASTREO (JOB ID) 🌟
+        const jobId = "JOB_" + Date.now();
+        global.enviosActivos[jobId] = {
+            estado: "Enviando...",
+            exitos: 0,
+            fallos: 0,
+            total: listaCorreos.length,
+            usuariosFallidos: []
+        };
+
+        // RESPUESTA INMEDIATA (No bloquea la página web)
+        res.status(202).json({ mensaje: `Proceso de Outlook iniciado.`, jobId: jobId });
+
+        // PROCESO EN SEGUNDO PLANO
+        (async () => {
+            try {
+                // Función auxiliar si no la tenías definida globalmente
+                const dividirEnLotes = (arr, tamano) => {
+                    const l = [];
+                    for (let i = 0; i < arr.length; i += tamano) l.push(arr.slice(i, i + tamano));
+                    return l;
+                };
+
+                const lotes = dividirEnLotes(listaCorreos, 10);
+                let enviadosCorrectamente = 0;
+                let fallidos = 0;
+                const startTime = Date.now();
+
+                console.log(`Iniciando envío de ${listaCorreos.length} correos en ${lotes.length} lotes...`);
+
+                for (const [index, lote] of lotes.entries()) {
+                    console.log(`Procesando lote ${index + 1}/${lotes.length}...`);
+
+                    const promesasLote = lote.map(async (email) => {
+                        try {
+                            await client.api(`/users/${process.env.EMAIL_USER}/sendMail`).post({
+                                message: {
+                                    subject: asunto,
+                                    toRecipients: [{ emailAddress: { address: email } }],
+                                    body: {
+                                        contentType: 'html',
+                                        content: `
+                                            <html>
+                                                <head>
+                                                    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+                                                </head>
+                                                <body>
+                                                    <div id="adaptive-card-container">
+                                                        <script type="application/adaptivecard+json">${JSON.stringify(tarjeta)}</script>
+                                                        <p style="font-family: sans-serif; font-size: 12px; color: #666;">
+                                                            Si no puedes ver la tarjeta interactiva, este mensaje requiere un cliente de correo compatible con Actionable Messages.
+                                                        </p>
+                                                    </div>
+                                                </body>
+                                            </html>
+                                        `
+                                    }
+                                }
+                            });
+                            enviadosCorrectamente++;
+                            global.enviosActivos[jobId].exitos++; // Actualiza Tracker
+                        } catch (err) {
+                            console.error(`Error enviando a ${email}:`, err.message);
+                            fallidos++;
+                            global.enviosActivos[jobId].fallos++; // Actualiza Tracker
+                            global.enviosActivos[jobId].usuariosFallidos.push(email); // Guarda quién falló
+                        }
+                    });
+
+                    await Promise.all(promesasLote);
+
+                    // Pausa de cortesía entre lotes (1 segundo)
+                    if (index < lotes.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+
+                const minutosTranscurridos = ((Date.now() - startTime) / 60000).toFixed(2);
+                
+                // 🌟 EL RASTREADOR MARCA EL FIN 🌟
+                global.enviosActivos[jobId].estado = "Completado";
+
+                // Enviar correo de notificación si el usuario lo pidió
+                if (notificar && remitente) {
+                    await enviarNotificacionFin(remitente, enviadosCorrectamente, fallidos, minutosTranscurridos);
+                }
+
+            } catch (errAsync) {
+                console.error("Error crítico en proceso de fondo Outlook:", errAsync);
+                global.enviosActivos[jobId].estado = "Completado"; // Liberar el tracking
+            }
+        })();
+
+    } catch (error) {
+        console.error("Error crítico en /api/enviar-outlook:", error);
+        if (!res.headersSent) res.status(500).json({ error: 'Error interno al procesar el envío.' });
+    }
+});
+
+// --- Iniciacion ---
+app.listen(3000, () => {
+    console.log('🚀 Servidor activo en puerto 3000');
+});
