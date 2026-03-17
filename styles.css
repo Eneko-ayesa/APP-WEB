@@ -1440,30 +1440,42 @@ div.rich-field a {
   margin-top: 0;
   width: 100%;
 }
+
 .form-actions-row {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
   width: 100%;
+  gap: 10px;
+  justify-content: center;
 }
+
 .btn-secondary-action {
-  flex: 1;
-  display: inline-flex;
+  width: calc(33.333% - 7px);
+  min-width: 195px;
+  flex-grow: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   padding: 10px 14px;
   height: auto;
-  border-radius: 10px;
-  border: 1.5px solid var(--border);
-  background: var(--ms-surface);
-  color: var(--ink-2);
+  white-space: nowrap;
+  background: var(--ms-surface, #fff);
+  border: 1.5px solid var(--border, #e4e4ef);
+  border-radius: var(--radius, 14px);
   font-family: var(--sans);
   font-size: 13px;
   font-weight: 600;
+  color: var(--ink-2, #4a4a60);
   cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
 }
+
+/* Protegemos el icono para que el navegador jamás intente aplastarlo */
+.btn-secondary-action svg {
+  flex-shrink: 0;
+}
+
 .btn-secondary-action:hover {
   background: var(--accent-light);
   color: var(--accent);
@@ -3306,26 +3318,7 @@ input:not(:placeholder-shown):not(:focus) {
    RESPONSIVE — Mobile & Tablet
    ═══════════════════════════════════════════════ */
 
-/* ── TABLET (≤ 1100px): Reducir panel izquierdo ── */
-@media (max-width: 1100px) {
-  .app-layout {
-    grid-template-columns: 420px 1fr;
-  }
-
-  .form-panel-inner {
-    padding: 24px 28px 60px;
-  }
-
-  .form-title {
-    font-size: 26px;
-    margin-bottom: 28px;
-    margin-top: 18px;
-  }
-
-  .preview-side-panel .tpl-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
+/* @media 1100px duplicado eliminado */
 
 /* ── BOTÓN ENVIAR — estado desactivado ── */
 .btn-submit:disabled,
@@ -3357,7 +3350,7 @@ input:not(:placeholder-shown):not(:focus) {
 }
 
 /* ── PORTÁTIL PEQUEÑO / TABLET LANDSCAPE (≤ 1100px) ──
-   DOS COLUMNAS: formulario estrecho + preview grande    */
+   DOS COLUMNAS: formulario 320px + preview grande       */
 @media (max-width: 1100px) {
   .app-layout {
     grid-template-columns: 320px 1fr;
@@ -3365,19 +3358,22 @@ input:not(:placeholder-shown):not(:focus) {
   .form-panel-inner {
     padding: 20px 22px 50px;
   }
+  .form-actions-bottom {
+    padding: 12px 22px 16px;
+    margin-left: -22px;
+    margin-right: -22px;
+  }
+  .btn-secondary-action {
+    font-size: 12px;
+    padding: 9px 10px;
+  }
   .form-title {
     font-size: 24px;
     margin-top: 14px;
     margin-bottom: 20px;
   }
-  .tab {
-    padding: 0 10px;
-    font-size: 12px;
-  }
-  .channel-tab {
-    padding: 4px 8px;
-    font-size: 11px;
-  }
+  .tab { padding: 0 10px; font-size: 12px; }
+  .channel-tab { padding: 4px 8px; font-size: 11px; }
   .preview-side-panel .tpl-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
@@ -3401,10 +3397,8 @@ input:not(:placeholder-shown):not(:focus) {
   .channel-tab { padding: 4px 6px; font-size: 10px; }
   .teams-sidebar { width: 36px !important; }
   .ts-icon { width: 24px; height: 24px; }
-  .form-actions-row { flex-wrap: wrap; gap: 6px; }
-  .btn-save-draft, .btn-secondary-action { flex: 1 1 80px; justify-content: center; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; padding: 9px 8px; }
-  #btnLimpiar { flex: 1 1 80px; min-width: 0; width: auto; }
   .form-actions-bottom { padding: 12px 16px 16px; margin-left: -16px; margin-right: -16px; }
+  .btn-secondary-action { font-size: 12px; padding: 9px 8px; }
   .topbar-user-btn span#topbarUserName { display: none; }
   .topbar-user-btn { padding: 4px 8px 4px 5px; }
   .global-topbar-inner > .brand > span { display: none; }
@@ -3451,6 +3445,8 @@ input:not(:placeholder-shown):not(:focus) {
   .btn-submit { height: 52px; font-size: 15px; }
   .device-btn { width: 34px; height: 30px; }
   .hist-item { flex-wrap: wrap; gap: 6px; }
+  .form-actions-bottom { padding: 10px 14px 14px; margin-left: -14px; margin-right: -14px; }
+  .btn-secondary-action { flex: 1 1 100%; } /* en móvil cada botón ocupa su propia fila */
 }
 
 
