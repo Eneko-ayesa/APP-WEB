@@ -1424,7 +1424,7 @@ div.rich-field a {
 .form-actions-bottom {
   position: sticky;
   bottom: 0;
-  background: transparent;
+  background: var(--ms-surface);
   padding: 14px 48px 20px;
   margin-left: -48px;
   margin-right: -48px;
@@ -1450,15 +1450,13 @@ div.rich-field a {
 }
 
 .btn-secondary-action {
-  width: calc(33.333% - 7px);
-  min-width: 195px;
-  flex-grow: 0;
+  flex: 1 1 140px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   padding: 10px 14px;
-  height: auto;
+  height: 48px;
   white-space: nowrap;
   background: var(--ms-surface, #fff);
   border: 1.5px solid var(--border, #e4e4ef);
@@ -2186,10 +2184,8 @@ textarea::placeholder {
   border-radius: 10px;
   font-family: var(--font);
   font-size: 13px;
-  height: 48px;
   border-color: var(--paper-rule);
   color: var(--ms-ink-3);
-  flex: 1;
 }
 
 /* ── TRANSLATE BUTTON ───────────────────────────── */
