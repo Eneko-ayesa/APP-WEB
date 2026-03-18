@@ -1150,88 +1150,107 @@ function renderHistPanelInline() {
   panel.innerHTML = `<div class="hist-list">${items.map((item, i) => {
     const canal = item.state?.canal || "teams";
     const canalLabel = canal === "outlook" ? "Outlook" : "Teams";
-    const destinatario = canal === "outlook"
-      ? (item.state?.emails || "").trim()
-      : (item.state?.teamsRecipient || "").trim();
-    const destHtml = destinatario
-      ? `<div class="hist-recipient">→ ${destinatario}</div>`
-      : "";
+    const destinatario = canal === "outlook" ? (item.state?.emails || "").trim() : (item.state?.teamsRecipient || "").trim();
+    const destHtml = destinatario ? `<div class="hist-recipient">→ ${destinatario}</div>` : "";
+    
     const mias = getStorage("yako_mis_plantillas");
     const yaGuardada = mias.some(p => p.state?.titulo === item.state?.titulo);
     
-    const btnPlantilla = currentHistTab === "enviadas"
-      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" data-tooltip="${yaGuardada ? "Ya guardada como plantilla" : "Fijar como plantilla"}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
-      : "";
-    const labelBorrar = currentHistTab === "borradores"
-      ? `data-tooltip="Eliminar borrador"`
-      : `data-tooltip="Eliminar tarjeta"`;
+    const btnPlantilla = currentHistTab === "enviadas" ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" title="Guardar como plantilla">📌</button>` : "";
+    const labelBorrar = currentHistTab === "borradores" ? `data-tooltip="Eliminar borrador"` : `data-tooltip="Eliminar tarjeta"`;
+
+    // 🌟 NUEVO: Botón de descarga de Log (solo si hay fallos)
+    const btnLog = (currentHistTab === "enviadas" && item.usuariosFallidos && item.usuariosFallidos.length > 0)
+        ? `<button class="hist-btn" data-action="descargar-log" data-i="${i}" data-tooltip="Descargar incidencias">📥 Log</button>`
+        : "";
 
     return `
     <div class="hist-item" data-i="${i}" ${item.jobId ? `data-jobid="${item.jobId}"` : ""}>
       <div class="hist-dot ${canal}"></div>
-      
       <div class="hist-info" style="flex-grow: 1;">
         <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
         <div class="hist-meta">${canalLabel} · ${item.fecha}</div>
         ${destHtml}
-        
         ${currentHistTab === "enviadas" && item.jobId ? `
             <div class="reporte-container" style="margin-top: 6px; font-size: 11px; color: #555; background: #f4f4f4; padding: 6px; border-radius: 6px;">
                 ${item.reporte ? item.reporte : "<i>⏳ Conectando con el servidor...</i>"}
             </div>
         ` : ""}
       </div>
-      
       <span class="hist-badge estado-texto ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}" style="${!item.reporte && item.jobId ? "background: #fff3cd; color: #856404;" : ""}">
         ${item.tipo === "borrador" ? "Borrador" : (item.jobId && !item.reporte ? "⏳ Enviando" : "✓ Completado")}
       </span>
-      
       <div class="hist-actions">
-        ${btnPlantilla}
-        ${currentHistTab === "borradores"
-          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂</button>`
-          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁</button>`}
+        ${btnLog} ${btnPlantilla}
+        ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁</button>`}
         <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" ${labelBorrar}>🗑</button>
       </div>
     </div>`;
   }).join("")}</div>`;
 
+  // EVENTOS DE LOS BOTONES
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.i;
       const items2 = getStorage(key);
-      if (btn.dataset.action === "borrar") {
+      const accion = btn.dataset.action;
+
+      if (accion === "borrar") {
         items2.splice(idx, 1);
         setStorage(key, items2);
         renderHistPanelInline();
-      } else if (btn.dataset.action === "plantilla") {
+      } else if (accion === "plantilla") {
         const estado = items2[idx].state;
         const mias = getStorage("yako_mis_plantillas");
-        if (mias.some(p => p.state?.titulo === estado.titulo)) {
-          if (typeof showToast === "function") showToast("ℹ️ Esta tarjeta ya está guardada como plantilla");
-          return;
-        }
+        if (mias.some(p => p.state?.titulo === estado.titulo)) return;
         if (typeof guardarMiPlantilla === "function") guardarMiPlantilla(estado);
         if (typeof showToast === "function") showToast("📌 Guardada en Mis plantillas");
         renderHistPanelInline();
+      } else if (accion === "descargar-log") {
+        const itemLog = items2[idx];
+        const fallos = itemLog.usuariosFallidos || [];
+        
+        // 🌟 CREAMOS UNA LISTA BONITA CON EL USUARIO Y SU ERROR
+        const listaFallosTxt = fallos.map(f => {
+            if (typeof f === 'object') {
+                return `❌ ${f.usuario}\n   Motivo: ${f.motivo}`;
+            }
+            return `❌ ${f}`; // Por si acaso hay errores antiguos guardados
+        }).join("\n\n");
+
+        const textoLog = `=======================================\n` +
+                         ` REPORTE DE INCIDENCIAS - YAKO\n` +
+                         `=======================================\n` +
+                         ` Fecha de envío: ${itemLog.fecha}\n` +
+                         ` Tarjeta: ${itemLog.state?.titulo || "Sin título"}\n` +
+                         ` Job ID: ${itemLog.jobId}\n` +
+                         ` Canal: ${itemLog.state?.canal === "outlook" ? "Outlook" : "Teams"}\n\n` +
+                         ` TOTAL FALLOS: ${fallos.length}\n\n` +
+                         ` DETALLE DE ERRORES POR USUARIO:\n` +
+                         `---------------------------------------\n` +
+                         listaFallosTxt + `\n\n` +
+                         `=======================================\n`;
+
+        const blob = new Blob([textoLog], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Log_Errores_${itemLog.jobId}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       } else {
         const estado = items2[idx].state;
-        const esBorrador = btn.dataset.action === "cargar";
+        const esBorrador = accion === "cargar";
         if (typeof mostrarPreviewPlantilla === "function") {
             mostrarPreviewPlantilla({
-              titulo:    estado.titulo    || "",
-              subtitulo: estado.subtitulo || "",
-              imagenUrl: estado.imagen || estado.imagenUrl || "",
-              blocks:    estado.blocks    || [],
-              canal:     estado.canal     || "",
-              badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
-              btnLabel:  esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
+              titulo: estado.titulo || "", subtitulo: estado.subtitulo || "", imagenUrl: estado.imagen || estado.imagenUrl || "", blocks: estado.blocks || [], canal: estado.canal || "", badge: esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada", btnLabel: esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
               onConfirm: () => {
                 cargarEstado(estado);
                 document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
                 document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-                const channelSubtabs = document.getElementById("channelSubtabs");
-                if (channelSubtabs) channelSubtabs.classList.remove("hidden");
+                document.getElementById("channelSubtabs")?.classList.remove("hidden");
                 if (typeof showPreviewChrome === "function") showPreviewChrome(estado.canal || "teams");
               }
             });
@@ -3895,7 +3914,7 @@ function guardarEnviada(state, jobId = null) {
 // 2. DIBUJAR EL PANEL (Con el diseño de rastreo)
 function renderHistPanel() {
   const panel = document.getElementById("histPanel");
-  if (!panel) return; // Por si el panel no existe en el DOM
+  if (!panel) return;
 
   const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
@@ -3905,7 +3924,14 @@ function renderHistPanel() {
     return;
   }
 
-  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => `
+  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => {
+      
+    // 🌟 NUEVO: Botón de log aquí también
+    const btnLog = (currentHistTab === "enviadas" && item.usuariosFallidos && item.usuariosFallidos.length > 0)
+        ? `<button class="hist-btn" data-action="descargar-log" data-i="${i}" data-tooltip="Descargar incidencias">📥 Log</button>`
+        : "";
+
+    return `
     <div class="hist-item" data-i="${i}" ${item.jobId ? `data-jobid="${item.jobId}"` : ""}>
       <div class="hist-dot ${item.state?.canal || "teams"}"></div>
       
@@ -3925,21 +3951,58 @@ function renderHistPanel() {
       </span>
       
       <div class="hist-actions">
-        ${currentHistTab === "borradores"
+        ${btnLog} ${currentHistTab === "borradores"
           ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
           : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
         <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
       </div>
-    </div>`).join("")}</div>`;
+    </div>`
+  }).join("")}</div>`;
 
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.i;
       const items2 = getStorage(key);
-      if (btn.dataset.action === "borrar") {
+      const accion = btn.dataset.action;
+
+      if (accion === "borrar") {
         items2.splice(idx, 1);
         setStorage(key, items2);
         renderHistPanel();
+      } else if (accion === "descargar-log") {
+        const itemLog = items2[idx];
+        const fallos = itemLog.usuariosFallidos || [];
+        
+        // 🌟 CREAMOS UNA LISTA BONITA CON EL USUARIO Y SU ERROR
+        const listaFallosTxt = fallos.map(f => {
+            if (typeof f === 'object') {
+                return `❌ ${f.usuario}\n   Motivo: ${f.motivo}`;
+            }
+            return `❌ ${f}`; // Por si acaso hay errores antiguos guardados
+        }).join("\n\n");
+
+        const textoLog = `=======================================\n` +
+                         ` REPORTE DE INCIDENCIAS - YAKO\n` +
+                         `=======================================\n` +
+                         ` Fecha de envío: ${itemLog.fecha}\n` +
+                         ` Tarjeta: ${itemLog.state?.titulo || "Sin título"}\n` +
+                         ` Job ID: ${itemLog.jobId}\n` +
+                         ` Canal: ${itemLog.state?.canal === "outlook" ? "Outlook" : "Teams"}\n\n` +
+                         ` TOTAL FALLOS: ${fallos.length}\n\n` +
+                         ` DETALLE DE ERRORES POR USUARIO:\n` +
+                         `---------------------------------------\n` +
+                         listaFallosTxt + `\n\n` +
+                         `=======================================\n`;
+
+        const blob = new Blob([textoLog], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Log_Errores_${itemLog.jobId}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       } else {
         cargarEstado(items2[idx].state);
       }
@@ -3955,7 +4018,6 @@ function rastrearEnvio(jobId) {
             if (!res.ok) return;
             const job = await res.json();
 
-            // 🌟 AHORA BUSCAMOS EN TODOS LOS PANELES POSIBLES A LA VEZ
             const filasHistorial = document.querySelectorAll(`[data-jobid="${jobId}"]`);
 
             if (job.estado === "Completado") {
@@ -3963,10 +4025,12 @@ function rastrearEnvio(jobId) {
 
                 let htmlReporte = `✅ Entregadas: <b>${job.exitos}</b> | ❌ Falladas: <b>${job.fallos}</b>`;
                 if (job.usuariosFallidos && job.usuariosFallidos.length > 0) {
-                    htmlReporte += `<br><span style="color: #d93025; font-weight: bold;">Falló en:</span> ${job.usuariosFallidos.join(", ")}`;
+                    // 🌟 EXTRAEMOS SOLO EL NOMBRE PARA LA VISTA PREVIA
+                    const nombresFallos = job.usuariosFallidos.map(f => typeof f === 'object' ? f.usuario : f);
+                    const resumenFallos = nombresFallos.slice(0, 3).join(", ") + (nombresFallos.length > 3 ? "..." : "");
+                    htmlReporte += `<br><span style="color: #d93025; font-weight: bold;">Falló en:</span> ${resumenFallos}`;
                 }
 
-                // Actualizamos visualmente todas las filas encontradas
                 filasHistorial.forEach(fila => {
                     const container = fila.querySelector(".reporte-container");
                     const badge = fila.querySelector(".estado-texto");
@@ -3982,7 +4046,11 @@ function rastrearEnvio(jobId) {
                 const itemIndex = enviadas.findIndex(item => item.jobId === jobId);
                 if (itemIndex !== -1) {
                     enviadas[itemIndex].reporte = htmlReporte;
+                    enviadas[itemIndex].usuariosFallidos = job.usuariosFallidos || [];
                     setStorage("yako_enviadas", enviadas);
+                    
+                    if (typeof renderHistPanel === "function") renderHistPanel();
+                    if (typeof renderHistPanelInline === "function") renderHistPanelInline();
                 }
             } else {
                 filasHistorial.forEach(fila => {

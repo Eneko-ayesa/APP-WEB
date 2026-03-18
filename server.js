@@ -476,12 +476,16 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
                         return enviarConReintentos(referencia, tarjeta)
                             .then(() => {
                                 exitos++;
-                                global.enviosActivos[jobId].exitos++; // Actualiza Tracker
+                                global.enviosActivos[jobId].exitos++; 
                             })
-                            .catch(() => {
+                            .catch((err) => {
                                 fallos++;
-                                global.enviosActivos[jobId].fallos++; // Actualiza Tracker
-                                global.enviosActivos[jobId].usuariosFallidos.push(nombreFallo); // Guarda quién falló
+                                global.enviosActivos[jobId].fallos++; 
+                                // 🌟 AHORA GUARDAMOS EL NOMBRE Y EL MOTIVO DEL ERROR
+                                global.enviosActivos[jobId].usuariosFallidos.push({
+                                    usuario: nombreFallo,
+                                    motivo: err.message || "Error desconocido o tiempo de espera agotado"
+                                });
                             });
                     });
 
@@ -600,8 +604,12 @@ app.post('/api/enviar-outlook', async (req, res) => {
                         } catch (err) {
                             console.error(`Error enviando a ${email}:`, err.message);
                             fallidos++;
-                            global.enviosActivos[jobId].fallos++; // Actualiza Tracker
-                            global.enviosActivos[jobId].usuariosFallidos.push(email); // Guarda quién falló
+                            global.enviosActivos[jobId].fallos++; 
+                            // 🌟 AHORA GUARDAMOS EL CORREO Y EL MOTIVO DEL ERROR
+                            global.enviosActivos[jobId].usuariosFallidos.push({
+                                usuario: email,
+                                motivo: err.message || "Error desconocido"
+                            });
                         }
                     });
 
