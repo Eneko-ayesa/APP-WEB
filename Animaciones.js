@@ -2770,7 +2770,7 @@ function renderMiembrosPanel(panel) {
 
     <!-- ══ BUSCADOR GLOBAL DE USUARIOS ═══════════════════ -->
     <div class="gus-section">
-      <div class="gus-label">Búsqueda global de usuarios</div>
+      <div class="gus-label">Búsqueda global de Listas</div>
       <div class="gus-wrap">
 
         <!-- Barra en forma de píldora -->
