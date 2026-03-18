@@ -2830,12 +2830,6 @@ function renderMiembrosPanel(panel) {
 
     <!-- Separador visual entre buscador global y explorador por grupo -->
     <div class="gus-divider">o explora por lista</div>
-
-    <!-- ══ EXPLORADOR DE LISTAS (original) ══════════════ -->
-    <div class="panel-section-hdr">
-      <h2>👥 Explorador de Listas</h2>
-      <p>Selecciona una lista de distribución para ver sus miembros</p>
-    </div>
     
     <div style="padding: 0 20px 20px 20px;">
         <div style="margin-bottom: 20px;">
