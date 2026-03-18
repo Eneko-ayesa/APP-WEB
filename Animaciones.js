@@ -1141,12 +1141,10 @@ function renderHistPanelInline() {
   if (!panel) return;
   const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
-
   if (!items.length) {
     panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
     return;
   }
-
   panel.innerHTML = `<div class="hist-list">${items.map((item, i) => {
     const canal = item.state?.canal || "teams";
     const canalLabel = canal === "outlook" ? "Outlook" : "Teams";
@@ -1158,23 +1156,19 @@ function renderHistPanelInline() {
       : "";
     const mias = getStorage("yako_mis_plantillas");
     const yaGuardada = mias.some(p => p.state?.titulo === item.state?.titulo);
-    
     const btnPlantilla = currentHistTab === "enviadas"
       ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" data-tooltip="${yaGuardada ? "Ya guardada como plantilla" : "Fijar como plantilla"}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
       : "";
     const labelBorrar = currentHistTab === "borradores"
       ? `data-tooltip="Eliminar borrador"`
       : `data-tooltip="Eliminar tarjeta"`;
-
     return `
-    <div class="hist-item" data-i="${i}" ${item.jobId ? `data-jobid="${item.jobId}"` : ""}>
+    <div class="hist-item">
       <div class="hist-dot ${canal}"></div>
-      
-      <div class="hist-info" style="flex-grow: 1;">
+      <div class="hist-info">
         <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
         <div class="hist-meta">${canalLabel} · ${item.fecha}</div>
         ${destHtml}
-<<<<<<< HEAD
         ${currentHistTab === "enviadas" && item.resultados ? (() => {
           const r = item.resultados;
           const tiempoStr = r.tiempoMs != null
@@ -1189,20 +1183,8 @@ function renderHistPanelInline() {
             ${tiempoStr ? `<span class="hist-res-time" title="Tiempo de respuesta del servidor">⏱ ${tiempoStr}</span>` : ""}
           </div>`;
         })() : ""}
-=======
-        
-        ${currentHistTab === "enviadas" && item.jobId ? `
-            <div class="reporte-container" style="margin-top: 6px; font-size: 11px; color: #555; background: #f4f4f4; padding: 6px; border-radius: 6px;">
-                ${item.reporte ? item.reporte : "<i>⏳ Conectando con el servidor...</i>"}
-            </div>
-        ` : ""}
->>>>>>> 1343ddee967f3243caa2bd97390704bb93cf9ebc
       </div>
-      
-      <span class="hist-badge estado-texto ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}" style="${!item.reporte && item.jobId ? "background: #fff3cd; color: #856404;" : ""}">
-        ${item.tipo === "borrador" ? "Borrador" : (item.jobId && !item.reporte ? "⏳ Enviando" : "✓ Completado")}
-      </span>
-      
+      <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
       <div class="hist-actions">
         ${btnPlantilla}
         ${currentHistTab === "borradores"
@@ -1212,7 +1194,6 @@ function renderHistPanelInline() {
       </div>
     </div>`;
   }).join("")}</div>`;
-
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.i;
@@ -1225,34 +1206,31 @@ function renderHistPanelInline() {
         const estado = items2[idx].state;
         const mias = getStorage("yako_mis_plantillas");
         if (mias.some(p => p.state?.titulo === estado.titulo)) {
-          if (typeof showToast === "function") showToast("ℹ️ Esta tarjeta ya está guardada como plantilla");
+          showToast("ℹ️ Esta tarjeta ya está guardada como plantilla");
           return;
         }
-        if (typeof guardarMiPlantilla === "function") guardarMiPlantilla(estado);
-        if (typeof showToast === "function") showToast("📌 Guardada en Mis plantillas");
+        guardarMiPlantilla(estado);
+        showToast("📌 Guardada en Mis plantillas");
         renderHistPanelInline();
       } else {
         const estado = items2[idx].state;
         const esBorrador = btn.dataset.action === "cargar";
-        if (typeof mostrarPreviewPlantilla === "function") {
-            mostrarPreviewPlantilla({
-              titulo:    estado.titulo    || "",
-              subtitulo: estado.subtitulo || "",
-              imagenUrl: estado.imagen || estado.imagenUrl || "",
-              blocks:    estado.blocks    || [],
-              canal:     estado.canal     || "",
-              badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
-              btnLabel:  esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
-              onConfirm: () => {
-                cargarEstado(estado);
-                document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-                document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-                const channelSubtabs = document.getElementById("channelSubtabs");
-                if (channelSubtabs) channelSubtabs.classList.remove("hidden");
-                if (typeof showPreviewChrome === "function") showPreviewChrome(estado.canal || "teams");
-              }
-            });
-        }
+        mostrarPreviewPlantilla({
+          titulo:    estado.titulo    || "",
+          subtitulo: estado.subtitulo || "",
+          imagenUrl: estado.imagen || estado.imagenUrl || "",
+          blocks:    estado.blocks    || [],
+          canal:     estado.canal     || "",
+          badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
+          btnLabel:  esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
+          onConfirm: () => {
+            cargarEstado(estado);
+            document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+            document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
+            document.getElementById("channelSubtabs")?.classList.remove("hidden");
+            showPreviewChrome(activeChannel);
+          }
+        });
       }
     });
   });
@@ -1838,37 +1816,9 @@ async function dispararEnvios() {
   try { tarjetaJSON = window.generarCuerpoTarjeta?.(); } catch(e) { tarjetaJSON = null; }
   if (!tarjetaJSON) { mostrarEnvioError(new Error("No se pudo generar el contenido de la tarjeta.")); return; }
 
-<<<<<<< HEAD
   const endpoint    = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
-=======
-  // 3. Endpoint y payload
-  // 3. Endpoint y payload
-  const endpoint  = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
->>>>>>> 1343ddee967f3243caa2bd97390704bb93cf9ebc
   const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
-  
-  // Capturamos el check y el correo usando TUS IDs EXACTOS
-  const checkElement = document.getElementById("notifyDelivery");
-  const quiereNotificacion = checkElement ? checkElement.checked : false;
-const emailElement = document.getElementById("topbarDEmail");
-  
-  // 1. Leemos el texto bruto
-  let correoBruto = emailElement?.innerText?.trim() || emailElement?.value?.trim() || "";
-  
-  // 2. ¡EL TRUCO! Le quitamos TODOS los espacios en blanco que se hayan podido colar
-  const correoRemitente = correoBruto.replace(/\s+/g, "");
-
-  // 🚨 CHIVATO
-  console.log("👉 CHIVATO NOTIFICACIÓN - ¿Quiere aviso?:", quiereNotificacion);
-  console.log("👉 CHIVATO NOTIFICACIÓN - Correo LIMPIO:", correoRemitente);
-
-  const bodyPayload = { 
-      destinatarios: inputDestinatarios, 
-      asunto: textoAsunto, 
-      tarjeta: tarjetaJSON,
-      notificar: quiereNotificacion,
-      remitente: correoRemitente
-  };
+  const bodyPayload = { destinatarios: inputDestinatarios, asunto: textoAsunto, tarjeta: tarjetaJSON };
 
   // Bloquear botón mientras se envía
   const botonEnviar = document.querySelector(".btn-submit");
@@ -1889,7 +1839,6 @@ const emailElement = document.getElementById("topbarDEmail");
 
     const data = await respuesta.json();
 
-<<<<<<< HEAD
     if (!respuesta.ok) {
       throw new Error(data.error || "El servidor devolvió un error");
     }
@@ -1936,26 +1885,6 @@ const emailElement = document.getElementById("topbarDEmail");
           t.classList.toggle("active", t.dataset.htab === "enviadas");
         });
         renderHistPanelInline();
-=======
-      if (respuesta.ok) {
-          const jobId = data.jobId; 
-          const estadoTarjeta = getCardState(); 
-          guardarEnviada(estadoTarjeta, jobId);
-          
-          // FORZAMOS EL REPINTADO EN AMBOS PANELES
-          if (typeof renderHistPanel === "function") renderHistPanel();
-          if (typeof renderHistPanelInline === "function") renderHistPanelInline();
-
-          rastrearEnvio(jobId);
-          // Tu pop-up verde
-          if (typeof mostrarEnvioExito === "function") {
-              mostrarEnvioExito({ canal: canal, titulo: textoAsunto });
-          } else {
-              alert("✅ " + (data.mensaje || "Enviado con éxito"));
-          }
-      } else {
-          throw new Error(data.error || "El servidor devolvió un error");
->>>>>>> 1343ddee967f3243caa2bd97390704bb93cf9ebc
       }
     }
     mostrarEnvioExito(state, resultados);
@@ -2371,7 +2300,6 @@ function guardarBorrador() {
   mostrarEnvioExito && showToast("✅ Borrador guardado");
 }
 
-<<<<<<< HEAD
 function guardarEnviada(state, resultados) {
   const enviadas = getStorage("yako_enviadas");
   enviadas.unshift({
@@ -2384,8 +2312,6 @@ function guardarEnviada(state, resultados) {
   setStorage("yako_enviadas", enviadas.slice(0, 30));
 }
 
-=======
->>>>>>> 1343ddee967f3243caa2bd97390704bb93cf9ebc
 function guardarMiPlantilla(state) {
   const mias = getStorage("yako_mis_plantillas");
   // Evitar duplicados exactos por título
@@ -2439,6 +2365,47 @@ function cargarEstado(state) {
   renderPreview();
   actualizarBotonEnviar();
   // panel is inline, no modal to close
+}
+
+function renderHistPanel() {
+  const panel = document.getElementById("histPanel");
+  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
+  const items = getStorage(key);
+
+  if (!items.length) {
+    panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
+    return;
+  }
+
+  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => `
+    <div class="hist-item" data-i="${i}">
+      <div class="hist-dot ${item.state?.canal || "teams"}"></div>
+      <div class="hist-info">
+        <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
+        <div class="hist-meta">${item.state?.canal === "outlook" ? "Outlook" : "Teams"} · ${item.fecha}</div>
+      </div>
+      <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
+      <div class="hist-actions">
+        ${currentHistTab === "borradores"
+          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
+          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
+        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
+      </div>
+    </div>`).join("")}</div>`;
+
+  panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = +btn.dataset.i;
+      const items2 = getStorage(key);
+      if (btn.dataset.action === "borrar") {
+        items2.splice(idx, 1);
+        setStorage(key, items2);
+        renderHistPanel();
+      } else {
+        cargarEstado(items2[idx].state);
+      }
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════
@@ -2829,6 +2796,12 @@ function renderMiembrosPanel(panel) {
 
     <!-- Separador visual entre buscador global y explorador por grupo -->
     <div class="gus-divider">o explora por lista</div>
+
+    <!-- ══ EXPLORADOR DE LISTAS (original) ══════════════ -->
+    <div class="panel-section-hdr">
+      <h2>👥 Explorador de Listas</h2>
+      <p>Selecciona una lista de distribución para ver sus miembros</p>
+    </div>
     
     <div style="padding: 0 20px 20px 20px;">
         <div style="margin-bottom: 20px;">
@@ -2992,44 +2965,16 @@ function renderMiembrosPanel(panel) {
 
   // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
-  // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
-
   // 2. Cargar el desplegable de grupos
   fetch("/api/grupos")
     .then(r => r.json())
     .then(grupos => {
       selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
-<<<<<<< HEAD
       grupos.forEach(g => {
         const option = document.createElement("option");
         option.value = g.id;
         option.textContent = g.displayName + (g.mail ? ` (${g.mail})` : "");
         selectGrupos.appendChild(option);
-=======
-      
-      // 🌟 MAGIA DE ORDENACIÓN ALFABÉTICA AQUÍ 🌟
-      grupos.sort((a, b) => {
-        let nombreA = String(a.displayName || a.nombre || "Grupo sin nombre").trim();
-        let nombreB = String(b.displayName || b.nombre || "Grupo sin nombre").trim();
-        return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
-      });
-
-      // Ya ordenados, los metemos en el HTML
-      grupos.forEach(grupo => {
-          const option = document.createElement("option");
-          option.value = grupo.id;
-          
-          const nombreReal = grupo.displayName || grupo.nombre || "Grupo sin nombre";
-          const correoLista = grupo.correo || grupo.mail || "Sin correo";
-          const cantidad = grupo.cantidadUsuarios !== undefined ? grupo.cantidadUsuarios : "?";
-
-          option.textContent = `${nombreReal}  —  ${correoLista}  —  (👥 ${cantidad} miembros)`;
-    
-          option.setAttribute("data-correo", correoLista);
-          option.setAttribute("data-miembros", cantidad);
-
-          selectGrupos.appendChild(option);
->>>>>>> 1343ddee967f3243caa2bd97390704bb93cf9ebc
       });
     })
     .catch(err => {
@@ -3780,8 +3725,7 @@ document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
 
   try {
     const resp = await fetch("http://localhost:3000/api/listas-distribucion");
-    if (!resp.ok) throw new Error("Error " + resp.status);
-    
+    if (!resp.ok) throw new Error("Error " + resp.status);    
     const listas = await resp.json();
     
     listas.sort((a, b) => {
@@ -3833,33 +3777,6 @@ document.getElementById("distListSelect")?.addEventListener("change", function()
 });
 
 // ═══════════════════════════════════════════════════════
-// PROGRAMAR ENVÍO
-// ═══════════════════════════════════════════════════════
-document.getElementById("scheduleEnabled")?.addEventListener("change", function() {
-  const input = document.getElementById("scheduleTime");
-  const hint  = document.getElementById("scheduleHint");
-  if (this.checked) {
-    input?.classList.remove("hidden");
-    hint?.classList.remove("hidden");
-    // Set minimum to now
-    if (input) {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + 5);
-      input.min = now.toISOString().slice(0,16);
-    }
-  } else {
-    input?.classList.add("hidden");
-    hint?.classList.add("hidden");
-  }
-});
-
-function getScheduledTime() {
-  const enabled = document.getElementById("scheduleEnabled")?.checked;
-  if (!enabled) return null;
-  return document.getElementById("scheduleTime")?.value || null;
-}
-
-// ═══════════════════════════════════════════════════════
 // INFO LIMITACIONES PANEL (toggle)
 // ═══════════════════════════════════════════════════════
 document.getElementById("infoLimToggle")?.addEventListener("click", function() {
@@ -3892,7 +3809,6 @@ document.getElementById("canal")?.addEventListener("change", function() {
 window.abrirPanelMiembrosConGrupo = function(grupoId) {
     // 1. Guardamos el ID en memoria por si el desplegable tarda en cargar de la API
     window.grupoPendienteDeSeleccion = grupoId;
-
     // 2. Activamos la pestaña "Miembros" automáticamente
     const tabMiembros = document.querySelector('.tab[data-tab="miembros"]');
     if (tabMiembros) {
@@ -3949,126 +3865,4 @@ window.generarCuerpoTarjeta = function() {
     
     // Devolvemos solo el contenido de la tarjeta
     return cardCompleta.attachments[0].content;
-<<<<<<< HEAD
 };
-=======
-};
-
-// 1. GUARDAR EN LA MEMORIA (Aceptando el jobId)
-function guardarEnviada(state, jobId = null) {
-  const enviadas = getStorage("yako_enviadas");
-  enviadas.unshift({ 
-      id: Date.now(), 
-      fecha: new Date().toLocaleString("es-ES"), 
-      tipo: "enviada", 
-      state: state,
-      jobId: jobId,       // Guardamos el ID de rastreo
-      reporte: null       // Aquí guardaremos el resultado cuando acabe
-  });
-  setStorage("yako_enviadas", enviadas.slice(0, 30));
-}
-
-// 2. DIBUJAR EL PANEL (Con el diseño de rastreo)
-function renderHistPanel() {
-  const panel = document.getElementById("histPanel");
-  if (!panel) return; // Por si el panel no existe en el DOM
-
-  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
-  const items = getStorage(key);
-
-  if (!items.length) {
-    panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
-    return;
-  }
-
-  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => `
-    <div class="hist-item" data-i="${i}" ${item.jobId ? `data-jobid="${item.jobId}"` : ""}>
-      <div class="hist-dot ${item.state?.canal || "teams"}"></div>
-      
-      <div class="hist-info" style="flex-grow: 1;">
-        <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
-        <div class="hist-meta">${item.state?.canal === "outlook" ? "Outlook" : "Teams"} · ${item.fecha}</div>
-        
-        ${currentHistTab === "enviadas" && item.jobId ? `
-            <div class="reporte-container" style="margin-top: 6px; font-size: 11px; color: #555; background: #f4f4f4; padding: 6px; border-radius: 6px;">
-                ${item.reporte ? item.reporte : "<i>⏳ Conectando con el servidor...</i>"}
-            </div>
-        ` : ""}
-      </div>
-      
-      <span class="hist-badge estado-texto ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}" style="${!item.reporte && item.jobId ? "background: #fff3cd; color: #856404;" : ""}">
-        ${item.tipo === "borrador" ? "Borrador" : (item.jobId && !item.reporte ? "⏳ Enviando" : "✓ Completado")}
-      </span>
-      
-      <div class="hist-actions">
-        ${currentHistTab === "borradores"
-          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
-          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
-        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
-      </div>
-    </div>`).join("")}</div>`;
-
-  panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idx = +btn.dataset.i;
-      const items2 = getStorage(key);
-      if (btn.dataset.action === "borrar") {
-        items2.splice(idx, 1);
-        setStorage(key, items2);
-        renderHistPanel();
-      } else {
-        cargarEstado(items2[idx].state);
-      }
-    });
-  });
-}
-
-// 3. RASTREADOR EN VIVO
-function rastrearEnvio(jobId) {
-    const intervalo = setInterval(async () => {
-        try {
-            const res = await fetch(`/api/estado-envio/${jobId}`);
-            if (!res.ok) return;
-            const job = await res.json();
-
-            // 🌟 AHORA BUSCAMOS EN TODOS LOS PANELES POSIBLES A LA VEZ
-            const filasHistorial = document.querySelectorAll(`[data-jobid="${jobId}"]`);
-
-            if (job.estado === "Completado") {
-                clearInterval(intervalo);
-
-                let htmlReporte = `✅ Entregadas: <b>${job.exitos}</b> | ❌ Falladas: <b>${job.fallos}</b>`;
-                if (job.usuariosFallidos && job.usuariosFallidos.length > 0) {
-                    htmlReporte += `<br><span style="color: #d93025; font-weight: bold;">Falló en:</span> ${job.usuariosFallidos.join(", ")}`;
-                }
-
-                // Actualizamos visualmente todas las filas encontradas
-                filasHistorial.forEach(fila => {
-                    const container = fila.querySelector(".reporte-container");
-                    const badge = fila.querySelector(".estado-texto");
-                    if (container) container.innerHTML = htmlReporte;
-                    if (badge) {
-                        badge.innerHTML = "✓ Completado";
-                        badge.style.background = "#d4edda";
-                        badge.style.color = "#155724";
-                    }
-                });
-
-                const enviadas = getStorage("yako_enviadas");
-                const itemIndex = enviadas.findIndex(item => item.jobId === jobId);
-                if (itemIndex !== -1) {
-                    enviadas[itemIndex].reporte = htmlReporte;
-                    setStorage("yako_enviadas", enviadas);
-                }
-            } else {
-                filasHistorial.forEach(fila => {
-                    const container = fila.querySelector(".reporte-container");
-                    if (container) container.innerHTML = `⏳ Procesando: ${job.exitos} entregados...`;
-                });
-            }
-        } catch (e) {
-            console.error("Error rastreando envío:", e);
-        }
-    }, 2500);
-}
->>>>>>> 1343ddee967f3243caa2bd97390704bb93cf9ebc
