@@ -325,6 +325,7 @@
           sessionStorage.setItem("yako_auth", "1");
           sessionStorage.setItem("yako_token", loginResponse.accessToken);
           sessionStorage.setItem("yako_user", loginResponse.account.name);
+          sessionStorage.setItem("yako_aad_id", loginResponse.account.localAccountId);
           sessionStorage.setItem("yako_email", loginResponse.account.username); // UPN/email real de M365
           
           // ¡Redirigimos al generador!

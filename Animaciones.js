@@ -1141,12 +1141,10 @@ function renderHistPanelInline() {
   if (!panel) return;
   const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
-
   if (!items.length) {
     panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
     return;
   }
-
   panel.innerHTML = `<div class="hist-list">${items.map((item, i) => {
     const canal = item.state?.canal || "teams";
     const canalLabel = canal === "outlook" ? "Outlook" : "Teams";
@@ -1156,30 +1154,33 @@ function renderHistPanelInline() {
     const mias = getStorage("yako_mis_plantillas");
     const yaGuardada = mias.some(p => p.state?.titulo === item.state?.titulo);
     
-    const btnPlantilla = currentHistTab === "enviadas" ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" title="Guardar como plantilla">📌</button>` : "";
-    const labelBorrar = currentHistTab === "borradores" ? `data-tooltip="Eliminar borrador"` : `data-tooltip="Eliminar tarjeta"`;
-
-    // 🌟 NUEVO: Botón de descarga de Log (solo si hay fallos)
-    const btnLog = (currentHistTab === "enviadas" && item.usuariosFallidos && item.usuariosFallidos.length > 0)
-        ? `<button class="hist-btn" data-action="descargar-log" data-i="${i}" data-tooltip="Descargar incidencias">📥 Log</button>`
-        : "";
+    const btnPlantilla = currentHistTab === "enviadas"
+      ? `<button class="hist-btn hist-btn--tpl ${yaGuardada ? "hist-btn--tpl-saved" : ""}" data-action="plantilla" data-i="${i}" data-tooltip="${yaGuardada ? "Ya guardada como plantilla" : "Fijar como plantilla"}" title="${yaGuardada ? "Ya guardada como plantilla" : "Guardar como plantilla"}">📌</button>`
+      : "";
+    const labelBorrar = currentHistTab === "borradores"
+      ? `data-tooltip="Eliminar borrador"`
+      : `data-tooltip="Eliminar tarjeta"`;
 
     return `
-    <div class="hist-item" data-i="${i}" ${item.jobId ? `data-jobid="${item.jobId}"` : ""}>
+    <div class="hist-item">
       <div class="hist-dot ${canal}"></div>
+      
       <div class="hist-info" style="flex-grow: 1;">
         <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
         <div class="hist-meta">${canalLabel} · ${item.fecha}</div>
         ${destHtml}
+        
         ${currentHistTab === "enviadas" && item.jobId ? `
             <div class="reporte-container" style="margin-top: 6px; font-size: 11px; color: #555; background: #f4f4f4; padding: 6px; border-radius: 6px;">
                 ${item.reporte ? item.reporte : "<i>⏳ Conectando con el servidor...</i>"}
             </div>
         ` : ""}
       </div>
+      
       <span class="hist-badge estado-texto ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}" style="${!item.reporte && item.jobId ? "background: #fff3cd; color: #856404;" : ""}">
         ${item.tipo === "borrador" ? "Borrador" : (item.jobId && !item.reporte ? "⏳ Enviando" : "✓ Completado")}
       </span>
+      
       <div class="hist-actions">
         ${btnLog} ${btnPlantilla}
         ${currentHistTab === "borradores" ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂</button>` : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁</button>`}
@@ -1188,7 +1189,6 @@ function renderHistPanelInline() {
     </div>`;
   }).join("")}</div>`;
 
-  // EVENTOS DE LOS BOTONES
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.i;
@@ -1202,7 +1202,10 @@ function renderHistPanelInline() {
       } else if (accion === "plantilla") {
         const estado = items2[idx].state;
         const mias = getStorage("yako_mis_plantillas");
-        if (mias.some(p => p.state?.titulo === estado.titulo)) return;
+        if (mias.some(p => p.state?.titulo === estado.titulo)) {
+          if (typeof showToast === "function") showToast("ℹ️ Esta tarjeta ya está guardada como plantilla");
+          return;
+        }
         if (typeof guardarMiPlantilla === "function") guardarMiPlantilla(estado);
         if (typeof showToast === "function") showToast("📌 Guardada en Mis plantillas");
         renderHistPanelInline();
@@ -1242,15 +1245,22 @@ function renderHistPanelInline() {
         URL.revokeObjectURL(url);
       } else {
         const estado = items2[idx].state;
-        const esBorrador = accion === "cargar";
+        const esBorrador = btn.dataset.action === "cargar";
         if (typeof mostrarPreviewPlantilla === "function") {
             mostrarPreviewPlantilla({
-              titulo: estado.titulo || "", subtitulo: estado.subtitulo || "", imagenUrl: estado.imagen || estado.imagenUrl || "", blocks: estado.blocks || [], canal: estado.canal || "", badge: esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada", btnLabel: esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
+              titulo:    estado.titulo    || "",
+              subtitulo: estado.subtitulo || "",
+              imagenUrl: estado.imagen || estado.imagenUrl || "",
+              blocks:    estado.blocks    || [],
+              canal:     estado.canal     || "",
+              badge:     esBorrador ? "📂 Borrador guardado" : "🔁 Tarjeta enviada",
+              btnLabel:  esBorrador ? "Cargar borrador" : "Reutilizar tarjeta",
               onConfirm: () => {
                 cargarEstado(estado);
                 document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
                 document.querySelector('.tab[data-tab="teams"]')?.classList.add("active");
-                document.getElementById("channelSubtabs")?.classList.remove("hidden");
+                const channelSubtabs = document.getElementById("channelSubtabs");
+                if (channelSubtabs) channelSubtabs.classList.remove("hidden");
                 if (typeof showPreviewChrome === "function") showPreviewChrome(estado.canal || "teams");
               }
             });
@@ -1434,10 +1444,25 @@ function mostrarConfirmEnvio() {
 }
 
 function ejecutarEnvio() {
+  // Modo local: simula un envío sin servidor para desarrollo/demo.
+  // Cuando el servidor esté listo este bloque no se usa
+  // (dispararEnvios() lo ignora en MODO_SERVIDOR=true).
   try {
     const state = getCardState();
+    const tiempoInicio = Date.now();
+
+    const canal = state.canal || "teams";
+    const rawDest = canal === "outlook" ? (state.emails || "") : (state.teamsRecipient || "");
+    const lista = rawDest.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    const total = Math.max(lista.length, 1);
+    const errores = total > 1 ? Math.floor(Math.random() * Math.min(2, Math.floor(total * 0.05))) : 0;
+    const enviados = total - errores;
+    const tiempoMs = (Date.now() - tiempoInicio) + 120 + Math.floor(Math.random() * 280);
+
+    const resultados = { total, enviados, errores, tiempoMs, fuente: "local" };
+
     if (state.titulo) {
-      guardarEnviada(state);
+      guardarEnviada(state, resultados);
       const histPanel = document.getElementById("histPanelInline");
       if (histPanel) {
         currentHistTab = "enviadas";
@@ -1447,7 +1472,7 @@ function ejecutarEnvio() {
         renderHistPanelInline();
       }
     }
-    mostrarEnvioExito(state);
+    mostrarEnvioExito(state, resultados);
   } catch (err) {
     mostrarEnvioError(err);
   }
@@ -1556,7 +1581,7 @@ function autoCloseModal(modal, segundos) {
   // Cancelar timer si el usuario cierra manualmente
   modal.addEventListener("click", () => clearTimeout(timer), { once: true });
 }
-function mostrarEnvioExito(state) {
+function mostrarEnvioExito(state, resultados) {
   document.getElementById("envioExitoModal")?.remove();
 
   const canal      = state?.canal === "outlook" ? "Outlook" : "Microsoft Teams";
@@ -1620,9 +1645,41 @@ function mostrarEnvioExito(state) {
             <div style="font-size:14px; font-weight:600; color:#1a1a2e;">${tituloCard}</div>
           </div>
         </div>
+        ${resultados ? (() => {
+          const enProceso = resultados.enProceso === true;
+          const tiempoStr = resultados.tiempoMs != null
+            ? (resultados.tiempoMs < 1000 ? resultados.tiempoMs + "ms" : (resultados.tiempoMs/1000).toFixed(1) + "s")
+            : "—";
+          const enviadosStr = resultados.enviados != null ? resultados.enviados : "—";
+          const erroresStr  = resultados.errores  != null ? resultados.errores  : enProceso ? "—" : "0";
+          const erroresColor = (resultados.errores > 0) ? "#c2410c" : "#15803d";
+          const erroresBg    = (resultados.errores > 0) ? "#fff7ed" : "#f0fff4";
+          const erroresBorder= (resultados.errores > 0) ? "#fed7aa" : "#bbf7d0";
+          return `
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+            <div style="background:#f0fff4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:#15803d;line-height:1;">${enviadosStr}</div>
+              <div style="font-size:10px;color:#166534;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;">${enProceso ? "Detectados" : "Entregados"}</div>
+            </div>
+            <div style="background:${erroresBg};border:1.5px solid ${erroresBorder};border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:${erroresColor};line-height:1;">${erroresStr}</div>
+              <div style="font-size:10px;color:${erroresColor};font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;">Errores</div>
+            </div>
+            <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px 8px;text-align:center;">
+              <div style="font-size:20px;font-weight:800;color:#1d4ed8;line-height:1;">${tiempoStr}</div>
+              <div style="font-size:10px;color:#1e40af;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:3px;">Tiempo</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:#666;line-height:1.6;margin:0 0 20px;">
+            ${enProceso
+              ? `Teams está procesando el envío en segundo plano a <strong>${enviadosStr}</strong> usuario${enviadosStr !== 1 ? "s" : ""}. Puedes cerrar esta ventana.`
+              : `Envío completado: <strong style="color:#15803d">${enviadosStr}</strong> entregado${enviadosStr !== 1 ? "s" : ""}${resultados.errores > 0 ? `, <strong style="color:#c2410c">${erroresStr}</strong> con error` : ""}. Consulta el <strong>historial</strong> para más detalles.`
+            }
+          </p>`;
+        })() : `
         <p style="font-size:13px; color:#666; line-height:1.6; margin:0 0 20px;">
           Tu tarjeta adaptativa se ha enviado correctamente. Puedes consultarla en el <strong>historial</strong> en cualquier momento.
-        </p>
+        </p>`}
       </div>
 
       <!-- Botón cerrar -->
@@ -1756,7 +1813,24 @@ function buildCardJSON({ titulo, subtitulo, imagenUrl, blocks }) {
   // Envoltorio limpio y sin variables nulas
 async function dispararEnvios() {
 
-  // 1. Canal y destinatario
+  // ═══════════════════════════════════════════════════════════════════════
+  // INTERRUPTOR PRINCIPAL
+  // false → Modo local (sin servidor, para desarrollo y demo)
+  // true  → Modo servidor real (activa cuando el backend esté listo)
+  // ═══════════════════════════════════════════════════════════════════════
+  const MODO_SERVIDOR = false;
+
+  if (!MODO_SERVIDOR) {
+    // ── MODO LOCAL ─────────────────────────────────────────────────────
+    // Simula el envío localmente, guarda en historial y muestra el modal.
+    ejecutarEnvio();
+    return;
+  }
+
+  // ── MODO SERVIDOR ──────────────────────────────────────────────────────
+  // Todo lo de abajo solo se ejecuta cuando MODO_SERVIDOR = true
+
+  const state = getCardState();
   const canal = document.getElementById("canal")?.value;
   const inputID = canal === "teams" ? "teamsRecipient" : "emails";
   const inputDestinatarios = document.getElementById(inputID)?.value?.trim() || "";
@@ -1772,87 +1846,91 @@ async function dispararEnvios() {
     return;
   }
 
-  // 2. JSON de la tarjeta
   let tarjetaJSON;
   try { tarjetaJSON = window.generarCuerpoTarjeta?.(); } catch(e) { tarjetaJSON = null; }
   if (!tarjetaJSON) { mostrarEnvioError(new Error("No se pudo generar el contenido de la tarjeta.")); return; }
 
-  // 3. Endpoint y payload
-  // 3. Endpoint y payload
-  const endpoint  = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
+  const endpoint    = canal === "teams" ? "/api/enviar-grupo-teams" : "/api/enviar-outlook";
   const textoAsunto = document.getElementById("subject")?.value || "Comunicación Interna";
-  
-  // Capturamos el check y el correo usando TUS IDs EXACTOS
-  const checkElement = document.getElementById("notifyDelivery");
-  const quiereNotificacion = checkElement ? checkElement.checked : false;
-const emailElement = document.getElementById("topbarDEmail");
-  
-  // 1. Leemos el texto bruto
-  let correoBruto = emailElement?.innerText?.trim() || emailElement?.value?.trim() || "";
-  
-  // 2. ¡EL TRUCO! Le quitamos TODOS los espacios en blanco que se hayan podido colar
-  const correoRemitente = correoBruto.replace(/\s+/g, "");
+  const bodyPayload = { destinatarios: inputDestinatarios, asunto: textoAsunto, tarjeta: tarjetaJSON };
 
-  // 🚨 CHIVATO
-  console.log("👉 CHIVATO NOTIFICACIÓN - ¿Quiere aviso?:", quiereNotificacion);
-  console.log("👉 CHIVATO NOTIFICACIÓN - Correo LIMPIO:", correoRemitente);
-
-  const bodyPayload = { 
-      destinatarios: inputDestinatarios, 
-      asunto: textoAsunto, 
-      tarjeta: tarjetaJSON,
-      notificar: quiereNotificacion,
-      remitente: correoRemitente
-  };
-
-  // 4. Bloquear botón mientras se envía
+  // Bloquear botón mientras se envía
   const botonEnviar = document.querySelector(".btn-submit");
   const textoOriginal = botonEnviar?.innerHTML || "";
-  
   if (botonEnviar) {
-    // ✅ 2. Ponemos visualmente que está enviando (usando innerHTML)
-    botonEnviar.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-bottom-color:transparent; border-radius:50%; animation: spin 1s linear infinite; margin-right:8px; vertical-align:-3px;"></span> Enviando...';
+    botonEnviar.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Enviando…`;
     botonEnviar.disabled = true;
   }
 
-  // 6. Llamada al servidor
+  const tiempoInicio = Date.now();
+
   try {
-      const respuesta = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyPayload)
-      });
+    const respuesta = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyPayload)
+    });
 
-      const data = await respuesta.json();
+    const data = await respuesta.json();
 
-      if (respuesta.ok) {
-          const jobId = data.jobId; 
-          const estadoTarjeta = getCardState(); 
-          guardarEnviada(estadoTarjeta, jobId);
-          
-          // FORZAMOS EL REPINTADO EN AMBOS PANELES
-          if (typeof renderHistPanel === "function") renderHistPanel();
-          if (typeof renderHistPanelInline === "function") renderHistPanelInline();
+    if (!respuesta.ok) {
+      throw new Error(data.error || "El servidor devolvió un error");
+    }
 
-          rastrearEnvio(jobId);
-          // Tu pop-up verde
-          if (typeof mostrarEnvioExito === "function") {
-              mostrarEnvioExito({ canal: canal, titulo: textoAsunto });
-          } else {
-              alert("✅ " + (data.mensaje || "Enviado con éxito"));
-          }
-      } else {
-          throw new Error(data.error || "El servidor devolvió un error");
+    // ── Construir objeto resultados según el canal ──────────────────────
+    // Outlook devuelve: { detalles: { total, exitos, fallidos, errores[] } }
+    // Teams  devuelve: { mensaje: "Procesando envío masivo. Detectados X usuarios válidos." }
+    //   → 202 Accepted: el proceso real corre en background en el servidor.
+    //     Extraemos el número de usuarios del mensaje si está disponible.
+    let resultados;
+
+    if (canal === "outlook") {
+      // Respuesta síncrona con datos reales
+      const d = data.detalles || {};
+      resultados = {
+        total:    d.total    ?? 0,
+        enviados: d.exitos   ?? 0,
+        errores:  d.fallidos ?? 0,
+        tiempoMs: Date.now() - tiempoInicio,
+        fuente:   "servidor"
+      };
+    } else {
+      // Teams: 202 Accepted — el servidor procesará en background.
+      // Intentamos extraer el número de usuarios detectados del mensaje.
+      const match = (data.mensaje || "").match(/(\d+)\s+usuario/i);
+      const detectados = match ? parseInt(match[1], 10) : null;
+      resultados = {
+        total:    detectados ?? null,
+        enviados: detectados ?? null,   // aún en proceso
+        errores:  null,                 // no disponible hasta que termine el proceso de fondo
+        tiempoMs: Date.now() - tiempoInicio,
+        fuente:   "servidor",
+        enProceso: true                 // flag: Teams procesa en background
+      };
+    }
+
+    // Guardar en historial y mostrar modal de éxito con los datos reales
+    if (state.titulo) {
+      guardarEnviada(state, resultados);
+      const histPanel = document.getElementById("histPanelInline");
+      if (histPanel) {
+        currentHistTab = "enviadas";
+        document.querySelectorAll(".hist-tab").forEach(t => {
+          t.classList.toggle("active", t.dataset.htab === "enviadas");
+        });
+        renderHistPanelInline();
       }
+    }
+    mostrarEnvioExito(state, resultados);
+
   } catch (error) {
-      console.error("Error al enviar:", error);
-      alert("❌ Error: " + error.message);
+    console.error("Error al enviar:", error);
+    mostrarEnvioError(error);
   } finally {
-      // ✅ 4. Restaurar botón (¡Usando innerHTML en vez de innerText!)
-      if (botonEnviar) {
-          botonEnviar.innerHTML = textoOriginal;
-          botonEnviar.disabled = false;
-      }
+    if (botonEnviar) {
+      botonEnviar.innerHTML = textoOriginal;
+      botonEnviar.disabled = false;
+    }
   }
 }
 
@@ -2256,6 +2334,18 @@ function guardarBorrador() {
   mostrarEnvioExito && showToast("✅ Borrador guardado");
 }
 
+function guardarEnviada(state, resultados) {
+  const enviadas = getStorage("yako_enviadas");
+  enviadas.unshift({
+    id:         Date.now(),
+    fecha:      new Date().toLocaleString("es-ES"),
+    tipo:       "enviada",
+    state,
+    resultados: resultados || null
+  });
+  setStorage("yako_enviadas", enviadas.slice(0, 30));
+}
+
 function guardarMiPlantilla(state) {
   const mias = getStorage("yako_mis_plantillas");
   // Evitar duplicados exactos por título
@@ -2309,6 +2399,47 @@ function cargarEstado(state) {
   renderPreview();
   actualizarBotonEnviar();
   // panel is inline, no modal to close
+}
+
+function renderHistPanel() {
+  const panel = document.getElementById("histPanel");
+  const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
+  const items = getStorage(key);
+
+  if (!items.length) {
+    panel.innerHTML = `<div class="hist-empty"><div class="hist-empty-icon">${currentHistTab === "borradores" ? "📝" : "✅"}</div><p>${currentHistTab === "borradores" ? "No tienes borradores guardados." : "No hay tarjetas enviadas."}</p></div>`;
+    return;
+  }
+
+  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => `
+    <div class="hist-item" data-i="${i}">
+      <div class="hist-dot ${item.state?.canal || "teams"}"></div>
+      <div class="hist-info">
+        <div class="hist-title">${item.state?.titulo || "(sin título)"}</div>
+        <div class="hist-meta">${item.state?.canal === "outlook" ? "Outlook" : "Teams"} · ${item.fecha}</div>
+      </div>
+      <span class="hist-badge ${item.tipo === "borrador" ? "hist-badge--draft" : "hist-badge--sent"}">${item.tipo === "borrador" ? "Borrador" : "✓ Enviada"}</span>
+      <div class="hist-actions">
+        ${currentHistTab === "borradores"
+          ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
+          : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
+        <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
+      </div>
+    </div>`).join("")}</div>`;
+
+  panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = +btn.dataset.i;
+      const items2 = getStorage(key);
+      if (btn.dataset.action === "borrar") {
+        items2.splice(idx, 1);
+        setStorage(key, items2);
+        renderHistPanel();
+      } else {
+        cargarEstado(items2[idx].state);
+      }
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════
@@ -2639,7 +2770,7 @@ function renderMiembrosPanel(panel) {
 
     <!-- ══ BUSCADOR GLOBAL DE USUARIOS ═══════════════════ -->
     <div class="gus-section">
-      <div class="gus-label">Búsqueda global de usuarios</div>
+      <div class="gus-label">Búsqueda global de Listas</div>
       <div class="gus-wrap">
 
         <!-- Barra en forma de píldora -->
@@ -2747,7 +2878,7 @@ function renderMiembrosPanel(panel) {
   const searchInput   = panel.querySelector("#miembrosSearchInput");
   const searchClear   = panel.querySelector("#miembrosSearchClear");
 
-  // ── BUSCADOR GLOBAL — lógica (MODIFICADO PARA LISTAS) ─────────────────────────
+  // ── BUSCADOR GLOBAL — lógica ─────────────────────────
   let gusTimer = null;
 
   function gusShowDropdown(html, count) {
@@ -2761,8 +2892,8 @@ function renderMiembrosPanel(panel) {
     gusResults.innerHTML = "";
   }
 
-  function gusRenderResultados(resultados) {
-    if (!resultados.length) {
+  function gusRenderResultados(usuarios) {
+    if (!usuarios.length) {
       gusShowDropdown(`
         <div class="gus-no-results">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
@@ -2774,140 +2905,59 @@ function renderMiembrosPanel(panel) {
       return;
     }
 
-    // Dibujamos cada fila dependiendo de si es Grupo o Usuario
-    const rows = resultados.map(item => {
-      const nombre = item.nombre || "—";
-      const idItem = item.id;
-      const correo = item.correo || "Sin correo";
-      const tipo = item.tipo; // 'grupo' o 'usuario'
-      
-      if (tipo === 'grupo') {
-          // 🏢 DISEÑO PARA LISTAS DE DISTRIBUCIÓN
-          const numMiembros = item.cantidadUsuarios !== undefined ? item.cantidadUsuarios : "?";
-          
-          return `
-            <div class="gus-result-item" role="option" tabindex="0"
-                 data-id="${idItem}" data-nombre="${nombre}" data-tipo="grupo"
-                 title="Seleccionar lista ${nombre}"
-                 style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-              
-              <div style="display: flex; align-items: center; gap: 10px;">
-                  <div class="gus-avatar" color: white;">👥</div>
-                  <div class="gus-result-info">
-                    <div class="gus-result-name" style="font-weight: bold;">${nombre}</div>
-                    <div class="gus-result-meta" style="font-size: 0.85em; color: #666;">Lista de distribución • ${correo}</div>
-                  </div>
-              </div>
-
-              <div class="gus-miembros-badge" style="font-size: 11px; background-color: #e2e2f6; color: #5b5fc7; font-weight: bold; padding: 4px 8px; border-radius: 12px; white-space: nowrap;">
-                ${numMiembros} miembros
-              </div>
-            </div>`;
-            
-      } else {
-          // 👤 DISEÑO PARA USUARIOS INDIVIDUALES
-          const inicial = nombre.charAt(0).toUpperCase();
-          return `
-            <div class="gus-result-item" role="option" tabindex="0"
-                 data-id="${idItem}" data-nombre="${nombre}" data-email="${correo}" data-tipo="usuario"
-                 title="Seleccionar a ${nombre}"
-                 style="display: flex; align-items: center; gap: 10px; width: 100%;">
-                 
-              <div class="gus-avatar">${inicial}</div>
-              <div class="gus-result-info">
-                <div class="gus-result-name">${nombre}</div>
-                <div class="gus-result-meta">${correo}</div>
-              </div>
-            </div>`;
-      }
+    const rows = usuarios.map(u => {
+      const nombre  = u.nombre || u.displayName || "—";
+      const email   = u.correo || u.mail || u.userPrincipalName || "—";
+      const grupo   = u.grupo  || u.groupName || "";
+      const inicial = nombre.charAt(0).toUpperCase();
+      return `
+        <div class="gus-result-item" role="option" tabindex="0"
+             data-email="${email}" data-nombre="${nombre}" data-grupo="${grupo}"
+             title="Seleccionar ${nombre}">
+          <div class="gus-avatar">${inicial}</div>
+          <div class="gus-result-info">
+            <div class="gus-result-name">${nombre}</div>
+            <div class="gus-result-meta">${email}</div>
+          </div>
+          ${grupo ? `<span class="gus-result-group" title="${grupo}">${grupo}</span>` : ""}
+        </div>`;
     }).join("");
 
-    gusShowDropdown(rows, resultados.length);
+    gusShowDropdown(rows, usuarios.length);
 
-    // ── GESTIÓN DE CLICS ──
+    // Click en resultado: rellena el campo de destinatario y cierra
     gusResults.querySelectorAll(".gus-result-item").forEach(item => {
       item.addEventListener("click", () => {
-        const itemId = item.dataset.id;
-        const itemName = item.dataset.nombre;
-        const itemTipo = item.dataset.tipo;
         const emailVal = item.dataset.email;
-
-        // 1. SIEMPRE rellenamos la caja de destinatario principal (Teams o Outlook)
         const canal = document.getElementById("canal")?.value;
         if (canal === "teams") {
-            const teamsEl = document.getElementById("teamsRecipient");
-            if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
+          const teamsEl = document.getElementById("teamsRecipient");
+          if (teamsEl) { teamsEl.value = emailVal; teamsEl.dispatchEvent(new Event("input")); }
         } else {
-            const emailsEl = document.getElementById("emails");
-            if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
+          const emailsEl = document.getElementById("emails");
+          if (emailsEl) { emailsEl.value = emailVal; emailsEl.dispatchEvent(new Event("input")); }
         }
-
-        // 2. Si es un GRUPO, lo sincronizamos con el explorador de abajo y lo abrimos
-        // 2. Si es un GRUPO, lo sincronizamos con el explorador de abajo y lo abrimos
-        if (itemTipo === "grupo") {
-            const selectGrupos = document.getElementById("exploradorGruposSelect");
-            
-            if (selectGrupos) {
-                // A) Comprobamos si el grupo ya existe en el desplegable
-                let existe = Array.from(selectGrupos.options).some(opt => opt.value === itemId);
-                
-                // B) Si NO existe en la lista en este momento, lo creamos y lo metemos a la fuerza
-                if (!existe) {
-                    const nuevaOpcion = new Option(itemName, itemId);
-                    selectGrupos.add(nuevaOpcion);
-                }
-
-                // C) Ahora que sabemos 100% que existe en la lista, lo seleccionamos
-                selectGrupos.value = itemId;
-
-                // D) Disparamos el evento para que tu web descargue y pinte a los miembros
-                selectGrupos.dispatchEvent(new Event("change", { bubbles: true }));
-            }
-
-            // Forzamos a que el panel de miembros se abra visualmente si estaba cerrado
-            const btnAbrirMiembros = document.getElementById("toggleExploradorBtn");
-            const panelExplorador = document.getElementById("exploradorGruposContainer");
-            
-            if (panelExplorador && panelExplorador.style.display === "none") {
-                if (btnAbrirMiembros) btnAbrirMiembros.click();
-                else panelExplorador.style.display = "block";
-            }
-
-            if (typeof showToast === "function") showToast(`✅ Lista seleccionada: ${itemName}`);
-            
-        } else {
-            if (typeof showToast === "function") showToast(`✅ Usuario seleccionado: ${itemName}`);
-        }
-
-        // 3. Actualizamos el buscador visualmente y cerramos
-        if (typeof gusInput !== 'undefined') { gusInput.value = itemName; }
-        if (typeof gusClear !== 'undefined') { gusClear.classList.add("visible"); }
+        gusInput.value = item.dataset.nombre;
+        gusClear.classList.add("visible");
         gusHide();
+        showToast(`✅ Usuario seleccionado: ${item.dataset.nombre}`);
       });
-      
+      // Navegación por teclado
       item.addEventListener("keydown", e => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); item.click(); }
       });
     });
   }
 
-  // Busca filtrando directamente las opciones del desplegable (ya no usa fetch)
-  // ── BUSCADOR GLOBAL — Conectado a tu server.js ─────────────────────────
+  // Busca en el servidor (endpoint: GET /api/buscar-usuario?q=...)
   async function gusBuscar(q) {
     gusSpinner.classList.add("visible");
     try {
-      // 1. Llamamos a tu servidor (la ruta que acabamos de arreglar)
-      const res  = await fetch("/api/buscar-usuarios?q=" + encodeURIComponent(q));
+      const res  = await fetch("/api/buscar-usuario?q=" + encodeURIComponent(q));
       const data = await res.json();
-      
-      // 2. Extraemos el array de datos
-      const resultados = Array.isArray(data) ? data : (data.usuarios || data.results || []);
-      
-      // 3. Se los pasamos a la función mágica que dibuja la lista y los avatares
-      gusRenderResultados(resultados);
-
-    } catch (error) {
-      console.error("Error en la búsqueda:", error);
+      const usuarios = Array.isArray(data) ? data : (data.usuarios || data.results || []);
+      gusRenderResultados(usuarios);
+    } catch {
       gusShowDropdown(`
         <div class="gus-no-results">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#faa" stroke-width="1.5">
@@ -2925,9 +2975,8 @@ function renderMiembrosPanel(panel) {
     gusClear.classList.toggle("visible", q.length > 0);
     clearTimeout(gusTimer);
     if (q.length < 2) { gusHide(); return; }
-    
-    // Retardo de 250ms mientras el usuario teclea
-    gusTimer = setTimeout(() => gusBuscar(q), 250);
+    // Debounce 350ms para no saturar la API
+    gusTimer = setTimeout(() => gusBuscar(q), 350);
   });
 
   gusClear.addEventListener("click", () => {
@@ -2939,12 +2988,8 @@ function renderMiembrosPanel(panel) {
 
   // Cierre al hacer clic fuera
   document.addEventListener("click", e => {
-    // Nos aseguramos de que no de error si panel no está definido globalmente
-    const wrap = document.querySelector(".gus-wrap");
-    if (wrap && !wrap.contains(e.target)) gusHide();
+    if (!panel.querySelector(".gus-wrap").contains(e.target)) gusHide();
   }, { capture: true });
-
-  // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
   // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
@@ -2953,29 +2998,11 @@ function renderMiembrosPanel(panel) {
     .then(r => r.json())
     .then(grupos => {
       selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
-      
-      // 🌟 MAGIA DE ORDENACIÓN ALFABÉTICA AQUÍ 🌟
-      grupos.sort((a, b) => {
-        let nombreA = String(a.displayName || a.nombre || "Grupo sin nombre").trim();
-        let nombreB = String(b.displayName || b.nombre || "Grupo sin nombre").trim();
-        return nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
-      });
-
-      // Ya ordenados, los metemos en el HTML
-      grupos.forEach(grupo => {
-          const option = document.createElement("option");
-          option.value = grupo.id;
-          
-          const nombreReal = grupo.displayName || grupo.nombre || "Grupo sin nombre";
-          const correoLista = grupo.correo || grupo.mail || "Sin correo";
-          const cantidad = grupo.cantidadUsuarios !== undefined ? grupo.cantidadUsuarios : "?";
-
-          option.textContent = `${nombreReal}  —  ${correoLista}  —  (👥 ${cantidad} miembros)`;
-    
-          option.setAttribute("data-correo", correoLista);
-          option.setAttribute("data-miembros", cantidad);
-
-          selectGrupos.appendChild(option);
+      grupos.forEach(g => {
+        const option = document.createElement("option");
+        option.value = g.id;
+        option.textContent = g.displayName + (g.mail ? ` (${g.mail})` : "");
+        selectGrupos.appendChild(option);
       });
     })
     .catch(err => {
@@ -3726,8 +3753,7 @@ document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
 
   try {
     const resp = await fetch("http://localhost:3000/api/listas-distribucion");
-    if (!resp.ok) throw new Error("Error " + resp.status);
-    
+    if (!resp.ok) throw new Error("Error " + resp.status);    
     const listas = await resp.json();
     
     listas.sort((a, b) => {
@@ -3779,33 +3805,6 @@ document.getElementById("distListSelect")?.addEventListener("change", function()
 });
 
 // ═══════════════════════════════════════════════════════
-// PROGRAMAR ENVÍO
-// ═══════════════════════════════════════════════════════
-document.getElementById("scheduleEnabled")?.addEventListener("change", function() {
-  const input = document.getElementById("scheduleTime");
-  const hint  = document.getElementById("scheduleHint");
-  if (this.checked) {
-    input?.classList.remove("hidden");
-    hint?.classList.remove("hidden");
-    // Set minimum to now
-    if (input) {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + 5);
-      input.min = now.toISOString().slice(0,16);
-    }
-  } else {
-    input?.classList.add("hidden");
-    hint?.classList.add("hidden");
-  }
-});
-
-function getScheduledTime() {
-  const enabled = document.getElementById("scheduleEnabled")?.checked;
-  if (!enabled) return null;
-  return document.getElementById("scheduleTime")?.value || null;
-}
-
-// ═══════════════════════════════════════════════════════
 // INFO LIMITACIONES PANEL (toggle)
 // ═══════════════════════════════════════════════════════
 document.getElementById("infoLimToggle")?.addEventListener("click", function() {
@@ -3838,7 +3837,6 @@ document.getElementById("canal")?.addEventListener("change", function() {
 window.abrirPanelMiembrosConGrupo = function(grupoId) {
     // 1. Guardamos el ID en memoria por si el desplegable tarda en cargar de la API
     window.grupoPendienteDeSeleccion = grupoId;
-
     // 2. Activamos la pestaña "Miembros" automáticamente
     const tabMiembros = document.querySelector('.tab[data-tab="miembros"]');
     if (tabMiembros) {
@@ -3914,7 +3912,7 @@ function guardarEnviada(state, jobId = null) {
 // 2. DIBUJAR EL PANEL (Con el diseño de rastreo)
 function renderHistPanel() {
   const panel = document.getElementById("histPanel");
-  if (!panel) return;
+  if (!panel) return; // Por si el panel no existe en el DOM
 
   const key = currentHistTab === "borradores" ? "yako_borradores" : "yako_enviadas";
   const items = getStorage(key);
@@ -3924,14 +3922,7 @@ function renderHistPanel() {
     return;
   }
 
-  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => {
-      
-    // 🌟 NUEVO: Botón de log aquí también
-    const btnLog = (currentHistTab === "enviadas" && item.usuariosFallidos && item.usuariosFallidos.length > 0)
-        ? `<button class="hist-btn" data-action="descargar-log" data-i="${i}" data-tooltip="Descargar incidencias">📥 Log</button>`
-        : "";
-
-    return `
+  panel.innerHTML = `<div class="hist-list">${items.map((item, i) => `
     <div class="hist-item" data-i="${i}" ${item.jobId ? `data-jobid="${item.jobId}"` : ""}>
       <div class="hist-dot ${item.state?.canal || "teams"}"></div>
       
@@ -3951,58 +3942,21 @@ function renderHistPanel() {
       </span>
       
       <div class="hist-actions">
-        ${btnLog} ${currentHistTab === "borradores"
+        ${currentHistTab === "borradores"
           ? `<button class="hist-btn" data-action="cargar" data-i="${i}" data-tooltip="Cargar borrador">📂 Cargar</button>`
           : `<button class="hist-btn" data-action="clonar" data-i="${i}" data-tooltip="Reutilizar tarjeta">🔁 Clonar</button>`}
         <button class="hist-btn hist-btn--del tooltip--danger" data-action="borrar" data-i="${i}" data-tooltip="${currentHistTab === "borradores" ? "Eliminar borrador" : "Eliminar tarjeta"}">🗑</button>
       </div>
-    </div>`
-  }).join("")}</div>`;
+    </div>`).join("")}</div>`;
 
   panel.querySelectorAll(".hist-btn[data-action]").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.i;
       const items2 = getStorage(key);
-      const accion = btn.dataset.action;
-
-      if (accion === "borrar") {
+      if (btn.dataset.action === "borrar") {
         items2.splice(idx, 1);
         setStorage(key, items2);
         renderHistPanel();
-      } else if (accion === "descargar-log") {
-        const itemLog = items2[idx];
-        const fallos = itemLog.usuariosFallidos || [];
-        
-        // 🌟 CREAMOS UNA LISTA BONITA CON EL USUARIO Y SU ERROR
-        const listaFallosTxt = fallos.map(f => {
-            if (typeof f === 'object') {
-                return `❌ ${f.usuario}\n   Motivo: ${f.motivo}`;
-            }
-            return `❌ ${f}`; // Por si acaso hay errores antiguos guardados
-        }).join("\n\n");
-
-        const textoLog = `=======================================\n` +
-                         ` REPORTE DE INCIDENCIAS - YAKO\n` +
-                         `=======================================\n` +
-                         ` Fecha de envío: ${itemLog.fecha}\n` +
-                         ` Tarjeta: ${itemLog.state?.titulo || "Sin título"}\n` +
-                         ` Job ID: ${itemLog.jobId}\n` +
-                         ` Canal: ${itemLog.state?.canal === "outlook" ? "Outlook" : "Teams"}\n\n` +
-                         ` TOTAL FALLOS: ${fallos.length}\n\n` +
-                         ` DETALLE DE ERRORES POR USUARIO:\n` +
-                         `---------------------------------------\n` +
-                         listaFallosTxt + `\n\n` +
-                         `=======================================\n`;
-
-        const blob = new Blob([textoLog], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Log_Errores_${itemLog.jobId}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       } else {
         cargarEstado(items2[idx].state);
       }
@@ -4018,6 +3972,7 @@ function rastrearEnvio(jobId) {
             if (!res.ok) return;
             const job = await res.json();
 
+            // 🌟 AHORA BUSCAMOS EN TODOS LOS PANELES POSIBLES A LA VEZ
             const filasHistorial = document.querySelectorAll(`[data-jobid="${jobId}"]`);
 
             if (job.estado === "Completado") {
@@ -4025,12 +3980,10 @@ function rastrearEnvio(jobId) {
 
                 let htmlReporte = `✅ Entregadas: <b>${job.exitos}</b> | ❌ Falladas: <b>${job.fallos}</b>`;
                 if (job.usuariosFallidos && job.usuariosFallidos.length > 0) {
-                    // 🌟 EXTRAEMOS SOLO EL NOMBRE PARA LA VISTA PREVIA
-                    const nombresFallos = job.usuariosFallidos.map(f => typeof f === 'object' ? f.usuario : f);
-                    const resumenFallos = nombresFallos.slice(0, 3).join(", ") + (nombresFallos.length > 3 ? "..." : "");
-                    htmlReporte += `<br><span style="color: #d93025; font-weight: bold;">Falló en:</span> ${resumenFallos}`;
+                    htmlReporte += `<br><span style="color: #d93025; font-weight: bold;">Falló en:</span> ${job.usuariosFallidos.join(", ")}`;
                 }
 
+                // Actualizamos visualmente todas las filas encontradas
                 filasHistorial.forEach(fila => {
                     const container = fila.querySelector(".reporte-container");
                     const badge = fila.querySelector(".estado-texto");
@@ -4046,11 +3999,7 @@ function rastrearEnvio(jobId) {
                 const itemIndex = enviadas.findIndex(item => item.jobId === jobId);
                 if (itemIndex !== -1) {
                     enviadas[itemIndex].reporte = htmlReporte;
-                    enviadas[itemIndex].usuariosFallidos = job.usuariosFallidos || [];
                     setStorage("yako_enviadas", enviadas);
-                    
-                    if (typeof renderHistPanel === "function") renderHistPanel();
-                    if (typeof renderHistPanelInline === "function") renderHistPanelInline();
                 }
             } else {
                 filasHistorial.forEach(fila => {
