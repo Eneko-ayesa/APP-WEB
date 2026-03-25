@@ -335,7 +335,7 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
         // PANEL DE PRUEBAS
         // ====================================================================
         const MODO_SIMULACION = false; // true = No envía nada, solo muestra logs.
-        const MODO_BOMBARDEO  = true;  // true = Envía tarjetas masivas al primer destinatario.
+        const MODO_BOMBARDEO  = false;  // true = Envía tarjetas masivas al primer destinatario.
         const CANTIDAD_BOMBARDEO = 2000; // Número de tarjetas a enviar en modo bombardeo
         // ====================================================================
         

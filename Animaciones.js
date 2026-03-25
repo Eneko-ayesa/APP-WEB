@@ -3501,7 +3501,7 @@ async function manejarBusqueda(e) {
 
                 return `
                     <div class="sug-item" 
-                        onclick="seleccionarYVerMiembros('${correo}', '${idGrupo}', '${tipo}')" 
+                        onclick="seleccionarYVerMiembros('${correo}', '${idGrupo}', '${tipo}', '${nombre}')" 
                         style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee;">
                         <div style="font-weight: 600;">
                             ${nombre} 
@@ -3563,24 +3563,6 @@ window.seleccionarUsuarioLocal = function(valor) {
 
     // 4. Devolvemos el foco al campo para que el usuario pueda seguir
     input.focus();
-};
-
-window.seleccionarYVerMiembros = function(email, idGrupo, tipo) {
-    // 1. Primero hacemos el autocompletado del email (lo que ya funcionaba)
-    // Llamamos a la función que ya tenemos, pasándole solo el email
-    if (email && email !== "undefined") {
-        seleccionarUsuarioLocal(email);
-    }
-
-    // 2. Si es un grupo, abrimos el panel de miembros automáticamente
-    if (tipo === 'grupo' && idGrupo) {        
-        // Usamos la función que ya tienes definida en tu Animaciones.js
-        if (typeof window.abrirPanelMiembrosConGrupo === "function") {
-            window.abrirPanelMiembrosConGrupo(idGrupo);
-        } else {
-            console.error("No se encontró la función abrirPanelMiembrosConGrupo");
-        }
-    }
 };
 
 const btnLogout = document.getElementById("topbarLogout");
@@ -4065,60 +4047,64 @@ function rastrearEnvio(jobId) {
 }
 
 
-window.seleccionarYVerMiembros = function(correo, idGrupo, tipo) {
-    // 1. Averiguar qué caja de sugerencias está visible para saber en qué input escribir
+window.seleccionarYVerMiembros = function(correo, idGrupo, tipo, nombre) {
+    // 1. SABER DÓNDE ESCRIBIR (INFALIBLE)
+    // Miramos qué bloque está visible en la pantalla (Outlook o Teams)
+    const bloqueTeams = document.getElementById("teamsRecipientField");
+    let inputDestino = document.getElementById("emails"); // Por defecto Outlook
+    
+    if (bloqueTeams && !bloqueTeams.classList.contains("hidden")) {
+        inputDestino = document.getElementById("teamsRecipient"); // Si Teams es visible, a Teams
+    }
+
+    // 2. SABER QUÉ TEXTO ESCRIBIR
+    let textoFinal = correo;
+    
+    // Si es un grupo y no tiene correo, usamos su nombre o su ID
+    if (tipo === 'grupo' || tipo === 'Grupo') {
+        if (!correo || correo === "undefined" || correo.trim() === "") {
+            textoFinal = nombre || idGrupo;
+        }
+    }
+
+    // 3. AUTOCOMPLETAR EN LA BARRA
+    if (inputDestino && textoFinal && textoFinal !== "undefined") {
+        let actual = inputDestino.value || "";
+        let partes = actual.split(",");
+        partes.pop(); // Borramos lo escrito a medias
+        
+        partes.push(" " + String(textoFinal).trim());
+        inputDestino.value = partes.join(",").trim() + ", ";
+    }
+
+    // 4. LIMPIAR LAS CAJAS DE SUGERENCIAS
     const cajaEmails = document.getElementById("suggestions");
     const cajaTeams = document.getElementById("suggestionsBoxTeams");
-    
-    let inputTarget = document.getElementById("emails"); // Por defecto
-    
-    // Si la caja de Teams está visible, significa que estábamos tecleando ahí
-    if (cajaTeams && !cajaTeams.classList.contains("hidden")) {
-        inputTarget = document.getElementById("teamsRecipient");
-    } 
-    // Si la de Emails está visible, estábamos en Emails
-    else if (cajaEmails && !cajaEmails.classList.contains("hidden")) {
-        inputTarget = document.getElementById("emails");
-    }
+    if (cajaEmails) { cajaEmails.innerHTML = ""; cajaEmails.classList.add("hidden"); }
+    if (cajaTeams) { cajaTeams.innerHTML = ""; cajaTeams.classList.add("hidden"); }
 
-    // 2. Autocompletar el texto de forma segura
-    if (inputTarget) {
-        let actual = inputTarget.value;
-        let partes = actual.split(",");
-        partes.pop(); // Borramos lo que estabas tecleando a medias (ej: "mar...")
-        
-        // Añadimos el correo completo
-        if (correo) {
-            partes.push(" " + correo.trim());
-        }
-        
-        // Juntamos todo de nuevo y ponemos una coma al final
-        inputTarget.value = partes.join(",").trim() + ", ";
-        inputTarget.focus();
-    }
-
-    // 3. Ocultar las cajas de sugerencias inmediatamente
-    if (cajaEmails) cajaEmails.classList.add("hidden");
-    if (cajaTeams) cajaTeams.classList.add("hidden");
-
-    // 4. SI ES UN GRUPO: Abrimos la pestaña y cargamos los miembros
-    if (tipo === 'grupo') {
-        const tabMiembros = document.querySelector('.tab[data-tab="miembros"]');
-        if (tabMiembros) {
-            tabMiembros.click(); 
-        }
-
-        const selectGrupos = document.getElementById("exploradorGruposSelect"); 
-        if (selectGrupos) {
-            let existe = Array.from(selectGrupos.options).some(opt => opt.value === idGrupo);
+    // 5. SI ES GRUPO, ABRIR EL PANEL LATERAL (Con retraso para que no interrumpa el autocompletado)
+    if ((tipo === 'grupo' || tipo === 'Grupo') && idGrupo) {
+        setTimeout(() => {
+            // Clic en la pestaña
+            const tabMiembros = document.querySelector('.tab[data-tab="miembros"]');
+            if (tabMiembros) tabMiembros.click();
             
-            if (!existe) {
-                const nuevaOpcion = new Option(correo, idGrupo);
-                selectGrupos.add(nuevaOpcion);
+            // Seleccionar en el explorador
+            const selectGrupos = document.getElementById("exploradorGruposSelect");
+            if (selectGrupos) {
+                let existe = Array.from(selectGrupos.options).some(opt => opt.value === idGrupo);
+                if (!existe) {
+                    selectGrupos.add(new Option(nombre || textoFinal, idGrupo));
+                }
+                selectGrupos.value = idGrupo;
+                selectGrupos.dispatchEvent(new Event("change"));
             }
-            
-            selectGrupos.value = idGrupo;
-            selectGrupos.dispatchEvent(new Event("change")); 
-        }
+        }, 150);
     }
-}
+    
+    // 6. DEVOLVER EL CURSOR PARA SEGUIR ESCRIBIENDO
+    setTimeout(() => {
+        if (inputDestino) inputDestino.focus();
+    }, 250);
+};
