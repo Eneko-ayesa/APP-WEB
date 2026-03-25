@@ -4669,3 +4669,25 @@ a.card-action-btn:hover {
   background: #e6f4ea;
   color: #1a7a30;
 }
+
+/* 1. Los contenedores (Outlook y Teams) se quedan tranquilos en su sitio */
+#emailField, 
+#teamsRecipientField {
+    position: relative !important; 
+    z-index: 10 !important; /* Suficiente para anclar, sin romper tu diseño */
+}
+
+/* 2. Las cajas de sugerencias flotan por encima de todo (Editor incluido) */
+#suggestions, 
+#suggestionsBoxTeams {
+    position: absolute !important;
+    top: 100% !important; 
+    left: 0 !important;
+    right: 0 !important;
+    background-color: #ffffff !important; 
+    z-index: 9999 !important; /* Máxima prioridad para tapar lo de abajo */
+    border: 1px solid #c8c6c4 !important;
+    box-shadow: 0px 8px 16px rgba(0,0,0,0.2) !important;
+    max-height: 200px !important;
+    overflow-y: auto !important;
+}

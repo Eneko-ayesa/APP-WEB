@@ -2639,7 +2639,7 @@ function renderMiembrosPanel(panel) {
 
     <!-- ══ BUSCADOR GLOBAL DE USUARIOS ═══════════════════ -->
     <div class="gus-section">
-      <div class="gus-label">Búsqueda global de usuarios</div>
+      <div class="gus-label">Búsqueda global de Grupos</div>
       <div class="gus-wrap">
 
         <!-- Barra en forma de píldora -->
@@ -4062,4 +4062,63 @@ function rastrearEnvio(jobId) {
             console.error("Error rastreando envío:", e);
         }
     }, 2500);
+}
+
+
+window.seleccionarYVerMiembros = function(correo, idGrupo, tipo) {
+    // 1. Averiguar qué caja de sugerencias está visible para saber en qué input escribir
+    const cajaEmails = document.getElementById("suggestions");
+    const cajaTeams = document.getElementById("suggestionsBoxTeams");
+    
+    let inputTarget = document.getElementById("emails"); // Por defecto
+    
+    // Si la caja de Teams está visible, significa que estábamos tecleando ahí
+    if (cajaTeams && !cajaTeams.classList.contains("hidden")) {
+        inputTarget = document.getElementById("teamsRecipient");
+    } 
+    // Si la de Emails está visible, estábamos en Emails
+    else if (cajaEmails && !cajaEmails.classList.contains("hidden")) {
+        inputTarget = document.getElementById("emails");
+    }
+
+    // 2. Autocompletar el texto de forma segura
+    if (inputTarget) {
+        let actual = inputTarget.value;
+        let partes = actual.split(",");
+        partes.pop(); // Borramos lo que estabas tecleando a medias (ej: "mar...")
+        
+        // Añadimos el correo completo
+        if (correo) {
+            partes.push(" " + correo.trim());
+        }
+        
+        // Juntamos todo de nuevo y ponemos una coma al final
+        inputTarget.value = partes.join(",").trim() + ", ";
+        inputTarget.focus();
+    }
+
+    // 3. Ocultar las cajas de sugerencias inmediatamente
+    if (cajaEmails) cajaEmails.classList.add("hidden");
+    if (cajaTeams) cajaTeams.classList.add("hidden");
+
+    // 4. SI ES UN GRUPO: Abrimos la pestaña y cargamos los miembros
+    if (tipo === 'grupo') {
+        const tabMiembros = document.querySelector('.tab[data-tab="miembros"]');
+        if (tabMiembros) {
+            tabMiembros.click(); 
+        }
+
+        const selectGrupos = document.getElementById("exploradorGruposSelect"); 
+        if (selectGrupos) {
+            let existe = Array.from(selectGrupos.options).some(opt => opt.value === idGrupo);
+            
+            if (!existe) {
+                const nuevaOpcion = new Option(correo, idGrupo);
+                selectGrupos.add(nuevaOpcion);
+            }
+            
+            selectGrupos.value = idGrupo;
+            selectGrupos.dispatchEvent(new Event("change")); 
+        }
+    }
 }
