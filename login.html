@@ -284,14 +284,13 @@
   </div>
 
   <script type="text/javascript" src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
+  <script src="/auth-config.js"></script>
 
   <script>
-    // Configuración de Azure (¡Cambia estos datos por los tuyos!)
     const msalConfig = {
         auth: {
-            clientId: "b2349f49-1c18-4a03-8d2f-c21d45bca5e2", 
-            authority: "https://login.microsoftonline.com/6f167842-765d-4bda-a56e-9d433bc27739", 
-            redirectUri: "http://localhost:3000/login.html"
+            ...window.__MSAL_CONFIG__,
+            redirectUri: `${window.location.origin}/login.html`
         }
     };
 

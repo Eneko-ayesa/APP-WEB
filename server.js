@@ -28,6 +28,16 @@ app.get('/', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 app.get('/index.html', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
 app.get('/login.html', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/auth-config.js', (req, res) => {
+    const authConfig = {
+        clientId: process.env.CLIENT_ID,
+        authority: 'https://login.microsoftonline.com/' + process.env.TENANT_ID
+    };
+
+    res.type('application/javascript');
+    res.set('Cache-Control', 'no-store');
+    res.send('window.__MSAL_CONFIG__ = ' + JSON.stringify(authConfig) + ';');
+});
 app.get('/styles.css', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'styles.css')));
 app.get('/Animaciones.js', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'Animaciones.js')));
 app.get('/formulario.php', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'formulario.php')));
