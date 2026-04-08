@@ -32,13 +32,33 @@ const client = Client.initWithMiddleware({
     authProvider: authProvider
 });
 // --- 3. FUNCIONES DE BASE DE DATOS (TEAMS) ---
+function obtenerClaveReferencia(reference) {
+    return reference?.user?.aadObjectId || reference?.conversation?.id || null;
+}
+
 function cargarUsuarios() {
     try {
         if (fs.existsSync(PATH_DB)) {
             const data = fs.readFileSync(PATH_DB, 'utf8');
-            const array = JSON.parse(data);
+            const persistido = JSON.parse(data);
             const obj = {};
-            array.forEach(u => obj[u.conversationId] = u.reference);
+
+            if (Array.isArray(persistido)) {
+                persistido.forEach((u) => {
+                    const key = u.conversationId || obtenerClaveReferencia(u.reference);
+                    if (key && u.reference) {
+                        obj[key] = u.reference;
+                    }
+                });
+            } else if (persistido && typeof persistido === 'object') {
+                Object.entries(persistido).forEach(([key, reference]) => {
+                    const normalizedKey = obtenerClaveReferencia(reference) || key;
+                    if (normalizedKey && reference) {
+                        obj[normalizedKey] = reference;
+                    }
+                });
+            }
+
             return obj;
         }
     } catch (error) { console.error("Error BD:", error); }
@@ -46,7 +66,17 @@ function cargarUsuarios() {
 }
 
 function guardarUsuarios(referencias) {
-    const arrayParaGuardar = Object.keys(referencias).map(id => ({ conversationId: id, reference: referencias[id] }));
+    const arrayParaGuardar = Object.values(referencias)
+        .map((reference) => {
+            const key = obtenerClaveReferencia(reference);
+            if (!key) {
+                return null;
+            }
+
+            return { conversationId: key, reference };
+        })
+        .filter(Boolean);
+
     fs.writeFileSync(PATH_DB, JSON.stringify(arrayParaGuardar, null, 2));
 }
 
@@ -83,7 +113,7 @@ app.post('/api/messages', async (req, res) => {
                             conversationReferences[azureId] = referencia;
                             
                             // Y lo guardamos en tu archivo usuarios.json
-                            fs.writeFileSync(PATH_DB, JSON.stringify(conversationReferences, null, 2));
+                            guardarUsuarios(conversationReferences);
                             console.log(`✅ Nuevo usuario registrado automáticamente: ${azureId}`);
                         }
                     }
@@ -92,7 +122,10 @@ app.post('/api/messages', async (req, res) => {
         }
         if (context.activity.type === 'message') {
             const reference = TurnContext.getConversationReference(context.activity);
-            conversationReferences[reference.conversation.id] = reference;
+            const key = obtenerClaveReferencia(reference);
+            if (key) {
+                conversationReferences[key] = reference;
+            }
             guardarUsuarios(conversationReferences);
             await context.sendActivity("¡Vinculado!");
         }
