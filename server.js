@@ -302,14 +302,6 @@ async function enviarNotificacionFin(destinatario, exitos, fallos, tiempo) {
     }
 }
 
-app.get('/api/estado-envio/:jobId', (req, res) => {
-    const job = global.enviosActivos[req.params.jobId];
-    if (!job) {
-        return res.status(404).json({ error: "Envío no encontrado" });
-    }
-    res.json(job);
-});
-
 // ====================================================================
 // ── ALMACÉN GLOBAL DE ENVÍOS EN SEGUNDO PLANO ──
 // ====================================================================
