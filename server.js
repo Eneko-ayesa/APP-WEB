@@ -10,7 +10,9 @@ const { ClientSecretCredential } = require("@azure/identity");
 const { Client } = require("@microsoft/microsoft-graph-client");
 const { TokenCredentialAuthenticationProvider } = require("@microsoft/microsoft-graph-client/authProviders/azureTokenCredentials");
 
-const PATH_DB = './usuarios.json';
+const PUBLIC_DIR = __dirname;
+const DATA_DIR = path.join(__dirname, 'data');
+const PATH_DB = path.join(DATA_DIR, 'usuarios.json');
 
 // 1. VALIDACIÓN ESTRICTA
 if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET || !process.env.TENANT_ID || !process.env.EMAIL_USER) {
@@ -22,7 +24,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(express.static(path.join(__dirname, '.')));
+app.get('/', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+app.get('/index.html', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/login.html', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/styles.css', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'styles.css')));
+app.get('/Animaciones.js', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'Animaciones.js')));
+app.get('/formulario.php', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'formulario.php')));
 
 // --- 2. CONFIGURACIÓN DE MICROSOFT GRAPH (PARA OUTLOOK) ---
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
@@ -66,6 +74,10 @@ function cargarUsuarios() {
 }
 
 function guardarUsuarios(referencias) {
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
     const arrayParaGuardar = Object.values(referencias)
         .map((reference) => {
             const key = obtenerClaveReferencia(reference);
