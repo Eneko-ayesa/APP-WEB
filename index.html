@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Yako Broadcasting System</title>
       <script>
-      // Comprobamos si la llave "yako_auth" existe en la memoria de la sesión
-      // if (!sessionStorage.getItem("yako_auth")) {
-      //     window.location.replace("login.html");
-      // }
+      // Comprobamos si existe un token de Microsoft antes de cargar el panel
+       if (!sessionStorage.getItem("yako_token")) {
+          window.location.replace("login.html");
+      }
 </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -261,10 +261,37 @@
   </head>
   <body>
     <script>
-      // Auth guard — redirect to login if not authenticated
-      // if (!sessionStorage.getItem("yako_auth")) {
-      //   window.location.replace("login.html");
-      // }
+      window.__AUTH_VALIDATING__ = (async () => {
+        const token = sessionStorage.getItem("yako_token");
+
+        if (!token) {
+          window.location.replace("login.html");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/auth/validate", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error("Sesión inválida");
+          }
+
+          const data = await response.json();
+          if (data?.user) {
+            sessionStorage.setItem("yako_auth", "1");
+            sessionStorage.setItem("yako_user", data.user.displayName || sessionStorage.getItem("yako_user") || "Usuario");
+            sessionStorage.setItem("yako_email", data.user.mail || data.user.userPrincipalName || sessionStorage.getItem("yako_email") || "");
+            sessionStorage.setItem("yako_aad_id", data.user.id || sessionStorage.getItem("yako_aad_id") || "");
+          }
+        } catch (error) {
+          sessionStorage.clear();
+          window.location.replace("login.html");
+        }
+      })();
     </script>
 
     <!-- ══ GLOBAL TOP BAR ══════════════════════════════ -->

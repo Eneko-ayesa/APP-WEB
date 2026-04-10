@@ -20,6 +20,34 @@ let inputActivo = null;
 let cajaSugerenciasActiva = null;
 // ── IMAGE SIZE STORE ──────────────────────────
 // maps block element → { width, headerHeight }
+async function authFetch(url, options = {}) {
+  if (window.__AUTH_VALIDATING__) {
+    await window.__AUTH_VALIDATING__.catch(() => {});
+  }
+
+  const token = sessionStorage.getItem("yako_token");
+  if (!token) {
+    window.location.replace("login.html");
+    throw new Error("Debes iniciar sesión con Microsoft.");
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(url, {
+    ...options,
+    headers
+  });
+
+  if (response.status === 401) {
+    sessionStorage.clear();
+    window.location.replace("login.html");
+    throw new Error("La sesión de Microsoft ha caducado.");
+  }
+
+  return response;
+}
+
 const imgSizes = new WeakMap();
 
 // ── IMAGE VALIDATION ──────────────────────────
@@ -1817,7 +1845,7 @@ const emailElement = document.getElementById("topbarDEmail");
 
   // 6. Llamada al servidor
   try {
-      const respuesta = await fetch(endpoint, {
+      const respuesta = await authFetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(bodyPayload)
@@ -2897,7 +2925,7 @@ function renderMiembrosPanel(panel) {
     gusSpinner.classList.add("visible");
     try {
       // 1. Llamamos a tu servidor (la ruta que acabamos de arreglar)
-      const res  = await fetch("/api/buscar-usuarios?q=" + encodeURIComponent(q));
+      const res  = await authFetch("/api/buscar-usuarios?q=" + encodeURIComponent(q));
       const data = await res.json();
       
       // 2. Extraemos el array de datos
@@ -2949,7 +2977,7 @@ function renderMiembrosPanel(panel) {
   // ── EXPLORADOR DE LISTAS — lógica original (sin cambios) ─
 
   // 2. Cargar el desplegable de grupos
-  fetch("/api/grupos")
+  authFetch("/api/grupos")
     .then(r => r.json())
     .then(grupos => {
       selectGrupos.innerHTML = '<option value="">-- Selecciona una lista de distribución --</option>';
@@ -2999,7 +3027,7 @@ function renderMiembrosPanel(panel) {
       </div>
     `;
 
-    fetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
+    authFetch("/api/miembros-grupo?id=" + encodeURIComponent(grupoId))
       .then(r => r.json())
       .then(data => {
         const lista = Array.isArray(data) ? data : (data.value || data.miembros || []);
@@ -3292,7 +3320,10 @@ ensurePreviewPanel = function (type) {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
       sessionStorage.removeItem("yako_auth");
+      sessionStorage.removeItem("yako_token");
       sessionStorage.removeItem("yako_user");
+      sessionStorage.removeItem("yako_email");
+      sessionStorage.removeItem("yako_aad_id");
       window.location.href = "login.html";
     });
   }
@@ -3488,7 +3519,7 @@ async function manejarBusqueda(e) {
     }
 
     try {
-        const respuesta = await fetch(`/api/buscar-usuarios?q=${encodeURIComponent(busqueda)}`);
+        const respuesta = await authFetch(`/api/buscar-usuarios?q=${encodeURIComponent(busqueda)}`);
         const resultados = await respuesta.json();
 
         if (resultados && resultados.length > 0) {
@@ -3707,7 +3738,7 @@ document.getElementById("btnLoadDist")?.addEventListener("click", async () => {
   btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Cargando…`;
 
   try {
-    const resp = await fetch("http://localhost:3000/api/listas-distribucion");
+    const resp = await authFetch("/api/listas-distribucion");
     if (!resp.ok) throw new Error("Error " + resp.status);
     
     const listas = await resp.json();
@@ -3996,7 +4027,7 @@ function renderHistPanel() {
 function rastrearEnvio(jobId) {
     const intervalo = setInterval(async () => {
         try {
-            const res = await fetch(`/api/estado-envio/${jobId}`);
+            const res = await authFetch(`/api/estado-envio/${jobId}`);
             if (!res.ok) return;
             const job = await res.json();
 

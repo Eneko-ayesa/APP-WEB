@@ -299,6 +299,20 @@
     const btn = document.getElementById("loginBtn");
     const err = document.getElementById("loginError");
 
+    async function validarSesionMicrosoft(accessToken) {
+      const respuesta = await fetch("/api/auth/validate", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      if (!respuesta.ok) {
+        throw new Error("La sesión de Microsoft no se pudo validar.");
+      }
+
+      return respuesta.json();
+    }
+
     btn.addEventListener("click", async (e) => {
       // 1. Efecto Ripple (la animación de la gota de agua que ya tenías)
       const rect = btn.getBoundingClientRect();
@@ -320,12 +334,14 @@
               scopes: ["User.Read"] // Pedimos permiso para leer el perfil básico
           });
 
+          const validacion = await validarSesionMicrosoft(loginResponse.accessToken);
+
           // Si el login es correcto, guardamos el token y el nombre en memoria
           sessionStorage.setItem("yako_auth", "1");
           sessionStorage.setItem("yako_token", loginResponse.accessToken);
-          sessionStorage.setItem("yako_user", loginResponse.account.name);
-          sessionStorage.setItem("yako_aad_id", loginResponse.account.localAccountId);
-          sessionStorage.setItem("yako_email", loginResponse.account.username); // UPN/email real de M365
+          sessionStorage.setItem("yako_user", validacion.user?.displayName || loginResponse.account.name);
+          sessionStorage.setItem("yako_aad_id", validacion.user?.id || loginResponse.account.localAccountId);
+          sessionStorage.setItem("yako_email", validacion.user?.mail || validacion.user?.userPrincipalName || loginResponse.account.username); // UPN/email real de M365
           
           // ¡Redirigimos al generador!
           window.location.href = "index.html";

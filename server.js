@@ -42,6 +42,40 @@ app.get('/styles.css', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'styles.
 app.get('/Animaciones.js', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'Animaciones.js')));
 app.get('/formulario.php', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'formulario.php')));
 
+async function validarTokenMicrosoft(req, res, next) {
+    const authHeader = req.headers.authorization || "";
+    const [, token] = authHeader.split(" ");
+
+    if (!token || !authHeader.toLowerCase().startsWith("bearer ")) {
+        return res.status(401).json({ error: "Debes iniciar sesión con Microsoft." });
+    }
+
+    try {
+        const response = await fetch("https://graph.microsoft.com/v1.0/me?$select=id,displayName,mail,userPrincipalName", {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            return res.status(401).json({ error: "La sesión de Microsoft no es válida o ha caducado." });
+        }
+
+        req.microsoftUser = await response.json();
+        return next();
+    } catch (error) {
+        console.error("Error validando sesión Microsoft:", error.message);
+        return res.status(502).json({ error: "No se pudo validar la sesión con Microsoft." });
+    }
+}
+
+app.get('/api/auth/validate', validarTokenMicrosoft, (req, res) => {
+    res.json({
+        authenticated: true,
+        user: req.microsoftUser
+    });
+});
+
 // --- 2. CONFIGURACIÓN DE MICROSOFT GRAPH (PARA OUTLOOK) ---
 const credential = new ClientSecretCredential(process.env.TENANT_ID, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
 const authProvider = new TokenCredentialAuthenticationProvider(credential, { scopes: ["https://graph.microsoft.com/.default"] });
@@ -167,7 +201,7 @@ function dividirEnLotes(array, tamaño) {
 }
 
 
-app.get('/api/buscar-usuarios', async (req, res) => {
+app.get('/api/buscar-usuarios', validarTokenMicrosoft, async (req, res) => {
     const busqueda = req.query.q;
     
     if (!busqueda || busqueda.length < 3) {
@@ -228,7 +262,7 @@ app.get('/api/buscar-usuarios', async (req, res) => {
 
 // Ruta para obtener los grupos y mostrarlos en el frontend
 // Ruta para cargar el menú desplegable de grupos al iniciar la página
-app.get('/api/grupos', async (req, res) => {
+app.get('/api/grupos', validarTokenMicrosoft, async (req, res) => {
     try {
         const grupos = await client.api('/groups')
             .header('ConsistencyLevel', 'eventual') 
@@ -261,7 +295,7 @@ app.get('/api/grupos', async (req, res) => {
 // =======================================================
 
 // 1. Ruta usada por la búsqueda principal (?id=...)
-app.get('/api/miembros-grupo', async (req, res) => {
+app.get('/api/miembros-grupo', validarTokenMicrosoft, async (req, res) => {
     const groupId = req.query.id;
     if (!groupId) return res.status(400).json({ error: 'ID de grupo requerido' });
 
@@ -298,7 +332,7 @@ app.get('/api/miembros-grupo', async (req, res) => {
 });
 
 // 2. Ruta usada por el panel lateral de Miembros (/:id/miembros)
-app.get('/api/grupos/:id/miembros', async (req, res) => {
+app.get('/api/grupos/:id/miembros', validarTokenMicrosoft, async (req, res) => {
     try {
         const groupId = req.params.id; 
         console.log(`\n🕵️‍♂️ [DEBUG] Frontend pide los miembros del grupo: ${groupId}`);
@@ -363,7 +397,7 @@ async function enviarNotificacionFin(destinatario, exitos, fallos, tiempo) {
 global.enviosActivos = {};
 
 // ── RUTA PARA CONSULTAR EL ESTADO DEL ENVÍO DESDE LA WEB ──
-app.get('/api/estado-envio/:jobId', (req, res) => {
+app.get('/api/estado-envio/:jobId', validarTokenMicrosoft, (req, res) => {
     const job = global.enviosActivos[req.params.jobId];
     if (!job) {
         return res.status(404).json({ error: "Envío no encontrado" });
@@ -374,7 +408,7 @@ app.get('/api/estado-envio/:jobId', (req, res) => {
 // ====================================================================
 // 🚀 RUTA MAESTRA PARA ENVIAR POR TEAMS (GRUPOS E INDIVIDUALES)
 // ====================================================================
-app.post('/api/enviar-grupo-teams', async (req, res) => {
+app.post('/api/enviar-grupo-teams', validarTokenMicrosoft, async (req, res) => {
     try {
         const { tarjeta, destinatarios } = req.body;
         
@@ -575,7 +609,7 @@ app.post('/api/enviar-grupo-teams', async (req, res) => {
 // ====================================================================
 // 📧 RUTA PARA ENVIAR POR OUTLOOK (AHORA EN SEGUNDO PLANO)
 // ====================================================================
-app.post('/api/enviar-outlook', async (req, res) => {
+app.post('/api/enviar-outlook', validarTokenMicrosoft, async (req, res) => {
     const { destinatarios, asunto, tarjeta, notificar, remitente } = req.body;
     
     try {
